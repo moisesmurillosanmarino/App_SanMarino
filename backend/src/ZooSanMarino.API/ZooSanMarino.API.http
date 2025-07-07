@@ -1,0 +1,6 @@
+@ZooSanMarino.API_HostAddress = http://localhost:5143
+
+GET {{ZooSanMarino.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

@@ -1,0 +1,16 @@
+/Users/chelsycardona/proyectos/sanmarinoApp/backend/src/ZooSanMarino.Application/bin/Debug/net9.0/ZooSanMarino.Application.deps.json
+/Users/chelsycardona/proyectos/sanmarinoApp/backend/src/ZooSanMarino.Application/bin/Debug/net9.0/ZooSanMarino.Application.dll
+/Users/chelsycardona/proyectos/sanmarinoApp/backend/src/ZooSanMarino.Application/bin/Debug/net9.0/ZooSanMarino.Application.pdb
+/Users/chelsycardona/proyectos/sanmarinoApp/backend/src/ZooSanMarino.Application/bin/Debug/net9.0/ZooSanMarino.Domain.dll
+/Users/chelsycardona/proyectos/sanmarinoApp/backend/src/ZooSanMarino.Application/bin/Debug/net9.0/ZooSanMarino.Domain.pdb
+/Users/chelsycardona/proyectos/sanmarinoApp/backend/src/ZooSanMarino.Application/obj/Debug/net9.0/ZooSanMarino.Application.csproj.AssemblyReference.cache
+/Users/chelsycardona/proyectos/sanmarinoApp/backend/src/ZooSanMarino.Application/obj/Debug/net9.0/ZooSanMarino.Application.GeneratedMSBuildEditorConfig.editorconfig
+/Users/chelsycardona/proyectos/sanmarinoApp/backend/src/ZooSanMarino.Application/obj/Debug/net9.0/ZooSanMarino.Application.AssemblyInfoInputs.cache
+/Users/chelsycardona/proyectos/sanmarinoApp/backend/src/ZooSanMarino.Application/obj/Debug/net9.0/ZooSanMarino.Application.AssemblyInfo.cs
+/Users/chelsycardona/proyectos/sanmarinoApp/backend/src/ZooSanMarino.Application/obj/Debug/net9.0/ZooSanMarino.Application.csproj.CoreCompileInputs.cache
+/Users/chelsycardona/proyectos/sanmarinoApp/backend/src/ZooSanMarino.Application/obj/Debug/net9.0/ZooSanMarino.Application.sourcelink.json
+/Users/chelsycardona/proyectos/sanmarinoApp/backend/src/ZooSanMarino.Application/obj/Debug/net9.0/ZooSanMa.76EA3DC7.Up2Date
+/Users/chelsycardona/proyectos/sanmarinoApp/backend/src/ZooSanMarino.Application/obj/Debug/net9.0/ZooSanMarino.Application.dll
+/Users/chelsycardona/proyectos/sanmarinoApp/backend/src/ZooSanMarino.Application/obj/Debug/net9.0/refint/ZooSanMarino.Application.dll
+/Users/chelsycardona/proyectos/sanmarinoApp/backend/src/ZooSanMarino.Application/obj/Debug/net9.0/ZooSanMarino.Application.pdb
+/Users/chelsycardona/proyectos/sanmarinoApp/backend/src/ZooSanMarino.Application/obj/Debug/net9.0/ref/ZooSanMarino.Application.dll

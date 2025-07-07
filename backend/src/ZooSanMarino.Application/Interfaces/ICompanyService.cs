@@ -1,0 +1,11 @@
+// src/ZooSanMarino.Application/Interfaces/ICompanyService.cs
+using ZooSanMarino.Application.DTOs;
+namespace ZooSanMarino.Application.Interfaces;
+public interface ICompanyService
+{
+    Task<IEnumerable<CompanyDto>> GetAllAsync();
+    Task<CompanyDto?>            GetByIdAsync(int id);
+    Task<CompanyDto>             CreateAsync(CreateCompanyDto dto);
+    Task<CompanyDto?>            UpdateAsync(UpdateCompanyDto dto);
+    Task<bool>                   DeleteAsync(int id);
+}
