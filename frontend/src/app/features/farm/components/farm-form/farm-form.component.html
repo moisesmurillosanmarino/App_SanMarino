@@ -1,0 +1,43 @@
+<!-- src/app/features/farm/components/farm-form/farm-form.component.html -->
+<div class="p-6 max-w-md mx-auto">
+  <h2 class="text-xl font-bold mb-4">
+    {{ isEdit ? 'Editar Granja' : 'Nueva Granja' }}
+  </h2>
+
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <div class="mb-3">
+      <label class="block mb-1">Nombre</label>
+      <input formControlName="name" class="w-full border px-3 py-2" />
+    </div>
+    <!-- Reemplaza estos selects con tus servicios de Company, Regional y Zone -->
+    <div class="mb-3">
+      <label class="block mb-1">Empresa</label>
+      <input formControlName="companyId" type="number" class="w-full border px-3 py-2" />
+    </div>
+    <div class="mb-3">
+      <label class="block mb-1">Regional</label>
+      <input formControlName="regionalId" type="number" class="w-full border px-3 py-2" />
+    </div>
+    <div class="mb-3">
+      <label class="block mb-1">Zona</label>
+      <input formControlName="zoneId" type="number" class="w-full border px-3 py-2" />
+    </div>
+    <div class="mb-3">
+      <label class="block mb-1">Estado</label>
+      <input formControlName="status" class="w-full border px-3 py-2" />
+    </div>
+
+    <div class="flex justify-end space-x-2 mt-4">
+      <button type="button"
+              class="px-4 py-2 bg-gray-200"
+              (click)="cancel()">
+        Cancelar
+      </button>
+      <button type="submit"
+              [disabled]="form.invalid || loading"
+              class="px-4 py-2 bg-blue-600 text-white">
+        Guardar
+      </button>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,115 @@
+<div class="flex h-screen bg-yellow-50">
+  <app-sidebar class="w-64"></app-sidebar>
+
+  <div class="flex-1 p-6 overflow-auto">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6 border-b border-yellow-400 pb-2">
+      <h1 class="text-2xl font-bold text-yellow-800">Gestión de Núcleos</h1>
+      <button
+        (click)="openModal()"
+        class="flex items-center px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+      >
+        <fa-icon [icon]="faPlus" class="mr-2"></fa-icon>
+        Nuevo Núcleo
+      </button>
+    </div>
+
+    <!-- Filtro -->
+    <div class="mb-4 w-full md:w-1/3">
+      <label class="block text-sm font-medium text-yellow-900 mb-1">Buscar núcleo</label>
+      <div class="relative">
+        <input
+          type="text"
+          [(ngModel)]="filtro"
+          placeholder="Buscar por nombre, ID o granja..."
+          class="block w-full pl-10 border border-yellow-300 rounded-md shadow-sm px-4 py-2 focus:ring-red-500 focus:border-red-500"
+        />
+        <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-yellow-500">
+          <fa-icon [icon]="['fas', 'search']"></fa-icon>
+        </span>
+      </div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="bg-white border border-yellow-300 shadow rounded">
+      <table class="min-w-full divide-y divide-yellow-200 text-sm text-left text-yellow-900">
+        <thead class="bg-yellow-200 text-yellow-800">
+          <tr>
+            <th class="px-4 py-2 font-semibold">ID Núcleo</th>
+            <th class="px-4 py-2 font-semibold">Nombre Nucleo</th>
+            <th class="px-4 py-2 font-semibold">Granja</th>
+            <th class="px-4 py-2 font-semibold">Compañía</th>
+            <th class="px-4 py-2 font-semibold text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-yellow-100">
+          <tr *ngFor="let n of nucleos | nucleoFilter:filtro:farms:companies" class="hover:bg-yellow-50">
+            <td class="px-4 py-2">{{ n.nucleoId }}</td>
+            <td class="px-4 py-2">{{ n.nucleoNombre }}</td>
+            <td class="px-4 py-2">{{ getFarmName(n.granjaId) }}</td>
+            <td class="px-4 py-2">{{ getCompanyName(n.granjaId) }}</td>
+            <td class="px-4 py-2 text-center space-x-2">
+              <button (click)="openModal(n)" class="text-red-600 hover:text-red-800">
+                <fa-icon [icon]="faPen"></fa-icon>
+              </button>
+              <button (click)="delete(n)" class="text-red-600 hover:text-red-800">
+                <fa-icon [icon]="faTrash"></fa-icon>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Modal -->
+    <div *ngIf="modalOpen" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-lg w-full max-w-lg p-6 border border-yellow-400">
+        <h2 class="text-xl font-semibold text-yellow-800 mb-4">
+          {{ editing ? 'Editar Núcleo' : 'Nuevo Núcleo' }}
+        </h2>
+        <form [formGroup]="form" (ngSubmit)="save()" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-yellow-800">ID Núcleo *</label>
+              <input
+                formControlName="nucleoId"
+                [readonly]="!!editing"
+                class="mt-1 block w-full border-yellow-300 rounded-md focus:ring-red-500 focus:border-red-500"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-yellow-800">Granja *</label>
+              <select
+                formControlName="granjaId"
+                class="mt-1 block w-full border-yellow-300 rounded-md focus:ring-red-500 focus:border-red-500"
+              >
+                <option value="" disabled>Seleccione...</option>
+                <option *ngFor="let f of farms" [value]="f.id">{{ f.name }}</option>
+              </select>
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-sm font-medium text-yellow-800">Nombre Núcleo *</label>
+              <input
+                formControlName="nucleoNombre"
+                class="mt-1 block w-full border-yellow-300 rounded-md focus:ring-red-500 focus:border-red-500"
+              />
+            </div>
+          </div>
+
+          <div class="flex justify-end space-x-2 mt-6">
+            <button type="button"
+                    (click)="modalOpen = false"
+                    class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">
+              Cancelar
+            </button>
+            <button type="submit"
+                    [disabled]="form.invalid"
+                    class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50">
+              {{ editing ? 'Actualizar' : 'Guardar' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

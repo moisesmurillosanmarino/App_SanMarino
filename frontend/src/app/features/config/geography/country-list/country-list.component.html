@@ -1,0 +1,100 @@
+<div class="flex h-screen">
+  <!-- Sidebar -->
+  <app-sidebar class="w-64"></app-sidebar>
+
+  <div class="flex-1 p-6 bg-warm-gray-100 overflow-auto">
+    <!-- Header -->
+    <div class="flex items-center mb-6">
+      <fa-icon [icon]="faPlus" class="text-3xl text-brand-red mr-2"></fa-icon>
+      <h1 class="text-2xl font-bold text-brand-red">Países</h1>
+      <button
+        (click)="newCountry()"
+        class="ml-auto inline-flex items-center px-4 py-2 bg-chicken-yellow text-warm-gray-800 rounded hover:bg-yellow-500 transition"
+      >
+        <fa-icon [icon]="faPlus" class="mr-2"></fa-icon>
+        Nuevo País
+      </button>
+    </div>
+
+    <!-- Modal Crear/Editar -->
+    <div
+      *ngIf="showModal"
+      class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+    >
+      <div class="bg-white rounded-lg shadow-lg w-80 p-6">
+        <h2 class="text-xl font-bold mb-4">
+          {{ editingId ? 'Editar País' : 'Nuevo País' }}
+        </h2>
+        <form [formGroup]="countryForm" (ngSubmit)="saveCountry()">
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-1">Nombre</label>
+            <input
+              formControlName="paisNombre"
+              type="text"
+              class="w-full border rounded px-3 py-2"
+              placeholder="Ej: Colombia"
+            />
+            <div
+              *ngIf="countryForm.get('paisNombre')?.touched && countryForm.get('paisNombre')?.invalid"
+              class="text-red-600 text-xs mt-1"
+            >
+              El nombre es obligatorio.
+            </div>
+          </div>
+          <div class="flex justify-end space-x-2">
+            <button
+              type="button"
+              (click)="cancel()"
+              class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              class="px-4 py-2 bg-brand-red text-white rounded hover:bg-red-600"
+            >
+              Guardar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Tabla de países -->
+    <div class="bg-white rounded-lg shadow overflow-x-auto mt-4">
+      <table class="min-w-full table-auto">
+        <thead class="bg-warm-gray-100">
+          <tr>
+            <th class="px-4 py-3 text-left text-sm font-semibold text-warm-gray-700">
+              Nombre
+            </th>
+            <th class="px-4 py-3 text-right text-sm font-semibold text-warm-gray-700">
+              Acciones
+            </th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-warm-gray-200">
+          <tr *ngFor="let c of countries" class="hover:bg-warm-gray-50 transition-colors">
+            <td class="px-4 py-2 text-sm">{{ c.paisNombre }}</td>
+            <td class="px-4 py-2 text-right space-x-2">
+              <button
+                (click)="editCountry(c)"
+                class="p-1 text-warm-gray-500 hover:text-brand-red transition"
+                [attr.aria-label]="'Editar ' + c.paisNombre"
+              >
+                <fa-icon [icon]="faPen"></fa-icon>
+              </button>
+              <button
+                (click)="deleteCountry(c.paisId)"
+                class="p-1 text-warm-gray-500 hover:text-red-600 transition"
+                [attr.aria-label]="'Eliminar ' + c.paisNombre"
+              >
+                <fa-icon [icon]="faTrash"></fa-icon>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,190 @@
+[
+    {
+        "code": "CO",
+        "name": "Colombia",
+        "states": [
+            {
+            "code": "CO-AMA",
+            "name": "Amazonas",
+            "cities": ["Leticia", "Puerto Nariño", "Tarapacá"]
+            },
+            {
+            "code": "CO-ANT",
+            "name": "Antioquia",
+            "cities": ["Medellín", "Envigado", "Bello", "Itagüí"]
+            },
+            {
+            "code": "CO-ARA",
+            "name": "Arauca",
+            "cities": ["Arauca", "Arauquita", "Saravena"]
+            },
+            {
+            "code": "CO-ATL",
+            "name": "Atlántico",
+            "cities": ["Barranquilla", "Soledad", "Malambo"]
+            },
+            {
+            "code": "CO-BOL",
+            "name": "Bolívar",
+            "cities": ["Cartagena", "Magangué", "Turbaco"]
+            },
+            {
+            "code": "CO-BOY",
+            "name": "Boyacá",
+            "cities": ["Tunja", "Duitama", "Sogamoso"]
+            },
+            {
+            "code": "CO-CAL",
+            "name": "Caldas",
+            "cities": ["Manizales", "Chinchiná", "La Dorada"]
+            },
+            {
+            "code": "CO-CAQ",
+            "name": "Caquetá",
+            "cities": ["Florencia", "Belén de los Andaquies", "Morelia"]
+            },
+            {
+            "code": "CO-CAS",
+            "name": "Casanare",
+            "cities": ["Yopal", "Aguazul", "Villanueva"]
+            },
+            {
+            "code": "CO-CAU",
+            "name": "Cauca",
+            "cities": ["Popayán", "Santander de Quilichao", "Puerto Tejada"]
+            },
+            {
+            "code": "CO-CES",
+            "name": "Cesar",
+            "cities": ["Valledupar", "Aguachica", "Bosconia"]
+            },
+            {
+            "code": "CO-CHO",
+            "name": "Chocó",
+            "cities": ["Quibdó", "Istmina", "Riosucio"]
+            },
+            {
+            "code": "CO-COR",
+            "name": "Córdoba",
+            "cities": ["Montería", "Cereté", "Lorica"]
+            },
+            {
+            "code": "CO-CUN",
+            "name": "Cundinamarca",
+            "cities": ["Bogotá", "Facatativá", "Zipaquirá"]
+            },
+            {
+            "code": "CO-DC",
+            "name": "Bogotá, D.C.",
+            "cities": ["Bogotá"]
+            },
+            {
+            "code": "CO-GUA",
+            "name": "Guainía",
+            "cities": ["Inírida"]
+            },
+            {
+            "code": "CO-GUV",
+            "name": "Guaviare",
+            "cities": ["San José del Guaviare"]
+            },
+            {
+            "code": "CO-HUI",
+            "name": "Huila",
+            "cities": ["Neiva", "Pitalito", "Garzón"]
+            },
+            {
+            "code": "CO-LAG",
+            "name": "La Guajira",
+            "cities": ["Riohacha", "Maicao", "Dibulla"]
+            },
+            {
+            "code": "CO-MAG",
+            "name": "Magdalena",
+            "cities": ["Santa Marta", "Ciénaga", "Fundación"]
+            },
+            {
+            "code": "CO-MET",
+            "name": "Meta",
+            "cities": ["Villavicencio", "Acacías", "Puerto López"]
+            },
+            {
+            "code": "CO-NAR",
+            "name": "Nariño",
+            "cities": ["Pasto", "Ipiales", "Tumaco"]
+            },
+            {
+            "code": "CO-NSA",
+            "name": "Norte de Santander",
+            "cities": ["Cúcuta", "Ocaña", "Pamplona"]
+            },
+            {
+            "code": "CO-PUT",
+            "name": "Putumayo",
+            "cities": ["Mocoa", "Orito", "Puerto Asís"]
+            },
+            {
+            "code": "CO-QUI",
+            "name": "Quindío",
+            "cities": ["Armenia", "Calarcá", "Montenegro"]
+            },
+            {
+            "code": "CO-RIS",
+            "name": "Risaralda",
+            "cities": ["Pereira", "Dosquebradas", "La Virginia"]
+            },
+            {
+            "code": "CO-SAP",
+            "name": "San Andrés y Providencia",
+            "cities": ["San Andrés", "Providencia"]
+            },
+            {
+            "code": "CO-SAN",
+            "name": "Santander",
+            "cities": ["Bucaramanga", "Floridablanca", "Girón"]
+            },
+            {
+            "code": "CO-SUC",
+            "name": "Sucre",
+            "cities": ["Sincelejo", "Corozal", "Tolú"]
+            },
+            {
+            "code": "CO-TOL",
+            "name": "Tolima",
+            "cities": ["Ibagué", "Espinal", "Melgar"]
+            },
+            {
+            "code": "CO-VAL",
+            "name": "Valle del Cauca",
+            "cities": ["Cali", "Palmira", "Buenaventura"]
+            },
+            {
+            "code": "CO-VAU",
+            "name": "Vaupés",
+            "cities": ["Mitú"]
+            },
+            {
+            "code": "CO-VID",
+            "name": "Vichada",
+            "cities": ["Puerto Carreño"]
+            }
+        ]
+    },
+    {
+        "code": "EC",
+        "name": "Ecuador",
+        "states": [
+          {
+            "code": "P",
+            "name": "Pichincha",
+            "cities": ["Quito", "Cayambe", "Rumiñahui"]
+          },
+          {
+            "code": "G",
+            "name": "Guayas",
+            "cities": ["Guayaquil", "Daule", "Samborondón"]
+          }
+        ]
+    }
+]
+   

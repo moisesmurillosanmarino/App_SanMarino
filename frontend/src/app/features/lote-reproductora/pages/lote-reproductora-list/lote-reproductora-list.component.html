@@ -1,0 +1,228 @@
+<div class="flex h-screen bg-gray-50">
+  <app-sidebar class="w-64"></app-sidebar>
+  <div class="flex-1 p-6 overflow-auto">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-800">Lotes Reproductora</h1>
+      <button (click)="openNew()" class="flex items-center bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+        <fa-icon [icon]="faPlus" class="mr-2"></fa-icon> Nuevo
+      </button>
+    </div>
+
+    <!-- Filtros en cascada -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Granja:</label>
+        <select [(ngModel)]="selectedGranjaId" (change)="onGranjaChange()" class="w-full border rounded p-2">
+          <option value="">-- Seleccione --</option>
+          <option *ngFor="let g of granjas" [value]="g.id">{{ g.name }}</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Núcleo:</label>
+        <select [(ngModel)]="selectedNucleoId" (change)="onNucleoChange()" class="w-full border rounded p-2">
+          <option value="">-- Seleccione --</option>
+          <option *ngFor="let n of nucleos" [value]="n.nucleoId">{{ n.nucleoNombre }}</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Lote:</label>
+        <select [(ngModel)]="selectedLoteId" (change)="onLoteChange()" class="w-full border rounded p-2">
+          <option value="">-- Seleccione --</option>
+          <option *ngFor="let l of lotes" [value]="l.loteId">{{ l.loteNombre }}</option>
+        </select>
+      </div>
+    </div>
+
+  <!-- 🐣 Detalle del lote seleccionado -->
+<div *ngIf="loteSeleccionado" class="overflow-x-auto bg-white shadow rounded mb-6">
+  <table class="min-w-full divide-y divide-gray-200">
+    <thead class="bg-yellow-100 text-sm">
+      <tr>
+        <th colspan="3" class="text-center py-2 font-semibold">📋 DATOS DEL LOTE</th>
+        <th colspan="4" class="text-center py-2 font-semibold"></th>
+        <th colspan="3" class="text-center py-2 font-semibold"></th>
+      </tr>
+    </thead>
+    <tbody class="text-sm text-gray-700">
+      <tr class="text-center">
+        <!-- 📋 DATOS DEL LOTE -->
+        <td class="px-2 py-1"><strong>Lote ID:</strong><br>{{ loteSeleccionado.loteId }}</td>
+        <td class="px-2 py-1"><strong>Nombre:</strong><br>{{ loteSeleccionado.loteNombre }}</td>
+        <td class="px-2 py-1"><strong>Granja ID:</strong><br>{{ loteSeleccionado.granjaId }}</td>
+
+        <!-- 🐣 CANTIDAD DE AVES -->
+        <td class="px-2 py-1"><strong>Hembras:</strong><br>{{ loteSeleccionado.hembrasL ?? 0 }}</td>
+        <td class="px-2 py-1"><strong>Machos:</strong><br>{{ loteSeleccionado.machosL ?? 0 }}</td>
+        <td class="px-2 py-1"><strong>Mixtas:</strong><br>{{ loteSeleccionado.mixtas ?? 0 }}</td>
+        <td class="px-2 py-1"><strong>Aves encasetadas:</strong><br>{{ loteSeleccionado.avesEncasetadas ?? 0 }}</td>
+
+        <!-- ⚖️ PESO LLEGADA -->
+        <td class="px-2 py-1"><strong>Peso H:</strong><br>{{ loteSeleccionado.pesoInicialH ?? 0 }}</td>
+        <td class="px-2 py-1"><strong>Peso M:</strong><br>{{ loteSeleccionado.pesoInicialM ?? 0 }}</td>
+        <td class="px-2 py-1"><strong>Peso Mixto:</strong><br>{{ loteSeleccionado.pesoMixto ?? 0 }}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+
+    <!-- Tabla -->
+    <div class="overflow-x-auto bg-white shadow rounded">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-yellow-100">
+          <tr>
+            <th colspan="2" class="text-center py-2 font-semibold">📋 LOTE REPRODUCTORA</th>
+            <th colspan="3" class="text-center py-2 font-semibold">🐣 CANTIDAD DE AVES</th>
+            <th colspan="3" class="text-center py-2 font-semibold">⚖️ PESO LLEGADA</th>
+            <th class="text-center py-2 font-semibold">Acciones</th>
+          </tr>
+          <tr class="bg-yellow-100 text-xs text-gray-700">
+            <th class="px-2 py-1">Lote Reproductora</th>
+            <th class="px-2 py-1">Incubadora</th>
+            <th class="px-2 py-1">Machos</th>
+            <th class="px-2 py-1">Hembras</th>
+            <th class="px-2 py-1">Mixtas</th>
+            <th class="px-2 py-1">Peso M</th>
+            <th class="px-2 py-1">Peso H</th>
+            <th class="px-2 py-1">Peso Mixto</th>
+            <th class="px-2 py-1 text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200 text-sm">
+          <tr *ngFor="let r of registros">
+            <td class="px-2 py-1">{{ r.nombreLote }}</td>
+            <td class="px-2 py-1">{{ r.reproductoraId }}</td>
+            <td class="px-2 py-1">{{ r.m }}</td>
+            <td class="px-2 py-1">{{ r.h }}</td>
+            <td class="px-2 py-1">{{ r.mixt }}</td>
+            <td class="px-2 py-1">{{ r.pesoInicialM }}</td>
+            <td class="px-2 py-1">{{ r.pesoInicialH }}</td>
+            <td class="px-2 py-1 text-right space-x-1">
+              <button (click)="view(r)" class="px-2 py-1 bg-blue-500 text-white rounded">👁</button>
+              <button (click)="edit(r)" class="px-2 py-1 bg-yellow-400 text-white rounded">✎</button>
+              <button (click)="delete(r.loteId, r.reproductoraId)" class="px-2 py-1 bg-red-500 text-white rounded">🗑</button>
+            </td>
+          </tr>
+          <tr *ngIf="loading">
+            <td colspan="9" class="text-center py-4">
+              <span class="text-gray-500 animate-pulse">Cargando datos...</span>
+            </td>
+          </tr>
+          <tr *ngIf="!loading && !registros.length">
+            <td colspan="9" class="text-center py-4 text-gray-500">Sin registros</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  <!-- Modal de Detalle Mejorado -->
+<div *ngIf="detalleOpen" class="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
+  <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-3xl border border-gray-200">
+    <!-- Encabezado -->
+    <div class="flex justify-between items-center mb-6 border-b pb-3">
+      <h3 class="text-xl font-semibold text-gray-800">📋 Detalle del Lote Reproductora</h3>
+      <button (click)="closeDetalle()" class="text-gray-500 hover:text-red-600 text-lg font-bold">✕</button>
+    </div>
+
+    <!-- Contenido -->
+    <table class="min-w-full divide-y divide-gray-200 text-sm text-gray-700">
+      <thead class="bg-yellow-100">
+        <tr>
+          <th colspan="2" class="text-center py-2 font-semibold">📋 DATOS DEL LOTE</th>
+          <th colspan="3" class="text-center py-2 font-semibold">🐣 CANTIDAD DE AVES</th>
+          <th colspan="2" class="text-center py-2 font-semibold">⚖️ PESO LLEGADA</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="text-center">
+          <!-- 📋 Datos del lote -->
+          <td class="px-3 py-2"><strong>Lote:</strong><br>{{ detalleData?.nombreLote }}</td>
+          <td class="px-3 py-2"><strong>Incubadora:</strong><br>{{ detalleData?.reproductoraId }}</td>
+
+          <!-- 🐣 Aves -->
+          <td class="px-3 py-2"><strong>Machos:</strong><br>{{ detalleData?.m ?? 0 }}</td>
+          <td class="px-3 py-2"><strong>Hembras:</strong><br>{{ detalleData?.h ?? 0 }}</td>
+          <td class="px-3 py-2"><strong>Mixtas:</strong><br>{{ detalleData?.mixtas ?? 0 }}</td>
+
+          <!-- ⚖️ Pesos -->
+          <td class="px-3 py-2"><strong>Peso M:</strong><br>{{ detalleData?.pesoInicialM ?? 0 }}</td>
+          <td class="px-3 py-2"><strong>Peso H:</strong><br>{{ detalleData?.pesoInicialH ?? 0 }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+   <!-- Modal de Crear/Editar -->
+<div *ngIf="modalOpen" class="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center pt-20 z-50">
+  <div class="bg-white rounded-lg shadow-2xl w-full max-w-4xl mx-4 overflow-auto max-h-[85vh] border border-gray-200">
+
+    <!-- Header -->
+    <div class="flex justify-between items-center px-6 py-4 border-b">
+      <h3 class="text-xl font-semibold text-gray-800">
+        {{ editing ? '✏️ Editar' : '➕ Nuevo' }} Lote Reproductora
+      </h3>
+      <button (click)="cancel()" class="text-gray-500 hover:text-red-600 text-lg font-bold">✕</button>
+    </div>
+
+    <!-- Formulario -->
+    <form [formGroup]="form" (ngSubmit)="save()" class="px-6 py-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 text-sm">
+
+      <!-- Datos generales -->
+      <div class="col-span-full text-gray-600 font-semibold">📋 Datos Generales</div>
+      <div>
+        <label class="block text-gray-700 mb-1">Lote Reproductora</label>
+        <input formControlName="nombreLote" class="w-full border rounded p-2" placeholder="Ej: L432" />
+      </div>
+      <div>
+        <label class="block text-gray-700 mb-1">Incubadora</label>
+        <input formControlName="reproductoraId" class="w-full border rounded p-2" placeholder="Ej: Sanmarino" />
+      </div>
+      <div>
+        <label class="block text-gray-700 mb-1">Fecha Encasetamiento</label>
+        <input type="date" formControlName="fechaEncasetamiento" class="w-full border rounded p-2" />
+      </div>
+
+      <!-- Aves -->
+      <div class="col-span-full text-gray-600 font-semibold pt-4">🐣 Cantidad de Aves</div>
+      <div>
+        <label class="block text-gray-700 mb-1">Machos</label>
+        <input type="number" formControlName="m" class="w-full border rounded p-2" />
+      </div>
+      <div>
+        <label class="block text-gray-700 mb-1">Hembras</label>
+        <input type="number" formControlName="h" class="w-full border rounded p-2" />
+      </div>
+      <div>
+        <label class="block text-gray-700 mb-1">Mixtas</label>
+        <input type="number" formControlName="mixtas" class="w-full border rounded p-2" />
+      </div>
+
+      <!-- Pesos -->
+      <div class="col-span-full text-gray-600 font-semibold pt-4">⚖️ Peso Llegada</div>
+      <div>
+        <label class="block text-gray-700 mb-1">Peso Machos</label>
+        <input type="number" formControlName="pesoInicialM" class="w-full border rounded p-2" />
+      </div>
+      <div>
+        <label class="block text-gray-700 mb-1">Peso Hembras</label>
+        <input type="number" formControlName="pesoInicialH" class="w-full border rounded p-2" />
+      </div>
+
+      <!-- Botones -->
+      <div class="col-span-full flex justify-end gap-3 pt-6 border-t">
+        <button type="button" (click)="cancel()" class="px-5 py-2 bg-gray-200 rounded hover:bg-gray-300 text-sm">
+          Cancelar
+        </button>
+        <button type="submit" [disabled]="form.invalid" class="px-5 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm">
+          {{ editing ? 'Actualizar' : 'Guardar' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+  </div>
+</div>

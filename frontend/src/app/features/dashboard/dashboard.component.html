@@ -1,0 +1,91 @@
+<!-- src/app/features/dashboard/dashboard.component.html -->
+<div class="flex">
+    <app-sidebar></app-sidebar>
+    <main class="flex-1 p-8 bg-warm-gray-100 min-h-screen">
+      <h1 class="text-3xl font-bold text-brand-red mb-6">Dashboard</h1>
+  
+      <!-- Resumen rápido -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow p-4 flex flex-col">
+          <span class="text-sm text-warm-gray-500">Actividades</span>
+          <span class="text-2xl font-bold text-chicken-yellow">{{ activities.length }}</span>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 flex flex-col">
+          <span class="text-sm text-warm-gray-500">Registros Hoy</span>
+          <span class="text-2xl font-bold text-brand-red">{{ dailyLogs[0].entries }}</span>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 flex flex-col">
+          <span class="text-sm text-warm-gray-500">Producción Promedio</span>
+          <span class="text-2xl font-bold text-chicken-yellow">{{ averageProduction }}%</span>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 flex flex-col">
+          <span class="text-sm text-warm-gray-500">Última Mortalidad</span>
+          <span class="text-2xl font-bold text-brand-red">{{ mortalities[0].deaths }}</span>
+        </div>
+      </div>
+  
+      <!-- Actividades recientes y registros diarios -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Actividades -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+          <h2 class="px-4 py-2 bg-brand-red text-white font-semibold">Actividades Recientes</h2>
+          <ul class="divide-y divide-warm-gray-200">
+            <li *ngFor="let a of activities" class="px-4 py-3 flex justify-between">
+              <span>{{ a.time }}</span>
+              <span class="text-warm-gray-700">{{ a.description }}</span>
+            </li>
+          </ul>
+        </div>
+  
+        <!-- Registros diarios -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+          <h2 class="px-4 py-2 bg-chicken-yellow text-warm-gray-900 font-semibold">Registros Diarios</h2>
+          <ul class="divide-y divide-warm-gray-200">
+            <li *ngFor="let d of dailyLogs" class="px-4 py-3 flex justify-between">
+              <span>{{ d.date }}</span>
+              <span class="font-bold text-brand-red">{{ d.entries }}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+  
+      <!-- Gráficas de producción -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow p-4">
+          <h2 class="text-xl font-semibold text-brand-red mb-4">Producción por Granja</h2>
+          <div *ngFor="let f of farms" class="mb-4">
+            <div class="flex justify-between mb-1">
+              <span>{{ f.name }}</span>
+              <span class="font-semibold">{{ f.production }}%</span>
+            </div>
+            <div class="bg-warm-gray-300 h-2 rounded">
+              <div
+                class="bg-chicken-yellow h-2 rounded"
+                [style.width.%]="f.production"
+              ></div>
+            </div>
+          </div>
+        </div>
+  
+        <!-- Mortalidad -->
+        <div class="bg-white rounded-lg shadow p-4">
+          <h2 class="text-xl font-semibold text-brand-red mb-4">Mortalidad Reciente</h2>
+          <table class="min-w-full text-left">
+            <thead class="bg-warm-gray-200">
+              <tr>
+                <th class="px-4 py-2">Fecha</th>
+                <th class="px-4 py-2">Muertes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let m of mortalities" class="border-b border-warm-gray-200">
+                <td class="px-4 py-2">{{ m.date }}</td>
+                <td class="px-4 py-2">{{ m.deaths }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+  

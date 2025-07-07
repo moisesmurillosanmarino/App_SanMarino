@@ -1,0 +1,208 @@
+<!-- src/app/features/config/farm-management/farm-management.component.html -->
+<div class="flex h-screen">
+  <app-sidebar class="w-64"></app-sidebar>
+  <div class="flex-1 p-6 bg-warm-gray-100 overflow-auto">
+
+    <!-- Encabezado -->
+    <div class="flex items-center mb-6">
+      <fa-icon [icon]="faTractor" class="text-3xl text-brand-red mr-2"></fa-icon>
+      <h1 class="text-2xl font-bold text-brand-red">Gestión de Granjas</h1>
+      <button
+        (click)="openModal()"
+        class="ml-auto inline-flex items-center px-4 py-2 bg-chicken-yellow text-warm-gray-800 rounded-lg hover:bg-yellow-500 transition"
+      >
+        <fa-icon [icon]="faPlus" class="mr-2"></fa-icon>
+        Nueva Granja
+      </button>
+    </div>
+
+    <!-- Tabla de granjas -->
+    <div class="bg-white rounded-lg shadow overflow-x-auto">
+      <table class="min-w-full table-auto">
+        <thead class="bg-warm-gray-100">
+          <tr>
+            <th class="px-4 py-3 text-left text-sm font-semibold text-warm-gray-700">Nombre</th>
+            <th class="px-4 py-3 text-left text-sm font-semibold text-warm-gray-700">Empresa</th>
+            <th class="px-4 py-3 text-left text-sm font-semibold text-warm-gray-700">Dirección</th>
+            <th class="px-4 py-3 text-left text-sm font-semibold text-warm-gray-700"># Núcleos</th>
+            <th class="px-4 py-3 text-right text-sm font-semibold text-warm-gray-700">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-warm-gray-200">
+          <tr *ngFor="let f of farms" class="hover:bg-warm-gray-50">
+            <td class="px-4 py-2 text-sm">{{ f.name }}</td>
+            <td class="px-4 py-2 text-sm">{{ companyMap[f.companyId] }}</td>
+            <td class="px-4 py-2 text-sm">{{ f.address }}</td>
+            <td class="px-4 py-2 text-sm">{{ f.nuclei.length }}</td>
+            <td class="px-4 py-2 text-right space-x-2">
+              <button
+                (click)="openModal(f)"
+                [attr.aria-label]="'Editar ' + f.name"
+                class="p-1 text-warm-gray-500 hover:text-brand-red transition"
+              >
+                <fa-icon [icon]="faPen"></fa-icon>
+              </button>
+              <button
+                (click)="deleteFarm(f.id!)"
+                [attr.aria-label]="'Eliminar ' + f.name"
+                class="p-1 text-warm-gray-500 hover:text-red-600 transition"
+              >
+                <fa-icon [icon]="faTrash"></fa-icon>
+              </button>
+              <button
+                (click)="openDetail(f)"
+                [attr.aria-label]="'Ver núcleos de ' + f.name"
+                class="p-1 text-warm-gray-500 hover:text-warm-gray-800 transition"
+              >
+                <fa-icon [icon]="faEye"></fa-icon>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Modal Crear/Editar -->
+    <div *ngIf="modalOpen" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 overflow-auto max-h-[90vh]">
+        <div class="flex items-center mb-4">
+          <fa-icon [icon]="faTractor" class="text-2xl text-brand-red mr-2"></fa-icon>
+          <h2 class="text-xl font-semibold text-brand-red">
+            {{ editing ? 'Editar Granja' : 'Nueva Granja' }}
+          </h2>
+        </div>
+
+        <form [formGroup]="form" (ngSubmit)="save()" class="space-y-6">
+          <!-- Datos básicos -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm text-warm-gray-700 mb-1">Nombre *</label>
+              <input formControlName="name" class="w-full px-3 py-2 border rounded-lg focus:ring-brand-red" />
+            </div>
+            <div>
+              <label class="block text-sm text-warm-gray-700 mb-1">Empresa *</label>
+              <select formControlName="companyId" class="w-full px-3 py-2 border rounded-lg focus:ring-brand-red">
+                <option [ngValue]="null" disabled>Seleccione empresa...</option>
+                <option *ngFor="let c of companies" [ngValue]="c.id">{{ c.name }}</option>
+              </select>
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-sm text-warm-gray-700 mb-1">Dirección</label>
+              <input formControlName="address" class="w-full px-3 py-2 border rounded-lg focus:ring-brand-red" />
+            </div>
+          </div>
+
+          <!-- Núcleos & Galpones dinámicos -->
+          <div>
+            <h3 class="text-sm font-medium text-warm-gray-700 mb-2">Núcleos &amp; Galpones</h3>
+            <ng-container formArrayName="nuclei">
+              <div
+                *ngFor="let nucCtrl of nucleiFA.controls; let i = index"
+                [formGroupName]="i"
+                class="mb-4 p-4 bg-warm-gray-50 rounded-lg"
+              >
+                <div class="flex items-center mb-2 space-x-2">
+                  <input
+                    formControlName="name"
+                    placeholder="Nombre Núcleo"
+                    class="flex-1 px-3 py-2 border rounded-lg focus:ring-brand-red"
+                  />
+                  <button
+                    type="button"
+                    (click)="removeNucleus(i)"
+                    [attr.aria-label]="'Eliminar núcleo ' + nucCtrl.get('name')?.value"
+                    class="p-1 text-warm-gray-500 hover:text-red-600 transition"
+                  >
+                    <fa-icon [icon]="faTrash"></fa-icon>
+                  </button>
+                </div>
+                <div class="pl-4" formArrayName="houses">
+                  <div
+                    *ngFor="let houseCtrl of housesFA(i).controls; let hi = index"
+                    [formGroupName]="hi"
+                    class="flex items-center mb-2 space-x-2"
+                  >
+                    <input
+                      formControlName="name"
+                      placeholder="Nombre Galpón"
+                      class="flex-1 px-3 py-2 border rounded-lg focus:ring-brand-red"
+                    />
+                    <button
+                      type="button"
+                      (click)="removeHouse(i, hi)"
+                      [attr.aria-label]="'Eliminar galpón ' + houseCtrl.get('name')?.value"
+                      class="p-1 text-warm-gray-500 hover:text-red-600 transition"
+                    >
+                      <fa-icon [icon]="faTrash"></fa-icon>
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    (click)="addHouse(i)"
+                    [attr.aria-label]="'Agregar galpón al núcleo ' + nucCtrl.get('name')?.value"
+                    class="mt-1 inline-flex items-center text-sm text-brand-red hover:underline transition"
+                  >
+                    <fa-icon [icon]="faPlus" class="mr-1"></fa-icon> Agregar Galpón
+                  </button>
+                </div>
+              </div>
+            </ng-container>
+            <button
+              type="button"
+              (click)="newNucleus()"
+              aria-label="Agregar núcleo"
+              class="inline-flex items-center text-sm text-brand-red hover:underline transition"
+            >
+              <fa-icon [icon]="faPlus" class="mr-1"></fa-icon> Agregar Núcleo
+            </button>
+          </div>
+
+          <!-- Botones -->
+          <div class="flex justify-end space-x-2">
+            <button type="button" (click)="closeModal()" class="px-4 py-2 bg-warm-gray-200 rounded-lg hover:bg-warm-gray-300 transition">
+              <fa-icon [icon]="faTimes" class="mr-1"></fa-icon> Cancelar
+            </button>
+            <button type="submit" [disabled]="form.invalid" class="px-4 py-2 bg-brand-red text-white rounded-lg hover:bg-red-600 disabled:opacity-50 transition">
+              <fa-icon [icon]="faPen" class="mr-1"></fa-icon> Guardar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal Detalle Núcleos/Galpones (solo lectura) -->
+    <div *ngIf="detailOpen && selectedFarm" class="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg shadow-lg w-3/4 max-h-[80vh] overflow-auto p-6">
+        <div class="flex justify-between mb-4">
+          <h2 class="text-xl font-semibold">Núcleos de "{{ selectedFarm.name }}"</h2>
+          <button (click)="closeDetail()" class="text-warm-gray-500 hover:text-red-600">
+            <fa-icon [icon]="faTimes"></fa-icon>
+          </button>
+        </div>
+        <div *ngFor="let nuc of selectedFarm.nuclei" class="mb-6">
+          <h3 class="font-semibold mb-2">Núcleo: {{ nuc.name }}</h3>
+          <table class="min-w-full table-auto mb-4">
+            <thead class="bg-gray-100">
+              <tr>
+                <th class="px-4 py-2 text-left text-sm font-medium">ID</th>
+                <th class="px-4 py-2 text-left text-sm font-medium">Galpón</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let h of nuc.houses">
+                <td class="px-4 py-2 text-sm">{{ h.id }}</td>
+                <td class="px-4 py-2 text-sm">{{ h.name }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="text-right">
+          <button (click)="closeDetail()" class="px-4 py-2 bg-warm-gray-200 rounded hover:bg-warm-gray-300 transition">
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
