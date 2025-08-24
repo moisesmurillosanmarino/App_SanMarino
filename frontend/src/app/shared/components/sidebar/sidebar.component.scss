@@ -1,0 +1,204 @@
+/* =========================
+   Sidebar (Sanmarino)
+   ========================= */
+
+/* --------- Variables --------- */
+:host {
+  --brand-red: #d62828;
+  --brand-yellow: #f4b428;
+  --brand-yellow-600: #e6a41c;
+
+  --bg: #ffffff;       /* base SIEMPRE blanca */
+  --text: #1f2937;     /* slate-800 */
+  --muted: #6b7280;    /* gray-500 */
+  --line: #e5e7eb;     /* gray-200 */
+}
+
+/* --------- Contenedor raíz + fondo --------- */
+.sidebar-root {
+  position: relative;
+  isolation: isolate;
+  background: var(--bg) !important;      /* fuerza blanco */
+  color: var(--text);
+}
+
+/* Esquinas inferiores con rojo/amarillo translúcido (sin negro) */
+.sidebar-root::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+
+  /* Dos radiales en esquinas + un lineal MUY leve */
+  background:
+    radial-gradient(420px 220px at 0% 100%,
+      rgba(214, 40, 40, 0.10), transparent 60%),
+    radial-gradient(420px 220px at 100% 100%,
+      rgba(244, 180, 40, 0.12), transparent 60%),
+    linear-gradient(180deg,
+      rgba(214, 40, 40, 0.025), rgba(244, 180, 40, 0.025));
+}
+
+/* Todo el contenido por encima del degradé */
+.sidebar-root > * { position: relative; z-index: 1; }
+
+/* Animación ligera (no distractora) */
+@media (prefers-reduced-motion: no-preference) {
+  .sidebar-root::before { animation: cornersPulse 22s ease-in-out infinite; }
+  @keyframes cornersPulse {
+    0%,100% {
+      background:
+        radial-gradient(420px 220px at 0% 100%, rgba(214,40,40,.10), transparent 60%),
+        radial-gradient(420px 220px at 100% 100%, rgba(244,180,40,.12), transparent 60%),
+        linear-gradient(180deg, rgba(214,40,40,.025), rgba(244,180,40,.025));
+    }
+    50% {
+      background:
+        radial-gradient(420px 220px at 0% 100%, rgba(214,40,40,.08), transparent 60%),
+        radial-gradient(420px 220px at 100% 100%, rgba(244,180,40,.10), transparent 60%),
+        linear-gradient(180deg, rgba(214,40,40,.02), rgba(244,180,40,.02));
+    }
+  }
+}
+
+/* --------- Logo (sección superior) --------- */
+.sidebar-root .h-20 {
+  border-bottom: 1px solid var(--line);
+}
+.sidebar-root .h-20 img {
+  filter: drop-shadow(0 1px 0 rgba(0,0,0,.05));
+  transition: transform .25s ease, filter .25s ease;
+}
+.sidebar-root .h-20 img:hover {
+  transform: translateY(-1px) scale(1.02);
+  filter: drop-shadow(0 6px 14px rgba(214,40,40,.2));
+}
+
+/* --------- Banner “Bienvenido” --------- */
+.welcome-card {
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid rgba(244,180,40,.35);
+  box-shadow:
+    0 6px 14px rgba(0,0,0,.06),
+    inset 0 1px 0 rgba(255,255,255,.6);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.welcome-card:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 10px 20px rgba(0,0,0,.08),
+    inset 0 1px 0 rgba(255,255,255,.7);
+}
+/* brillo diagonal sutil */
+.welcome-card::after {
+  content: "";
+  position: absolute;
+  inset: -35% -55% auto auto;
+  width: 160%; height: 160%;
+  background: radial-gradient(60% 60% at 70% 0%, rgba(255,255,255,.35), transparent 60%);
+  pointer-events: none;
+}
+.avatar {
+  display: grid; place-items: center;
+  inline-size: 44px; block-size: 44px;
+  border-radius: 999px;
+  font-weight: 700; color: #1f2937;
+  background: #fff8e6;
+  border: 1px solid rgba(244,180,40,.35);
+  box-shadow: 0 2px 6px rgba(0,0,0,.06);
+}
+.info .hey { font-size: .78rem; color: var(--muted); margin-right: .25rem; }
+.info .name { font-size: .92rem; color: var(--text); font-weight: 700; }
+.company .tag {
+  margin-top: .15rem;
+  display: inline-block;
+  font-size: .72rem;
+  color: #7c2d12;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  padding: .15rem .45rem;
+  border-radius: 999px;
+}
+
+/* --------- Menú: efectos y estados --------- */
+nav { padding-inline: .25rem; }
+
+nav ul li > a,
+nav ul li > button {
+  border-radius: 10px;
+  transition: background-color .18s ease, color .18s ease, box-shadow .18s ease, transform .06s ease;
+  color: var(--text);
+  outline: none;
+}
+
+/* Hover: leve realce con tinte amarillo */
+nav ul li > a:hover,
+nav ul li > button:hover {
+  background:
+    linear-gradient(90deg, rgba(244,180,40,.10), rgba(214,40,40,.08) 70%, transparent);
+  box-shadow: inset 0 0 0 1px rgba(244,180,40,.18);
+}
+
+/* Activo: línea roja + fondo suave */
+nav ul li > a.router-link-active,
+nav ul li > a.bg-gray-100 {
+  background: linear-gradient(0deg, rgba(255,237,213,.6), rgba(255,237,213,.6)); /* amber-100 translúcido */
+  box-shadow:
+    inset 3px 0 0 0 var(--brand-red),
+    inset 0 0 0 1px rgba(244,180,40,.25);
+  color: #b91c1c; /* red-700 */
+}
+
+/* Iconos más presentes al hover/activo */
+nav ul li > a:hover fa-icon,
+nav ul li > button:hover fa-icon,
+nav ul li > a.router-link-active fa-icon {
+  color: #475569; /* slate-600 */
+}
+
+/* Submenú: guía visual */
+ul.pl-6 {
+  border-left: 1px dashed rgba(0,0,0,.08);
+  margin-left: .75rem;
+  padding-left: .75rem;
+}
+
+/* Focus accesible */
+a:focus-visible,
+button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(244,180,40,.35);
+}
+
+/* --------- Footer (logout) --------- */
+:host ::ng-deep .border-t {
+  border-top: 1px solid var(--line) !important;
+}
+:host ::ng-deep .border-t button {
+  border-radius: 10px;
+  transition: background-color .18s ease, color .18s ease;
+}
+:host ::ng-deep .border-t button:hover {
+  background: rgba(244,180,40,.10);
+}
+
+/* --------- Scrollbar --------- */
+:host ::ng-deep .overflow-y-auto {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148,163,184,.6) transparent;
+}
+:host ::ng-deep .overflow-y-auto::-webkit-scrollbar { width: 8px; }
+:host ::ng-deep .overflow-y-auto::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(148,163,184,.75), rgba(100,116,139,.75));
+  border-radius: 10px; border: 2px solid transparent; background-clip: content-box;
+}
+:host ::ng-deep .overflow-y-auto::-webkit-scrollbar-track { background: transparent; }
+
+/* --------- Responsive fino --------- */
+@media (max-width: 420px) {
+  .welcome-card { border-radius: 10px; }
+  .avatar { inline-size: 40px; block-size: 40px; }
+  .info .name { font-size: .88rem; }
+}

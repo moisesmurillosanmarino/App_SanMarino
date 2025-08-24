@@ -1,5 +1,4 @@
 // src/app/features/lote-levante/pages/seguimiento-lote-levante-list/seguimiento-lote-levante-list.component.ts
-
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -30,18 +29,23 @@ import {
   styleUrls: ['./seguimiento-lote-levante-list.component.scss']
 })
 export class SeguimientoLoteLevanteListComponent implements OnInit {
+  // Icons
   faPlus = faPlus;
   faPen = faPen;
   faTrash = faTrash;
 
+  // Data
   lotes: LoteDto[] = [];
   seguimientos: SeguimientoLoteLevanteDto[] = [];
-  selectedLoteId: string | null = null;
 
-  form!: FormGroup;
+  // UI state
+  selectedLoteId: string | null = null;
   loading = false;
   modalOpen = false;
   editing: SeguimientoLoteLevanteDto | null = null;
+
+  // Form
+  form!: FormGroup;
 
   constructor(
     private fb: FormBuilder,
@@ -50,6 +54,7 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    // Solo lotes < 25 semanas
     this.loteSvc.getAll().subscribe(data => {
       this.lotes = data.filter(l => this.calcularEdadSemanas(l.fechaEncaset) < 25);
     });
@@ -70,11 +75,31 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     });
   }
 
+  // Getter usados por el header/chips (si prefieres, puedes usarlos en el template)
+  get selectedLote(): LoteDto | undefined {
+    return this.lotes.find(l => l.loteId === this.selectedLoteId);
+  }
+  get selectedLoteNombre(): string {
+    return this.selectedLote?.loteNombre ?? '—';
+  }
+  get selectedLoteSemanas(): number {
+    return this.calcularEdadSemanas(this.selectedLote?.fechaEncaset);
+  }
+
+  // Tabla: performance
+  trackById = (_: number, r: SeguimientoLoteLevanteDto) => r.id;
+
   onLoteChange(): void {
+    // Cierra modal/edición y limpia datos al cambiar o limpiar el select
+    this.modalOpen = false;
+    this.editing = null;
+    this.seguimientos = [];
+
     if (!this.selectedLoteId) {
-      this.seguimientos = [];
+      // sin lote => nada cargado
       return;
     }
+
     this.loading = true;
     this.segSvc.getByLoteId(this.selectedLoteId)
       .pipe(finalize(() => this.loading = false))
@@ -82,10 +107,13 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
   }
 
   create(): void {
+    // Salvaguarda adicional (el botón ya se deshabilita en el HTML)
+    if (!this.selectedLoteId) return;
+
     this.editing = null;
     this.form.reset({
       fechaRegistro: new Date().toISOString().substring(0, 10),
-      loteId: this.selectedLoteId,
+      loteId: this.selectedLoteId,      // se fija al lote seleccionado
       mortalidadHembras: 0,
       mortalidadMachos: 0,
       selH: 0,
@@ -126,12 +154,12 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
 
   cancel(): void {
     this.modalOpen = false;
+    this.editing = null;
   }
 
   save(): void {
-    console.log('Guardando...');
     if (this.form.invalid) return;
-    console.warn('Formulario inválido', this.form.value);
+
     const raw = this.form.value;
     const dto: CreateSeguimientoLoteLevanteDto = {
       fechaRegistro: new Date(raw.fechaRegistro).toISOString(),
@@ -157,11 +185,16 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       : this.segSvc.create(dto);
 
     this.loading = true;
-    op$.pipe(finalize(() => {
-      this.loading = false;
-      this.modalOpen = false;
-      this.onLoteChange();
-    })).subscribe();
+    op$
+      .pipe(
+        finalize(() => {
+          this.loading = false;
+          this.modalOpen = false;
+          this.editing = null;
+          this.onLoteChange(); // refresca la tabla del lote actual
+        })
+      )
+      .subscribe();
   }
 
   public calcularEdadSemanas(fechaEncaset: string | Date | null | undefined): number {
@@ -170,7 +203,6 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     const hoy = new Date();
     const msPorSemana = 1000 * 60 * 60 * 24 * 7;
     const semanas = Math.floor((hoy.getTime() - inicio.getTime()) / msPorSemana);
-    return semanas + 1; // Semana base 1
+    return semanas + 1; // base 1
   }
-
 }

@@ -77,7 +77,11 @@ export class NucleoListComponent implements OnInit {
       // tras tener granjas, cargar compañías
       this.companySvc.getAll().subscribe(clist => {
         this.companies = clist;
-        clist.forEach(c => this.companyMap[c.id] = c.name);
+        clist.forEach(c => {
+          if (c.id !== undefined) {
+            this.companyMap[c.id] = c.name;
+          }
+        });
       });
     });
 

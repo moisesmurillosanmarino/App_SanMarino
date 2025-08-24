@@ -210,7 +210,7 @@ export class LoteListComponent implements OnInit {
 
     this.userSvc.getAll().subscribe(list => {
       this.tecnicos = list;
-      list.forEach(u => this.techMap[u.id] = `${u.nombre} ${u.apellido}`);
+      list.forEach(u => this.techMap[u.id] = `${u.surName} ${u.firstName}`);
     });
   }
 
