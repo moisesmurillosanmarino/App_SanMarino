@@ -1,0 +1,154 @@
+<div class="ux-page" [attr.aria-busy]="loading ? 'true' : null">
+  <app-sidebar class="ux-sidebar"></app-sidebar>
+
+  <div class="ux-main">
+    <header class="ux-header">
+      <div class="ux-header__title">
+        <h1>Catálogo de Alimentos</h1>
+        <div class="ux-header__meta">
+          <span class="chip chip--muted">{{ total }} registro(s)</span>
+        </div>
+      </div>
+
+      <button type="button" class="btn btn--primary" (click)="create()">
+        <fa-icon [icon]="faPlus" class="mr-2" aria-hidden="true"></fa-icon>
+        Nuevo
+      </button>
+    </header>
+
+    <!-- Toolbar -->
+    <section class="ux-toolbar">
+      <div class="ux-input-icon">
+        <fa-icon [icon]="faSearch" aria-hidden="true"></fa-icon>
+        <input
+          type="search"
+          [(ngModel)]="q"
+          (ngModelChange)="page=1; load()"
+          placeholder="Buscar por código o nombre…"
+          aria-label="Buscar"
+        />
+      </div>
+
+      <div class="spacer"></div>
+
+      <div class="pager">
+        <button class="icon-btn" [disabled]="page<=1" (click)="prev()" title="Anterior">
+          <fa-icon [icon]="faChevronLeft" aria-hidden="true"></fa-icon>
+        </button>
+        <span class="pager__info">
+          Página {{ page }} de {{ totalPages }}
+        </span>
+
+        <button class="icon-btn" [disabled]="page * pageSize >= total" (click)="next()" title="Siguiente">
+          <fa-icon [icon]="faChevronRight" aria-hidden="true"></fa-icon>
+        </button>
+      </div>
+    </section>
+
+    <!-- Tabla -->
+    <section class="ux-card">
+      <div class="ux-scroll">
+        <table class="ux-table">
+          <caption class="sr-only">Tabla de catálogo de alimentos</caption>
+          <thead>
+            <tr>
+              <th scope="col">Código</th>
+              <th scope="col">Nombre</th>
+              <th scope="col">Metadata</th>
+              <th scope="col">Activo</th>
+              <th scope="col" class="text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let it of items; trackBy: trackById">
+              <td><code>{{ it.codigo }}</code></td>
+              <td>{{ it.nombre }}</td>
+              <td class="meta-col"><span class="meta-chip">{{ metaPreview(it.metadata) || '—' }}</span></td>
+              <td>
+                <span class="chip" [class.chip--success]="it.activo" [class.chip--danger]="!it.activo">
+                  {{ it.activo ? 'Sí' : 'No' }}
+                </span>
+              </td>
+              <td class="text-right">
+                <div class="btn-group">
+                  <button type="button" class="icon-btn" (click)="edit(it)" title="Editar">✎</button>
+                  <button type="button" class="icon-btn icon-btn--danger" (click)="delete(it.id!)" title="Eliminar">🗑</button>
+                </div>
+              </td>
+            </tr>
+
+            <tr *ngIf="!loading && items.length === 0">
+              <td colspan="5" class="empty-state">
+                <div class="empty-illustration" aria-hidden="true">📄</div>
+                <p>No hay registros.</p>
+                <button type="button" class="btn btn--outline" (click)="create()">Crear el primero</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div *ngIf="loading" class="loading-overlay" aria-live="polite" role="status">
+        <div class="spinner"></div> Cargando…
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- Modal Crear/Editar -->
+<div *ngIf="modalOpen" class="ux-modal" role="dialog" aria-modal="true" aria-labelledby="cat-alim-modal-title">
+  <div class="ux-modal__dialog">
+    <header class="ux-modal__header">
+      <h2 id="cat-alim-modal-title">{{ editing ? 'Editar Alimento' : 'Nuevo Alimento' }}</h2>
+      <button type="button" class="icon-btn" (click)="cancel()" aria-label="Cerrar">✕</button>
+    </header>
+
+    <form [formGroup]="form" (ngSubmit)="save()" class="ux-form" novalidate>
+      <div class="grid grid-2">
+        <div class="form-field">
+          <label for="f-cod">Código</label>
+          <input id="f-cod" type="text" formControlName="codigo" [readonly]="editing" />
+        </div>
+
+        <div class="form-field">
+          <label for="f-nom">Nombre</label>
+          <input id="f-nom" type="text" formControlName="nombre" />
+        </div>
+
+        <div class="form-field">
+          <label for="f-act">Activo</label>
+          <select id="f-act" formControlName="activo">
+            <option [ngValue]="true">Sí</option>
+            <option [ngValue]="false">No</option>
+          </select>
+        </div>
+
+        <div class="form-field form-field--full">
+          <div class="meta-editor">
+            <div class="meta-header">
+              <strong>Metadata</strong>
+              <button type="button" class="btn btn--ghost" (click)="addMetaRow()">+ Agregar</button>
+            </div>
+
+            <div class="meta-rows" formArrayName="metadata">
+              <div class="meta-row" *ngFor="let row of metadataArray.controls; index as i" [formGroupName]="i">
+                <input type="text" placeholder="clave" formControlName="key" />
+                <input type="text" placeholder="valor" formControlName="value" />
+                <button type="button" class="icon-btn icon-btn--danger" (click)="removeMetaRow(i)" title="Quitar">🗑</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="ux-modal__footer">
+        <button type="button" class="btn btn--ghost" (click)="cancel()">Cancelar</button>
+        <button type="submit" class="btn btn--primary" [disabled]="loading">Guardar</button>
+      </footer>
+    </form>
+
+    <div *ngIf="loading" class="modal-loading" role="status" aria-live="polite">
+      <div class="spinner"></div> Guardando…
+    </div>
+  </div>
+</div>
