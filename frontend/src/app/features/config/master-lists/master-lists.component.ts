@@ -1,9 +1,9 @@
-// src/app/features/config/master-lists/master-lists.component.ts
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { SidebarComponent } from '../../../shared/components/sidebar/sidebar.component';
 import { FontAwesomeModule, FaIconLibrary } from '@fortawesome/angular-fontawesome';
+import { ReactiveFormsModule, FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
 import {
   faList,
   faEye,
@@ -13,7 +13,8 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import {
   MasterListService,
-  MasterListDto
+  MasterListDto,
+  UpdateMasterListDto
 } from '../../../core/services/master-list/master-list.service';
 import { finalize } from 'rxjs';
 
@@ -22,77 +23,57 @@ import { finalize } from 'rxjs';
   standalone: true,
   imports: [
     CommonModule,
-    RouterModule,
+    ReactiveFormsModule,
     SidebarComponent,
+    RouterModule,
     FontAwesomeModule
   ],
   templateUrl: './master-lists.component.html',
   styleUrls: ['./master-lists.component.scss']
 })
 export class MasterListsComponent implements OnInit {
-  // Icons
   faList  = faList;
   faEye   = faEye;
   faPen   = faPen;
   faTrash = faTrash;
   faPlus  = faPlus;
 
-  // Data
   lists: MasterListDto[] = [];
   loading = false;
 
-  // Estado de expansión por id (coincide con el HTML)
+  // En lugar de list.expanded, mantenemos un Set de IDs expandidos:
   expandedIds = new Set<number>();
+
+  editModalOpen = false;
+  editingList: MasterListDto | null = null;
+  editForm!: FormGroup;
 
   constructor(
     private svc: MasterListService,
+    private fb: FormBuilder,
     private router: Router,
     library: FaIconLibrary
   ) {
     library.addIcons(faList, faEye, faPen, faTrash, faPlus);
   }
 
-  ngOnInit(): void {
+  ngOnInit() {
     this.loadLists();
   }
 
-  private loadLists(): void {
+  private loadLists() {
     this.loading = true;
     this.svc.getAll()
-      .pipe(finalize(() => (this.loading = false)))
-      .subscribe({
-        next: data => (this.lists = data || []),
-        error: err => {
-          console.error('Error cargando listas maestras', err);
-          this.lists = [];
-        }
-      });
+      .pipe(finalize(() => this.loading = false))
+      .subscribe(data => this.lists = data);
   }
 
-  // Navega al formulario de nueva lista
-  newList(): void {
+  newList() {
     this.router.navigate(['/config/master-lists', 'new']);
   }
 
-  // Navega al formulario de edición
-  edit(list: MasterListDto): void {
-    this.router.navigate(['/config/master-lists', list.id]);
-  }
-
-  // Elimina una lista y recarga
-  delete(list: MasterListDto): void {
-    if (!confirm(`¿Eliminar la lista “${list.name}”?`)) return;
-    this.loading = true;
-    this.svc.delete(list.id)
-      .pipe(finalize(() => (this.loading = false)))
-      .subscribe({
-        next: () => this.loadLists(),
-        error: err => console.error('Error eliminando lista maestra', err)
-      });
-  }
-
-  // Expande/colapsa opciones (coincide con el HTML)
-  toggleOptions(list: MasterListDto): void {
+  // Toggle usando el Set
+  toggleOptions(list: MasterListDto) {
     if (this.expandedIds.has(list.id)) {
       this.expandedIds.delete(list.id);
     } else {
@@ -100,8 +81,55 @@ export class MasterListsComponent implements OnInit {
     }
   }
 
-  // trackBy para <li *ngFor="let opt of list.options; trackBy: trackByIndex">
-  trackByIndex(index: number): number {
-    return index;
+  delete(list: MasterListDto) {
+    if (!confirm(`¿Eliminar la lista “${list.name}”?`)) return;
+    this.loading = true;
+    this.svc.delete(list.id)
+      .pipe(finalize(() => this.loading = false))
+      .subscribe(() => this.loadLists());
+  }
+  edit(list: MasterListDto) {
+    // En lugar de abrir un modal que no existe,
+    // navegamos al detail component:
+    this.router.navigate(['/config/master-lists', list.id]);
+  }
+
+  get optionsFA(): FormArray {
+    return this.editForm.get('options') as FormArray;
+  }
+
+  addOption() {
+    this.optionsFA.push(this.fb.control('', Validators.required));
+  }
+
+  removeOption(i: number) {
+    this.optionsFA.removeAt(i);
+  }
+
+  saveEdit() {
+    if (this.editForm.invalid || !this.editingList) {
+      this.editForm.markAllAsTouched();
+      return;
+    }
+
+    const dto: UpdateMasterListDto = {
+      id: this.editingList.id,
+      key: this.editingList.key,
+      name: this.editForm.value.name,
+      options: this.editForm.value.options
+    };
+
+    this.loading = true;
+    this.svc.update(dto)
+      .pipe(finalize(() => {
+        this.loading = false;
+        this.closeEdit();
+      }))
+      .subscribe(() => this.loadLists());
+  }
+
+  closeEdit() {
+    this.editModalOpen = false;
+    this.editingList = null;
   }
 }

@@ -1,251 +1,187 @@
-<div class="ux-page" [attr.aria-busy]="loading ? 'true' : null">
-  <!-- Sidebar -->
-  <app-sidebar class="ux-sidebar"></app-sidebar>
+<div class="flex h-screen bg-gray-50">
+  <app-sidebar class="w-64"></app-sidebar>
+  <div class="flex-1 p-6 overflow-auto">
 
-  <!-- Main -->
-  <div class="ux-main">
-    <!-- Header -->
-    <header class="ux-header">
-      <div class="ux-header__title">
-        <h1>Diario de Producción</h1>
-
-        <div class="ux-header__meta" *ngIf="selectedLoteId; else noLoteMsg">
-          <span class="chip chip--info">
-            <span class="chip__dot" aria-hidden="true"></span>
-            Lote: {{ selectedLoteNombre }}
-          </span>
-          <span class="chip chip--muted">{{ selectedLoteSemanas }} sem</span>
-          <span class="chip chip--muted">{{ registros.length || 0 }} registro(s)</span>
-        </div>
-
-        <ng-template #noLoteMsg>
-          <div class="ux-header__meta">
-            <span class="chip chip--warning">
-              <span class="chip__dot" aria-hidden="true"></span>
-              Selecciona un lote para gestionar registros
-            </span>
-          </div>
-        </ng-template>
-      </div>
-
-      <button
-        type="button"
-        (click)="create()"
-        class="btn btn--primary"
-        [disabled]="!selectedLoteId"
-        [title]="!selectedLoteId ? 'Primero selecciona un lote' : 'Crear nuevo registro'">
-        <fa-icon [icon]="faPlus" aria-hidden="true"></fa-icon>
-        Nuevo Registro
+    <!-- Header + Nuevo -->
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-800">Diario de Producción</h1>
+      <button (click)="openNew()"
+              class="flex items-center bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+        <fa-icon [icon]="faPlus" class="mr-2"></fa-icon> Nuevo
       </button>
-    </header>
+    </div>
 
-    <!-- Toolbar / Filtro -->
-    <section class="ux-toolbar">
-      <label for="lote-select" class="ux-label">Selecciona Lote</label>
-      <div class="ux-select">
-        <select
-          id="lote-select"
-          [(ngModel)]="selectedLoteId"
-          (change)="onLoteChange()"
-          aria-label="Selecciona lote">
-          <option [ngValue]="null" disabled>— Selecciona un lote —</option>
-          <option *ngFor="let l of lotes; trackBy: trackByLoteId" [ngValue]="l.loteId">
-            {{ l.loteNombre }} ({{ l.edadSemanas }} sem)
-          </option>
-        </select>
-      </div>
-    </section>
+    <!-- Select Lote -->
+    <div class="mb-4">
+      <label class="font-medium text-gray-700">Lote:</label>
+      <select [(ngModel)]="selectedLoteId" (change)="onLoteChange()"
+              class="ml-2 px-3 py-2 border rounded focus:ring-2 focus:ring-red-500">
+              <option *ngFor="let l of lotes" [value]="l.loteId">
+                {{ l.loteNombre }} ({{ calcularEdadSemanas(l.fechaEncaset) }} sem)
+              </option>
+      </select>
+    </div>
 
     <!-- Tabla -->
-    <section class="ux-card">
-      <div class="ux-scroll">
-        <table class="ux-table">
-          <caption class="sr-only">Tabla de registros diarios de producción</caption>
+    <div class="overflow-x-auto bg-white shadow rounded">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="px-3 py-2 text-xs font-semibold text-gray-600">Fecha</th>
+            <th class="px-3 py-2 text-xs font-semibold text-gray-600">Mort H</th>
+            <th class="px-3 py-2 text-xs font-semibold text-gray-600">Mort M</th>
+            <th class="px-3 py-2 text-xs font-semibold text-gray-600">Sel H</th>
+            <th class="px-3 py-2 text-xs font-semibold text-gray-600">ConsKg H</th>
+            <th class="px-3 py-2 text-xs font-semibold text-gray-600">ConsKg M</th>
+            <th class="px-3 py-2 text-xs font-semibold text-gray-600">HuevoTot</th>
+            <th class="px-3 py-2 text-xs font-semibold text-gray-600">HuevoInc</th>
+            <th class="px-3 py-2 text-xs font-semibold text-gray-600">PesoHuevo</th>
+            <th class="px-3 py-2 text-xs font-semibold text-gray-600">Etapa</th>
+            <th class="px-3 py-2 text-xs font-semibold text-gray-600">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+          <tr *ngFor="let r of registros" class="hover:bg-gray-50">
+            <td class="px-3 py-2">{{r.fecha|date:'shortDate'}}</td>
+            <td class="px-3 py-2">{{r.mortalidadH}}</td>
+            <td class="px-3 py-2">{{r.mortalidadM}}</td>
+            <td class="px-3 py-2">{{r.selH}}</td>
+            <td class="px-3 py-2">{{r.consKgH}}</td>
+            <td class="px-3 py-2">{{r.consKgM}}</td>
+            <td class="px-3 py-2">{{r.huevoTot}}</td>
+            <td class="px-3 py-2">{{r.huevoInc}}</td>
+            <td class="px-3 py-2">{{r.pesoHuevo}}</td>
+            <td class="px-3 py-2">{{r.etapa}}</td>
+            <td class="px-3 py-2 space-x-2 text-right">
+              <button (click)="edit(r)" class="px-2 py-1 bg-yellow-400 text-white rounded">✎</button>
+              <button (click)="delete(r.id)" class="px-2 py-1 bg-red-500 text-white rounded">🗑</button>
+            </td>
+          </tr>
+          <tr *ngIf="!registros.length && !loading">
+            <td colspan="11" class="py-6 text-center text-gray-500">Sin datos</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-          <thead>
-            <tr>
-              <th scope="col">Fecha</th>
-              <th scope="col">Mort. H</th>
-              <th scope="col">Mort. M</th>
-              <th scope="col">Sel H</th>
-              <th scope="col">ConsKg H</th>
-              <th scope="col">ConsKg M</th>
-              <th scope="col">Huevo Tot</th>
-              <th scope="col">Huevo Inc</th>
-              <th scope="col">Peso Huevo</th>
-              <th scope="col">Etapa</th>
-              <th scope="col" class="text-right">Acciones</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            <tr *ngFor="let r of registros; trackBy: trackByRegistroId" class="ux-row">
-              <td>{{ r.fecha | date:'shortDate' }}</td>
-              <td>{{ r.mortalidadH }}</td>
-              <td>{{ r.mortalidadM }}</td>
-              <td>{{ r.selH }}</td>
-              <td>{{ r.consKgH }}</td>
-              <td>{{ r.consKgM }}</td>
-              <td>{{ r.huevoTot }}</td>
-              <td>{{ r.huevoInc }}</td>
-              <td>{{ r.pesoHuevo }}</td>
-              <td>{{ r.etapa }}</td>
-              <td class="text-right">
-                <div class="btn-group">
-                  <button
-                    type="button"
-                    (click)="edit(r)"
-                    class="icon-btn"
-                    title="Editar"
-                    aria-label="Editar registro">
-                    ✎
-                  </button>
-                  <button
-                    type="button"
-                    (click)="delete(r.id)"
-                    class="icon-btn icon-btn--danger"
-                    title="Eliminar"
-                    aria-label="Eliminar registro">
-                    🗑
-                  </button>
-                </div>
-              </td>
-            </tr>
-
-            <!-- Vacío -->
-            <tr *ngIf="!loading && (!registros || registros.length === 0)">
-              <td colspan="11" class="empty-state">
-                <div class="empty-illustration" aria-hidden="true">📄</div>
-                <p>No hay registros disponibles.</p>
-                <button
-                  type="button"
-                  class="btn btn--outline"
-                  (click)="create()"
-                  [disabled]="!selectedLoteId"
-                  [title]="!selectedLoteId ? 'Primero selecciona un lote' : 'Crear el primer registro'">
-                  Crear el primero
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Overlay de carga -->
-      <div *ngIf="loading" class="loading-overlay" aria-live="polite" role="status">
-        <div class="spinner"></div>
-        Cargando…
-      </div>
-    </section>
   </div>
 </div>
 
 <!-- Modal -->
-<div
-  *ngIf="modalOpen"
-  class="ux-modal"
-  role="dialog"
-  aria-modal="true"
-  aria-labelledby="produccion-modal-title">
-  <div class="ux-modal__dialog">
-    <header class="ux-modal__header">
-      <h2 id="produccion-modal-title">
-        {{ editing ? 'Editar Registro' : 'Nuevo Registro' }}
-      </h2>
-      <button type="button" class="icon-btn" (click)="cancel()" aria-label="Cerrar">✕</button>
-    </header>
-
-    <form [formGroup]="form" (ngSubmit)="save()" class="ux-form" novalidate>
-      <div class="grid grid-2">
-        <div class="form-field">
-          <label for="f-fecha">Fecha</label>
-          <input id="f-fecha" type="date" formControlName="fecha" />
+<div *ngIf="modalOpen"
+     class="fixed inset-0 bg-black bg-opacity-40 flex items-start justify-center pt-16 z-50">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl mx-4 overflow-auto max-h-[80vh]">
+    <div class="flex justify-between items-center px-6 py-4 border-b">
+      <h3 class="text-lg font-semibold">{{ editing?'Editar':'Nuevo' }}</h3>
+      <button (click)="cancel()" class="text-gray-600 hover:text-gray-800">✕</button>
+    </div>
+    <form [formGroup]="form" (ngSubmit)="save()" class="px-6 py-4 space-y-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Campos comunes -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Fecha</label>
+          <input type="date" formControlName="fecha"
+                 class="mt-1 block w-full border rounded p-2 focus:ring-2 focus:ring-red-500" />
         </div>
 
-        <div class="form-field">
-          <label for="f-etapa">Etapa</label>
-          <select id="f-etapa" formControlName="etapa">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Mortalidad Hembras</label>
+          <input type="number" formControlName="mortalidadH"
+                 class="mt-1 block w-full border rounded p-2 focus:ring-2 focus:ring-red-500" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Mortalidad Machos</label>
+          <input type="number" formControlName="mortalidadM"
+                 class="mt-1 block w-full border rounded p-2 focus:ring-2 focus:ring-red-500" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Sel H (retiradas)</label>
+          <input type="number" formControlName="selH"
+                 class="mt-1 block w-full border rounded p-2 focus:ring-2 focus:ring-red-500" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Consumo Kg Hembras</label>
+          <input type="number" formControlName="consKgH"
+                 class="mt-1 block w-full border rounded p-2 focus:ring-2 focus:ring-red-500" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Consumo Kg Machos</label>
+          <input type="number" formControlName="consKgM"
+                 class="mt-1 block w-full border rounded p-2 focus:ring-2 focus:ring-red-500" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Huevo Total</label>
+          <input type="number" formControlName="huevoTot"
+                 class="mt-1 block w-full border rounded p-2 focus:ring-2 focus:ring-red-500" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Huevo Incubable</label>
+          <input type="number" formControlName="huevoInc"
+                 class="mt-1 block w-full border rounded p-2 focus:ring-2 focus:ring-red-500" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Peso Huevo (g)</label>
+          <input type="number" formControlName="pesoHuevo"
+                 class="mt-1 block w-full border rounded p-2 focus:ring-2 focus:ring-red-500" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Etapa</label>
+          <select formControlName="etapa"
+                  class="mt-1 block w-full border rounded p-2 focus:ring-2 focus:ring-red-500">
             <option [value]="1">1 (Semana 25-33)</option>
             <option [value]="2">2 (Semana 34-50)</option>
-            <option [value]="3">3 (&gt;50)</option>
+            <option [value]="3">3 (>50)</option>
           </select>
         </div>
 
-        <div class="form-field">
-          <label for="f-consH">Consumo Kg Hembras</label>
-          <input id="f-consH" type="number" step="0.01" min="0" formControlName="consKgH" />
+        <div class="md:col-span-2 lg:col-span-3">
+          <label class="block text-sm font-medium text-gray-700">Tipo de Alimento</label>
+          <input type="text" formControlName="tipoAlimento"
+                 class="mt-1 block w-full border rounded p-2 focus:ring-2 focus:ring-red-500" />
         </div>
 
-        <div class="form-field">
-          <label for="f-consM">Consumo Kg Machos</label>
-          <input id="f-consM" type="number" step="0.01" min="0" formControlName="consKgM" />
+        <div class="md:col-span-2 lg:col-span-3">
+          <label class="block text-sm font-medium text-gray-700">Observaciones</label>
+          <textarea formControlName="observaciones" rows="3"
+                    class="mt-1 block w-full border rounded p-2 focus:ring-2 focus:ring-red-500"></textarea>
         </div>
 
-        <div class="form-field">
-          <label for="f-mh">Mortalidad Hembras</label>
-          <input id="f-mh" type="number" min="0" step="1" formControlName="mortalidadH" />
-        </div>
-
-        <div class="form-field">
-          <label for="f-mm">Mortalidad Machos</label>
-          <input id="f-mm" type="number" min="0" step="1" formControlName="mortalidadM" />
-        </div>
-
-        <div class="form-field">
-          <label for="f-selh">Sel H (retiradas)</label>
-          <input id="f-selh" type="number" min="0" step="1" formControlName="selH" />
-        </div>
-
-        <div class="form-field">
-          <label for="f-ht">Huevo Total</label>
-          <input id="f-ht" type="number" min="0" step="1" formControlName="huevoTot" />
-        </div>
-
-        <div class="form-field">
-          <label for="f-hi">Huevo Incubable</label>
-          <input id="f-hi" type="number" min="0" step="1" formControlName="huevoInc" />
-        </div>
-
-        <div class="form-field">
-          <label for="f-ph">Peso Huevo (g)</label>
-          <input id="f-ph" type="number" min="0" step="0.1" formControlName="pesoHuevo" />
-        </div>
-
-        <div class="form-field form-field--full">
-          <label for="f-tipo">Tipo de Alimento</label>
-          <input id="f-tipo" type="text" formControlName="tipoAlimento" />
-        </div>
-
-        <div class="form-field form-field--full">
-          <label for="f-obs">Observaciones</label>
-          <textarea id="f-obs" rows="3" formControlName="observaciones"></textarea>
-        </div>
-
-        <!-- Datos iniciales si es primer registro -->
+        <!-- 👇 Campos de datos iniciales (semana 26) -->
         <ng-container *ngIf="esPrimerRegistroProduccion">
-          <div class="form-field form-field--full">
-            <label class="sr-only">Separador</label>
-            <div style="height:1px;background:var(--warm-gray-200);margin:.3rem 0;"></div>
+          <div class="md:col-span-3 border-t pt-4">
+            <h3 class="text-md font-semibold text-gray-800 mb-2">Datos Iniciales - Transición a Producción</h3>
           </div>
 
-          <div class="form-field">
-            <label for="f-hiH">Hembras (inicio)</label>
-            <input id="f-hiH" type="number" min="0" step="1" formControlName="hembrasInicio" />
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Hembras (inicio)</label>
+            <input type="number" formControlName="hembrasInicio"
+                   class="mt-1 block w-full border rounded p-2 focus:ring-2 focus:ring-red-500" />
           </div>
 
-          <div class="form-field">
-            <label for="f-miM">Machos (inicio)</label>
-            <input id="f-miM" type="number" min="0" step="1" formControlName="machosInicio" />
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Machos (inicio)</label>
+            <input type="number" formControlName="machosInicio"
+                   class="mt-1 block w-full border rounded p-2 focus:ring-2 focus:ring-red-500" />
           </div>
 
-          <div class="form-field">
-            <label for="f-hueI">Huevos (inicio)</label>
-            <input id="f-hueI" type="number" min="0" step="1" formControlName="huevosInicio" />
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Huevos (inicio)</label>
+            <input type="number" formControlName="huevosInicio"
+                   class="mt-1 block w-full border rounded p-2 focus:ring-2 focus:ring-red-500" />
           </div>
 
-          <div class="form-field">
-            <label for="f-nido">Tipo de Nido</label>
-            <select id="f-nido" formControlName="tipoNido">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Tipo de Nido</label>
+            <select formControlName="tipoNido"
+                    class="mt-1 block w-full border rounded p-2 focus:ring-2 focus:ring-red-500">
               <option value="">-- Seleccione --</option>
               <option value="Jansen">Jansen</option>
               <option value="Manual">Manual</option>
@@ -253,14 +189,16 @@
             </select>
           </div>
 
-          <div class="form-field">
-            <label for="f-np">Núcleo Productivo</label>
-            <input id="f-np" type="text" formControlName="nucleoP" />
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Núcleo Productivo</label>
+            <input type="text" formControlName="nucleoP"
+                   class="mt-1 block w-full border rounded p-2 focus:ring-2 focus:ring-red-500" />
           </div>
 
-          <div class="form-field">
-            <label for="f-ciclo">Ciclo</label>
-            <select id="f-ciclo" formControlName="ciclo">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Ciclo</label>
+            <select formControlName="ciclo"
+                    class="mt-1 block w-full border rounded p-2 focus:ring-2 focus:ring-red-500">
               <option value="">-- Seleccione --</option>
               <option value="normal">Normal</option>
               <option value="2">2 - Replume</option>
@@ -270,14 +208,39 @@
         </ng-container>
       </div>
 
-      <footer class="ux-modal__footer">
-        <button type="button" class="btn btn--ghost" (click)="cancel()">Cancelar</button>
-        <button type="submit" class="btn btn--primary" [disabled]="loading || form.invalid">Guardar</button>
-      </footer>
+      <div class="flex justify-end space-x-3 pt-4 border-t">
+        <button type="button" (click)="cancel()"
+                class="px-5 py-2 bg-gray-200 rounded hover:bg-gray-300">Cancelar</button>
+        <button type="submit" [disabled]="form.invalid"
+                class="px-5 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+          {{ editing?'Actualizar':'Guardar' }}
+        </button>
+      </div>
     </form>
+  </div>
+</div>
 
-    <div *ngIf="loading" class="modal-loading" role="status" aria-live="polite">
-      <div class="spinner"></div> Guardando…
+<!-- Modal de datos iniciales -->
+<div *ngIf="esPrimerRegistroProduccion && !modalOpen"
+     class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-white p-6 rounded shadow-xl max-w-3xl w-full">
+    <h2 class="text-xl font-semibold mb-4 text-red-600">Ingreso de Datos Iniciales</h2>
+    <p class="text-gray-700 mb-4">
+      Este lote ha alcanzado la <strong>semana 26</strong>. Debe ingresar los datos del cierre del levante para habilitar la producción:
+    </p>
+    <ul class="list-disc list-inside text-sm text-gray-600 mb-4">
+      <li>Hembras</li>
+      <li>Machos</li>
+      <li>Huevos</li>
+      <li>Tipo de Nido (Jansen, Manual, Vencomatic)</li>
+      <li>Núcleo Productivo</li>
+      <li>Ciclo: Normal, Replume (2), Depopulación (D)</li>
+    </ul>
+    <div class="text-right">
+      <button (click)="openNew()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">
+        Ingresar Datos Iniciales
+      </button>
     </div>
   </div>
 </div>
+

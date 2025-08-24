@@ -1,548 +1,129 @@
 <!-- src/app/features/config/user-management/user-management.component.html -->
-<div class="flex" [attr.aria-busy]="loading ? 'true' : null">
-  <!-- Sidebar -->
-  <app-sidebar class="flex-shrink-0"></app-sidebar>
+<div class="flex h-full">
+  <app-sidebar></app-sidebar>
 
-  <!-- Main -->
-  <div class="ux-scope flex-1 p-6 min-h-screen">
-    <!-- Toolbar -->
-    <div class="ux-toolbar flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
-      <div class="flex items-center gap-2">
-        <fa-icon [icon]="faUsers" class="title-icon" aria-hidden="true"></fa-icon>
-        <h1 class="title">Gestión de Usuarios</h1>
-        <span class="ux-counter">{{ filteredUsers.length }} resultado(s)</span>
+  <main class="flex-1 bg-warm-gray-50 p-8 min-h-screen">
+    <div class="mx-auto w-full space-y-6 px-4">
+      <!-- Cabecera -->
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between">
+        <h1 class="text-3xl font-semibold text-brand-red mb-4 sm:mb-0">
+          <fa-icon [icon]="faUsers" class="mr-2"></fa-icon>
+          Gestión de Usuarios
+        </h1>
+        <button
+          (click)="openModal()"
+          class="inline-flex items-center px-5 py-2 bg-chicken-yellow text-warm-gray-800 rounded-lg shadow hover:bg-yellow-500 transition"
+        >
+          <fa-icon [icon]="faUserPlus" class="mr-2"></fa-icon>
+          Crear Usuario
+        </button>
       </div>
 
-      <button
-        (click)="openModal()"
-        class="btn-primary"
-        aria-label="Crear usuario"
-      >
-        <fa-icon [icon]="faUserPlus" aria-hidden="true"></fa-icon>
-        Crear Usuario
-      </button>
-    </div>
-
-    <!-- Filtro -->
-    <div class="mb-4 max-w-2xl">
-      <label for="user-filter" class="sr-only">Buscar usuario</label>
-      <div class="relative">
-        <fa-icon
-          [icon]="faUser"
-          class="absolute left-3 top-1/2 -translate-y-1/2 text-warm-gray-400"
-          aria-hidden="true">
-        </fa-icon>
-        <input
-          id="user-filter"
-          type="text"
-          [(ngModel)]="filterTerm"
-          placeholder="Buscar nombre, cédula o correo…"
-          class="w-full pl-10 pr-4 py-2 rounded-lg border border-warm-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-brand-red/60 focus:border-brand-red transition"
-          aria-label="Filtro de usuarios"
-        />
+      <!-- Filtro -->
+      <div class="flex items-center mb-4">
+        <div class="relative flex-1">
+          <fa-icon [icon]="faUser" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-warm-gray-400"></fa-icon>
+          <input
+            type="text"
+            [(ngModel)]="filterTerm"
+            placeholder="Buscar nombre, cédula o correo…"
+            class="w-full pl-10 pr-4 py-2 border border-warm-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-red"
+          />
+        </div>
       </div>
-    </div>
 
-    <!-- Tabla -->
-    <div class="ux-card">
-      <div class="ux-scroll">
-        <table class="ux-table">
-          <caption class="sr-only">Listado de usuarios</caption>
-
-          <thead>
+      <!-- Tabla -->
+      <div class="overflow-x-auto bg-white rounded-lg shadow w-full">
+        <table class="min-w-full divide-y divide-warm-gray-200">
+          <thead class="bg-warm-gray-100">
             <tr>
-              <th scope="col">Nombres</th>
-              <th scope="col">Apellidos</th>
-              <th scope="col">Cédula</th>
-              <th scope="col">Correo</th>
-              <th scope="col">Teléfono</th>
-              <th scope="col">Ubicación</th>
-              <th scope="col">Empresa</th>
-              <th scope="col">Rol</th>
-              <th scope="col" class="text-center">Acciones</th>
+              <th class="px-4 py-2 text-left text-sm font-medium text-warm-gray-700">Nombre</th>
+              <th class="px-4 py-2 text-left text-sm font-medium text-warm-gray-700">Apellidos</th>
+              <th class="px-4 py-2 text-left text-sm font-medium text-warm-gray-700">Cédula</th>
+              <th class="px-4 py-2 text-left text-sm font-medium text-warm-gray-700">Correo</th>
+              <th class="px-4 py-2 text-left text-sm font-medium text-warm-gray-700">Teléfono</th>
+              <th class="px-4 py-2"></th>
             </tr>
           </thead>
-
-          <tbody>
-            <!-- Estado: cargando -->
-            <tr *ngIf="loading" aria-live="polite">
-              <td colspan="9" class="empty-state">
-                <div class="flex items-center justify-center gap-3">
-                  <div class="spinner"></div>
-                  Cargando usuarios…
-                </div>
+          <tbody class="divide-y divide-warm-gray-200">
+            <tr *ngFor="let u of filteredUsers" class="hover:bg-warm-gray-50">
+              <td class="px-4 py-2">{{ u.nombre }}</td>
+              <td class="px-4 py-2">{{ u.apellido }}</td>
+              <td class="px-4 py-2">{{ u.cedula }}</td>
+              <td class="px-4 py-2">{{ u.correo }}</td>
+              <td class="px-4 py-2">{{ u.telefono }}</td>
+              <td class="px-4 py-2 text-right space-x-2 whitespace-nowrap">
+                <button (click)="openModal(u)" class="inline-flex items-center whitespace-nowrap text-brand-red hover:underline">
+  <fa-icon [icon]="faSave" class="mr-1 text-sm sm:text-base"></fa-icon>
+  <span class="text-sm sm:text-base">Editar</span>
+</button>
+                <button (click)="delete(u)" class="inline-flex items-center whitespace-nowrap text-red-600 hover:underline">
+  <fa-icon [icon]="faTrash" class="mr-1 text-sm sm:text-base"></fa-icon>
+  <span class="text-sm sm:text-base">Eliminar</span>
+</button>
               </td>
             </tr>
-
-            <!-- Estado: vacío -->
-            <tr *ngIf="!loading && filteredUsers.length === 0">
-              <td colspan="9" class="empty-state">
-                <div class="empty-illustration">🫥</div>
-                <p>No hay usuarios para mostrar.</p>
-                <button (click)="openModal()" class="btn-primary mt-2">
-                  <fa-icon [icon]="faUserPlus" aria-hidden="true"></fa-icon>
-                  Crear el primero
-                </button>
-              </td>
-            </tr>
-
-            <!-- Filas -->
-            <ng-container *ngFor="let u of filteredUsers">
-              <tr class="ux-row">
-                <td>{{ u.firstName }}</td>
-                <td>{{ u.surName }}</td>
-                <td>{{ u.cedula }}</td>
-                <td>
-                  <a class="hover:underline" [href]="'mailto:' + u.email">{{ u.email }}</a>
-                </td>
-                <td>{{ u.telefono }}</td>
-                <td>{{ u.ubicacion }}</td>
-                <td>
-                  <span [title]="(u.companyNames || []).join(', ') || ''">
-                    {{ u.primaryCompany || (u.companyNames?.[0] ?? '—') }}
-                  </span>
-                </td>
-                <td>
-                  <span [title]="(u.roles || []).join(', ') || ''">
-                    {{ u.primaryRole || u.roles[0] || '—' }}
-                  </span>
-                </td>
-                <td class="text-center">
-                  <div class="inline-flex items-center gap-2">
-                    <button
-                      type="button"
-                      (click)="openModal(u)"
-                      class="icon-btn"
-                      aria-label="Editar usuario"
-                      title="Editar"
-                    >
-                      <fa-icon [icon]="faSave" aria-hidden="true"></fa-icon>
-                    </button>
-
-                    <button
-                      type="button"
-                      (click)="openCredentialsModal(u)"
-                      class="icon-btn"
-                      [attr.aria-label]="'Credenciales de ' + (u.firstName + ' ' + u.surName)"
-                      title="Credenciales (email/contraseña)"
-                    >
-                      <fa-icon [icon]="faEnvelope" aria-hidden="true"></fa-icon>
-                    </button>
-
-                    <button
-                      type="button"
-                      (click)="delete(u)"
-                      class="icon-btn danger"
-                      aria-label="Eliminar usuario"
-                      title="Eliminar"
-                    >
-                      <fa-icon [icon]="faTrash" aria-hidden="true"></fa-icon>
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </ng-container>
           </tbody>
         </table>
       </div>
 
-      <!-- Overlay de carga sobre la card -->
-      <div *ngIf="loading" class="loading-overlay" aria-live="polite">
-        <div class="spinner"></div>
-        Cargando…
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal Crear/Editar -->
-<div
-  *ngIf="modalOpen"
-  class="fixed inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center z-50"
-  role="dialog"
-  aria-modal="true"
-  aria-labelledby="user-modal-title"
->
-  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-5xl p-6 relative animate-[fadeIn_.2s_ease-out]">
-    <!-- Header -->
-    <div class="flex items-center justify-between mb-4">
-      <div class="flex items-center gap-2">
-        <fa-icon [icon]="editing ? faSave : faUserPlus" class="text-xl text-brand-red" aria-hidden="true"></fa-icon>
-        <h2 id="user-modal-title" class="text-xl font-bold text-brand-red">
-          {{ editing ? 'Editar Usuario' : 'Crear Usuario' }}
-        </h2>
-      </div>
-
-      <button
-        type="button"
-        (click)="closeModal()"
-        class="px-3 py-1 rounded-lg bg-warm-gray-200 hover:bg-warm-gray-300 transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-warm-gray-400"
-        aria-label="Cerrar modal"
+      <!-- Modal -->
+      <div
+        *ngIf="modalOpen"
+        class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
       >
-        Cerrar
-      </button>
-    </div>
-
-    <form (ngSubmit)="save()" [formGroup]="userForm" class="grid grid-cols-12 gap-6" novalidate>
-      <!-- Columna izquierda: datos básicos -->
-      <div class="col-span-12 lg:col-span-5 space-y-3">
-        <div>
-          <label for="email" class="block text-xs font-semibold text-warm-gray-600 mb-1">Correo <span class="text-red-600">*</span></label>
-          <input
-            id="email"
-            formControlName="email"
-            placeholder="correo@empresa.com"
-            autocomplete="email"
-            class="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-brand-red/60 transition"
-            [class.border-red-400]="userForm.get('email')?.invalid && userForm.get('email')?.touched"
-            [attr.aria-invalid]="userForm.get('email')?.invalid && userForm.get('email')?.touched ? 'true' : null"
-          />
-          <p class="mt-1 text-[11px] text-warm-gray-500">Usa un correo corporativo si es posible.</p>
-          <p *ngIf="userForm.get('email')?.invalid && userForm.get('email')?.touched" class="mt-1 text-xs text-red-600">Ingresa un correo válido.</p>
-        </div>
-
-        <div *ngIf="!editing">
-          <label for="password" class="block text-xs font-semibold text-warm-gray-600 mb-1">Contraseña <span class="text-red-600">*</span></label>
-          <input
-            id="password"
-            type="password"
-            formControlName="password"
-            placeholder="Mínimo 6 caracteres"
-            autocomplete="new-password"
-            class="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-brand-red/60 transition"
-            [class.border-red-400]="userForm.get('password')?.invalid && userForm.get('password')?.touched"
-            [attr.aria-invalid]="userForm.get('password')?.invalid && userForm.get('password')?.touched ? 'true' : null"
-          />
-          <p class="mt-1 text-[11px] text-warm-gray-500">Se requiere al crear el usuario.</p>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label for="firstName" class="block text-xs font-semibold text-warm-gray-600 mb-1">Nombres <span class="text-red-600">*</span></label>
-            <input
-              id="firstName"
-              formControlName="firstName"
-              class="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-brand-red/60 transition"
-              [class.border-red-400]="userForm.get('firstName')?.invalid && userForm.get('firstName')?.touched"
-            />
-          </div>
-          <div>
-            <label for="surName" class="block text-xs font-semibold text-warm-gray-600 mb-1">Apellidos <span class="text-red-600">*</span></label>
-            <input
-              id="surName"
-              formControlName="surName"
-              class="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-brand-red/60 transition"
-              [class.border-red-400]="userForm.get('surName')?.invalid && userForm.get('surName')?.touched"
-            />
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label for="cedula" class="block text-xs font-semibold text-warm-gray-600 mb-1">Cédula <span class="text-red-600">*</span></label>
-            <input
-              id="cedula"
-              formControlName="cedula"
-              inputmode="numeric"
-              class="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-brand-red/60 transition"
-              [class.border-red-400]="userForm.get('cedula')?.invalid && userForm.get('cedula')?.touched"
-            />
-          </div>
-          <div>
-            <label for="telefono" class="block text-xs font-semibold text-warm-gray-600 mb-1">Teléfono <span class="text-red-600">*</span></label>
-            <input
-              id="telefono"
-              formControlName="telefono"
-              inputmode="tel"
-              class="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-brand-red/60 transition"
-              [class.border-red-400]="userForm.get('telefono')?.invalid && userForm.get('telefono')?.touched"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label for="ubicacion" class="block text-xs font-semibold text-warm-gray-600 mb-1">Ubicación <span class="text-red-600">*</span></label>
-          <input
-            id="ubicacion"
-            formControlName="ubicacion"
-            class="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-brand-red/60 transition"
-            [class.border-red-400]="userForm.get('ubicacion')?.invalid && userForm.get('ubicacion')?.touched"
-          />
-        </div>
-      </div>
-
-      <!-- Columna derecha: compañías y roles -->
-      <div class="col-span-12 lg:col-span-7 grid grid-rows-[auto_auto_auto] gap-5">
-        <!-- Compañías -->
-        <fieldset class="rounded-xl border bg-white/60">
-          <legend class="px-2 -ml-1 text-sm font-semibold text-warm-gray-700">
-            Compañías <span class="text-red-600">*</span>
-          </legend>
-          <div class="p-3 grid grid-cols-2 md:grid-cols-3 gap-2 max-h-32 overflow-auto">
-            <label *ngFor="let c of companies" class="inline-flex items-center gap-2 px-2 py-1 rounded hover:bg-warm-gray-100">
-              <input
-                type="checkbox"
-                [checked]="(userForm.get('companyIds')?.value || []).includes(c.id)"
-                (change)="c.id && toggleCompany(c.id)"
-                class="h-4 w-4 text-brand-red rounded border-warm-gray-300 focus:ring-brand-red/60"
-              />
-              <span class="text-sm">{{ c.name }}</span>
-            </label>
-          </div>
-          <p *ngIf="userForm.get('companyIds')?.invalid && userForm.get('companyIds')?.touched" class="px-3 pb-2 text-xs text-red-600">Selecciona al menos una compañía.</p>
-        </fieldset>
-
-        <!-- Roles -->
-        <fieldset class="rounded-xl border bg-white/60">
-          <legend class="px-2 -ml-1 text-sm font-semibold text-warm-gray-700">
-            Roles (según compañías seleccionadas) <span class="text-red-600">*</span>
-          </legend>
-
-          <div class="p-3 space-y-3">
-            <!-- Buscador de roles -->
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6 space-y-4">
+          <h2 class="text-xl font-bold text-brand-red flex items-center">
+            <fa-icon [icon]="editing ? faSave : faUserPlus" class="mr-2"></fa-icon>
+            {{ editing ? 'Editar Usuario' : 'Crear Usuario' }}
+          </h2>
+          <form (ngSubmit)="save()" [formGroup]="userForm" class="space-y-4">
+            <!-- Nombre -->
             <div class="relative">
-              <label for="role-filter" class="sr-only">Buscar rol</label>
-              <fa-icon [icon]="faSearch" class="absolute left-3 top-1/2 -translate-y-1/2 text-warm-gray-400" aria-hidden="true"></fa-icon>
-              <input
-                id="role-filter"
-                type="text"
-                [(ngModel)]="roleFilter"
-                placeholder="Buscar rol por nombre o permiso…"
-                class="w-full pl-10 pr-3 py-2 rounded-lg border border-warm-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-red/60 transition"
-              />
+              <fa-icon [icon]="faUser" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-warm-gray-400"></fa-icon>
+              <input formControlName="nombre" placeholder="Nombre"
+                     class="w-full pl-10 pr-3 py-2 border rounded-lg focus:border-brand-red" />
             </div>
-
-            <!-- Lista de roles -->
-            <div class="grid md:grid-cols-2 gap-2 max-h-44 overflow-auto pr-1">
-              <div *ngFor="let r of availableRoles"
-                   class="flex items-start justify-between gap-2 p-2 rounded border hover:shadow-sm transition bg-white">
-                <label class="flex items-start gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    [checked]="(userForm.get('roleIds')?.value || []).includes(r.id)"
-                    (change)="toggleRole(r.id)"
-                    class="h-4 w-4 mt-0.5 text-brand-red rounded border-warm-gray-300 focus:ring-brand-red/60"
-                  />
-                  <div>
-                    <div class="text-sm font-medium">{{ r.name }}</div>
-                    <div class="text-[11px] text-warm-gray-500">
-                      {{ r.permissions.length }} permiso(s) · {{ r.companyIds.length }} empresa(s)
-                    </div>
-                  </div>
-                </label>
-
-                <button
-                  type="button"
-                  (click)="openRolePreview(r.id)"
-                  class="px-2 py-1 text-xs rounded bg-warm-gray-100 hover:bg-warm-gray-200 text-warm-gray-700 transition focus:outline-none focus:ring-2 focus:ring-warm-gray-300"
-                  title="Ver permisos del rol"
-                  [attr.aria-label]="'Ver permisos de ' + r.name"
-                >
-                  <fa-icon [icon]="faSearch" aria-hidden="true"></fa-icon>
-                </button>
-              </div>
-
-              <div *ngIf="!availableRoles.length" class="col-span-full text-center text-sm text-warm-gray-500 py-4">
-                Selecciona al menos una compañía para ver roles disponibles.
-              </div>
+            <!-- Apellidos -->
+            <div class="relative">
+              <fa-icon [icon]="faUser" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-warm-gray-400"></fa-icon>
+              <input formControlName="apellido" placeholder="Apellidos"
+                     class="w-full pl-10 pr-3 py-2 border rounded-lg focus:border-brand-red" />
             </div>
-
-            <!-- Chips de roles seleccionados -->
-            <div *ngIf="(userForm.get('roleIds')?.value || []).length" class="flex flex-wrap gap-2 pt-1">
-              <span *ngFor="let rid of userForm.get('roleIds')?.value"
-                    class="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-warm-gray-100 text-sm shadow-sm">
-                {{ roleName(rid) }}
-                <button type="button"
-                        (click)="removeRole(rid)"
-                        class="text-warm-gray-500 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/30 rounded"
-                        [attr.aria-label]="'Quitar rol ' + roleName(rid)">×</button>
-              </span>
-              <button type="button" (click)="clearRoles()" class="text-xs text-warm-gray-600 hover:text-brand-red underline">
-                Limpiar roles
+            <!-- Cédula -->
+            <div class="relative">
+              <fa-icon [icon]="faIdCard" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-warm-gray-400"></fa-icon>
+              <input formControlName="cedula" placeholder="Cédula"
+                     class="w-full pl-10 pr-3 py-2 border rounded-lg focus:border-brand-red" />
+            </div>
+            <!-- Correo -->
+            <div class="relative">
+              <fa-icon [icon]="faEnvelope" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-warm-gray-400"></fa-icon>
+              <input formControlName="correo" placeholder="Correo"
+                     class="w-full pl-10 pr-3 py-2 border rounded-lg focus:border-brand-red" />
+            </div>
+            <!-- Teléfono -->
+            <div class="relative">
+              <fa-icon [icon]="faPhone" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-warm-gray-400"></fa-icon>
+              <input formControlName="telefono" placeholder="Teléfono"
+                     class="w-full pl-10 pr-3 py-2 border rounded-lg focus:border-brand-red" />
+            </div>
+            <!-- Acciones -->
+            <div class="flex justify-end space-x-2 mt-6">
+              <button type="button" (click)="closeModal()"
+                      class="px-4 py-2 bg-warm-gray-200 rounded-lg hover:bg-warm-gray-300 transition inline-flex items-center">
+                <fa-icon [icon]="faTimes" class="mr-2"></fa-icon>
+                Cancelar
+              </button>
+              <button type="submit" [disabled]="userForm.invalid"
+                      class="px-4 py-2 bg-chicken-yellow text-warm-gray-800 rounded-lg hover:bg-yellow-500 transition inline-flex items-center disabled:opacity-50">
+                <fa-icon [icon]="faSave" class="mr-2"></fa-icon>
+                Guardar
               </button>
             </div>
-
-            <p *ngIf="userForm.get('roleIds')?.invalid && userForm.get('roleIds')?.touched" class="text-xs text-red-600">Selecciona al menos un rol.</p>
-          </div>
-        </fieldset>
-
-        <!-- Paneles de permisos -->
-        <div class="grid md:grid-cols-2 gap-5">
-          <div class="rounded-xl border bg-gray-50 p-3 shadow-inner">
-            <div class="flex items-center justify-between">
-              <div class="text-sm font-semibold text-warm-gray-700 mb-2">Permisos (asignación resultante)</div>
-              <div class="text-[11px] text-warm-gray-500">{{ selectedRolesPermissions.length }} total</div>
-            </div>
-            <div class="min-h-[52px]">
-              <ng-container *ngIf="selectedRolesPermissions.length; else noPerms">
-                <div class="flex flex-wrap gap-2">
-                  <span *ngFor="let p of selectedRolesPermissions"
-                        class="inline-block text-[11px] px-2 py-1 rounded bg-white border shadow-sm">
-                    {{ p }}
-                  </span>
-                </div>
-              </ng-container>
-              <ng-template #noPerms>
-                <div class="text-xs text-warm-gray-500">Selecciona uno o más roles para ver sus permisos combinados.</div>
-              </ng-template>
-            </div>
-          </div>
-
-          <div class="rounded-xl border bg-gray-50 p-3 shadow-inner">
-            <div class="flex items-center justify-between mb-2">
-              <div class="text-sm font-semibold text-warm-gray-700">
-                Detalle del rol <span *ngIf="previewRoleId" class="font-bold">“{{ roleName(previewRoleId) }}”</span>
-              </div>
-              <button
-                *ngIf="previewRoleId"
-                type="button"
-                (click)="previewRoleId = null"
-                class="text-xs px-2 py-1 rounded bg-warm-gray-100 hover:bg-warm-gray-200 text-warm-gray-700 transition focus:outline-none focus:ring-2 focus:ring-warm-gray-300"
-              >Cerrar</button>
-            </div>
-
-            <div class="min-h-[52px]">
-              <ng-container *ngIf="previewRoleId && previewRolePermissions.length; else noPreview">
-                <div class="flex flex-wrap gap-2">
-                  <span *ngFor="let p of previewRolePermissions"
-                        class="inline-block text-[11px] px-2 py-1 rounded bg-white border shadow-sm">
-                    {{ p }}
-                  </span>
-                </div>
-              </ng-container>
-              <ng-template #noPreview>
-                <div class="text-xs text-warm-gray-500">
-                  Usa la <strong>lupa</strong> en la lista de roles para previsualizar sus permisos aquí.
-                </div>
-              </ng-template>
-            </div>
-          </div>
+          </form>
         </div>
-      </div>
-
-      <!-- Footer -->
-      <div class="col-span-12 flex flex-col sm:flex-row sm:justify-end gap-2 mt-2">
-        <button
-          type="button"
-          (click)="closeModal()"
-          class="px-4 py-2 rounded-lg bg-warm-gray-200 hover:bg-warm-gray-300 transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-warm-gray-300"
-        >
-          <fa-icon [icon]="faTimes" class="mr-2" aria-hidden="true"></fa-icon>
-          Cancelar
-        </button>
-
-        <button
-          type="submit"
-          [disabled]="userForm.invalid || loading"
-          class="px-4 py-2 rounded-lg bg-brand-red text-white hover:bg-red-600 disabled:opacity-60 disabled:cursor-not-allowed transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-red"
-        >
-          <fa-icon [icon]="faSave" class="mr-2" aria-hidden="true"></fa-icon>
-          Guardar
-        </button>
-      </div>
-    </form>
-
-    <div *ngIf="loading" class="absolute inset-0 bg-white/40 rounded-2xl flex items-center justify-center" aria-live="polite">
-      <div class="flex items-center gap-2 text-sm text-warm-gray-700">
-        <div class="w-3 h-3 rounded-full bg-brand-red animate-pulse"></div>
-        Guardando…
       </div>
     </div>
-  </div>
-</div>
-
-<!-- Modal de Credenciales -->
-<div
-  *ngIf="credsModalOpen"
-  class="fixed inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center z-[60]"
-  role="dialog"
-  aria-modal="true"
-  aria-labelledby="creds-modal-title"
->
-  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl p-6 animate-[fadeIn_.2s_ease-out]">
-    <div class="flex items-center justify-between mb-4">
-      <div class="flex items-center gap-2">
-        <fa-icon [icon]="faEnvelope" class="text-xl text-gray-800" aria-hidden="true"></fa-icon>
-        <h3 id="creds-modal-title" class="text-lg font-semibold">Credenciales de acceso</h3>
-      </div>
-      <button
-        type="button"
-        (click)="closeCredentialsModal()"
-        class="px-3 py-1 rounded-lg bg-warm-gray-200 hover:bg-warm-gray-300 transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-warm-gray-400"
-        aria-label="Cerrar modal credenciales"
-      >
-        Cerrar
-      </button>
-    </div>
-
-    <form [formGroup]="credsForm" (ngSubmit)="saveCredentials()" class="space-y-4" novalidate>
-      <div class="rounded-lg border p-3">
-        <label class="inline-flex items-center gap-2">
-          <input type="checkbox" formControlName="changeEmail" (change)="toggleChangeEmail()">
-          <span class="text-sm font-medium">Cambiar email</span>
-        </label>
-
-        <div class="mt-2">
-          <label for="new-email" class="sr-only">Nuevo correo</label>
-          <input
-            id="new-email"
-            formControlName="email"
-            placeholder="nuevo@correo.com"
-            autocomplete="email"
-            class="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition disabled:bg-warm-gray-100"
-            [class.border-red-400]="credsForm.get('email')?.invalid && credsForm.get('email')?.touched"
-          />
-          <p *ngIf="credsForm.get('email')?.invalid && credsForm.get('email')?.touched" class="mt-1 text-xs text-red-600">Ingresa un correo válido.</p>
-        </div>
-      </div>
-
-      <div class="rounded-lg border p-3">
-        <label class="inline-flex items-center gap-2">
-          <input type="checkbox" formControlName="changePassword" (change)="toggleChangePassword()">
-          <span class="text-sm font-medium">Cambiar contraseña</span>
-        </label>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-          <div>
-            <label for="new-password" class="sr-only">Nueva contraseña</label>
-            <input
-              id="new-password"
-              type="password"
-              formControlName="password"
-              placeholder="Nueva contraseña (mín. 6)"
-              autocomplete="new-password"
-              class="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition disabled:bg-warm-gray-100"
-              [class.border-red-400]="credsForm.get('password')?.invalid && credsForm.get('password')?.touched"
-            />
-          </div>
-          <div>
-            <label for="confirm-password" class="sr-only">Confirmar contraseña</label>
-            <input
-              id="confirm-password"
-              type="password"
-              formControlName="confirm"
-              placeholder="Confirmar contraseña"
-              autocomplete="new-password"
-              class="w-full px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition disabled:bg-warm-gray-100"
-              [class.border-red-400]="credsForm.get('confirm')?.invalid && credsForm.get('confirm')?.touched"
-            />
-            <p *ngIf="credsForm.get('confirm')?.errors?.['mismatch'] && credsForm.get('confirm')?.touched"
-               class="text-xs text-red-600 mt-1">Las contraseñas no coinciden.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="flex justify-end gap-2">
-        <button type="button" (click)="closeCredentialsModal()"
-                class="px-4 py-2 rounded-lg bg-warm-gray-200 hover:bg-warm-gray-300 transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-warm-gray-300">
-          Cancelar
-        </button>
-        <button type="submit"
-                [disabled]="(!credsForm.get('changeEmail')?.value && !credsForm.get('changePassword')?.value) || credsForm.invalid || loading"
-                class="px-4 py-2 rounded-lg bg-gray-800 text-white hover:bg-gray-700 disabled:opacity-60 transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-800">
-          Guardar cambios
-        </button>
-      </div>
-    </form>
-  </div>
+  </main>
 </div>

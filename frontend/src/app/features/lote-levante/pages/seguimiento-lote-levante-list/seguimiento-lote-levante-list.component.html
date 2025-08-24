@@ -1,231 +1,160 @@
-<!-- lote-levaante/page/seguimiento-lote-levante/seguimiento-lote-levante-list.component.html-->
-<div class="ux-page" [attr.aria-busy]="loading ? 'true' : null">
+<div class="flex h-screen bg-gray-50">
   <!-- Sidebar -->
-  <app-sidebar class="ux-sidebar"></app-sidebar>
+  <app-sidebar class="w-64"></app-sidebar>
 
-  <!-- Main -->
-  <div class="ux-main">
-    <!-- Header -->
-    <header class="ux-header">
-      <div class="ux-header__title">
-        <h1>Seguimiento Diario de Levante</h1>
-
-        <div class="ux-header__meta" *ngIf="selectedLoteId; else noLoteMsg">
-          <span class="chip chip--info">
-            <span class="chip__dot" aria-hidden="true"></span>
-            Lote: {{ selectedLoteNombre }}
-          </span>
-          <span class="chip chip--muted">
-            {{ selectedLoteSemanas }} sem
-          </span>
-          <span class="chip chip--muted">
-            {{ seguimientos.length || 0 }} registro(s)
-          </span>
-        </div>
-
-        <ng-template #noLoteMsg>
-          <div class="ux-header__meta">
-            <span class="chip chip--warning">
-              <span class="chip__dot" aria-hidden="true"></span>
-              Selecciona un lote para gestionar registros
-            </span>
-          </div>
-        </ng-template>
-      </div>
-
+  <!-- Main Content -->
+  <div class="flex-1 p-6 overflow-auto">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-bold text-gray-800">Seguimiento Diario de Levante</h1>
       <button
-        type="button"
         (click)="create()"
-        class="btn btn--primary"
-        [disabled]="!selectedLoteId"
-        [title]="!selectedLoteId ? 'Primero selecciona un lote' : 'Crear nuevo registro'"
+        class="flex items-center px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
       >
-        <fa-icon [icon]="faPlus" class="mr-2" aria-hidden="true"></fa-icon>
-        Nuevo Registro
+        <fa-icon [icon]="faPlus" class="mr-2"></fa-icon> Nuevo Registro
       </button>
-    </header>
+    </div>
 
-    <!-- Toolbar / Filtro -->
-    <section class="ux-toolbar">
-      <label for="lote-select" class="ux-label">Selecciona Lote</label>
-      <div class="ux-select">
-        <select
-          id="lote-select"
-          [(ngModel)]="selectedLoteId"
-          (change)="onLoteChange()"
-          aria-label="Selecciona lote"
-        >
-          <option [ngValue]="null" disabled>— Selecciona un lote —</option>
-          <option *ngFor="let l of lotes" [ngValue]="l.loteId">
-            {{ l.loteNombre }} ({{ calcularEdadSemanas(l.fechaEncaset) }} sem)
-          </option>
-        </select>
-      </div>
-    </section>
+    <div class="mb-4 flex items-center space-x-4">
+      <label class="font-medium text-gray-700">Selecciona Lote:</label>
+      <select
+        [(ngModel)]="selectedLoteId"
+        (change)="onLoteChange()"
+        class="px-3 py-2 border rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+      >
+      <option *ngFor="let l of lotes" [value]="l.loteId">
+        {{ l.loteNombre }} ({{ calcularEdadSemanas(l.fechaEncaset) }} sem)
+      </option>
+      </select>
+    </div>
 
-    <!-- Tabla -->
-    <section class="ux-card">
-      <div class="ux-scroll">
-        <table class="ux-table">
-          <caption class="sr-only">Tabla de seguimientos diarios</caption>
-
-          <thead>
-            <tr>
-              <th scope="col">Fecha</th>
-              <th scope="col">Mort. H</th>
-              <th scope="col">Mort. M</th>
-              <th scope="col">Sel H</th>
-              <th scope="col">Sel M</th>
-              <th scope="col">Err H</th>
-              <th scope="col">Err M</th>
-              <th scope="col">Tipo de alimento</th>
-              <th scope="col">Consumo (kg)</th>
-              <th scope="col" class="text-right">Acciones</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            <tr *ngFor="let s of seguimientos; trackBy: trackById" class="ux-row">
-              <td>{{ s.fechaRegistro | date:'shortDate' }}</td>
-              <td>{{ s.mortalidadHembras }}</td>
-              <td>{{ s.mortalidadMachos }}</td>
-              <td>{{ s.selH }}</td>
-              <td>{{ s.selM }}</td>
-              <td>{{ s.errorSexajeHembras }}</td>
-              <td>{{ s.errorSexajeMachos }}</td>
-              <td>{{ s.tipoAlimento }}</td>
-              <td>{{ s.consumoKgHembras }}</td>
-              <td class="text-right">
-                <div class="btn-group">
-                  <button
-                    type="button"
-                    (click)="edit(s)"
-                    class="icon-btn"
-                    title="Editar"
-                    aria-label="Editar registro"
-                  >✎</button>
-                  <button
-                    type="button"
-                    (click)="delete(s.id)"
-                    class="icon-btn icon-btn--danger"
-                    title="Eliminar"
-                    aria-label="Eliminar registro"
-                  >🗑</button>
-                </div>
-              </td>
-            </tr>
-
-            <!-- Vacío -->
-            <tr *ngIf="!loading && (!seguimientos || seguimientos.length === 0)">
-              <td colspan="10" class="empty-state">
-                <div class="empty-illustration" aria-hidden="true">📄</div>
-                <p>No hay registros disponibles.</p>
-                <button
-                  type="button"
-                  class="btn btn--outline"
-                  (click)="create()"
-                  [disabled]="!selectedLoteId"
-                  [title]="!selectedLoteId ? 'Primero selecciona un lote' : 'Crear el primer registro'"
-                >
-                  Crear el primero
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Overlay de carga -->
-      <div *ngIf="loading" class="loading-overlay" aria-live="polite" role="status">
-        <div class="spinner"></div>
-        Cargando…
-      </div>
-    </section>
-  </div>
-</div>
-
-<!-- Modal -->
-<div
-  *ngIf="modalOpen"
-  class="ux-modal"
-  role="dialog"
-  aria-modal="true"
-  aria-labelledby="seguimiento-modal-title"
->
-  <div class="ux-modal__dialog">
-    <header class="ux-modal__header">
-      <h2 id="seguimiento-modal-title">
-        {{ editing ? 'Editar Registro' : 'Nuevo Registro' }}
-      </h2>
-      <button type="button" class="icon-btn" (click)="cancel()" aria-label="Cerrar">✕</button>
-    </header>
-
-    <form [formGroup]="form" (ngSubmit)="save()" class="ux-form" novalidate>
-      <div class="grid grid-2">
-        <div class="form-field">
-          <label for="f-fecha">Fecha</label>
-          <input id="f-fecha" type="date" formControlName="fechaRegistro" />
-        </div>
-
-        <div class="form-field">
-          <label for="f-alim">Tipo de alimento</label>
-          <input id="f-alim" type="text" formControlName="tipoAlimento" />
-        </div>
-
-        <div class="form-field">
-          <label for="f-consumo">Consumo (kg)</label>
-          <input id="f-consumo" type="number" formControlName="consumoKgHembras" />
-        </div>
-
-        <div class="form-field">
-          <label for="f-mh">Mortalidad Hembras</label>
-          <input id="f-mh" type="number" formControlName="mortalidadHembras" />
-        </div>
-
-        <div class="form-field">
-          <label for="f-mm">Mortalidad Machos</label>
-          <input id="f-mm" type="number" formControlName="mortalidadMachos" />
-        </div>
-
-        <div class="form-field">
-          <label for="f-selh">Selección Hembras</label>
-          <input id="f-selh" type="number" formControlName="selH" />
-        </div>
-
-        <div class="form-field">
-          <label for="f-selm">Selección Machos</label>
-          <input id="f-selm" type="number" formControlName="selM" />
-        </div>
-
-        <div class="form-field">
-          <label for="f-esh">Error Sexaje Hembras</label>
-          <input id="f-esh" type="number" formControlName="errorSexajeHembras" />
-        </div>
-
-        <div class="form-field">
-          <label for="f-esm">Error Sexaje Machos</label>
-          <input id="f-esm" type="number" formControlName="errorSexajeMachos" />
-        </div>
-
-        <div class="form-field">
-          <label for="f-ciclo">Ciclo</label>
-          <input id="f-ciclo" type="text" formControlName="ciclo" />
-        </div>
-
-        <div class="form-field form-field--full">
-          <label for="f-obs">Observaciones</label>
-          <textarea id="f-obs" rows="3" formControlName="observaciones"></textarea>
-        </div>
-      </div>
-
-      <footer class="ux-modal__footer">
-        <button type="button" class="btn btn--ghost" (click)="cancel()">Cancelar</button>
-        <button type="submit" class="btn btn--primary" [disabled]="loading">Guardar</button>
-      </footer>
-    </form>
-
-    <div *ngIf="loading" class="modal-loading" role="status" aria-live="polite">
-      <div class="spinner"></div> Guardando…
+    <!-- Tabla de registros -->
+    <div class="overflow-x-auto bg-white rounded shadow">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-100">
+          <tr>
+            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600">Fecha</th>
+            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600">Mort. H</th>
+            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600">Mort. M</th>
+            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600">Sel H</th>
+            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600">Sel M</th>
+            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600">Err H</th>
+            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600">Err M</th>
+            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600">Tipo de alimento</th>
+            <th class="px-4 py-2 text-left text-xs font-semibold text-gray-600">Consumo (kg)</th>
+            <th class="px-4 py-2 text-right text-xs font-semibold text-gray-600">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+          <tr *ngFor="let s of seguimientos" class="hover:bg-gray-50">
+            <td class="px-4 py-2">{{ s.fechaRegistro | date:'shortDate' }}</td>
+            <td class="px-4 py-2">{{ s.mortalidadHembras }}</td>
+            <td class="px-4 py-2">{{ s.mortalidadMachos }}</td>
+            <td class="px-4 py-2">{{ s.selH }}</td>
+            <td class="px-4 py-2">{{ s.selM }}</td>
+            <td class="px-4 py-2">{{ s.errorSexajeHembras }}</td>
+            <td class="px-4 py-2">{{ s.errorSexajeMachos }}</td>
+            <td class="px-4 py-2">{{ s.tipoAlimento }}</td>
+            <td class="px-4 py-2">{{ s.consumoKgHembras }}</td>
+            <td class="px-4 py-2 text-right space-x-2">
+              <button (click)="edit(s)"
+                      class="px-2 py-1 bg-yellow-400 text-white rounded hover:bg-yellow-500 transition">
+                Editar
+              </button>
+              <button (click)="delete(s.id)"
+                      class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition">
+                Eliminar
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="!loading && seguimientos.length === 0">
+            <td colspan="9" class="px-4 py-6 text-center text-gray-500">
+              No hay registros disponibles
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
 </div>
+<!-- Modal -->
+<div *ngIf="modalOpen" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+  <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-3xl relative">
+    <h2 class="text-lg font-semibold mb-4">
+      {{ editing ? 'Editar Registro' : 'Nuevo Registro' }}
+    </h2>
+
+    <form [formGroup]="form" (ngSubmit)="save()" class="space-y-4">
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Fecha</label>
+          <input type="date" formControlName="fechaRegistro"
+            class="w-full border px-3 py-2 rounded shadow-sm" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Tipo de alimento</label>
+          <input type="text" formControlName="tipoAlimento"
+            class="w-full border px-3 py-2 rounded shadow-sm" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Consumo kg</label>
+          <input type="number" formControlName="consumoKgHembras"
+            class="w-full border px-3 py-2 rounded shadow-sm" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Mortalidad Hembras</label>
+          <input type="number" formControlName="mortalidadHembras"
+            class="w-full border px-3 py-2 rounded shadow-sm" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Mortalidad Machos</label>
+          <input type="number" formControlName="mortalidadMachos"
+            class="w-full border px-3 py-2 rounded shadow-sm" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Selección Hembras</label>
+          <input type="number" formControlName="selH"
+            class="w-full border px-3 py-2 rounded shadow-sm" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Selección Machos</label>
+          <input type="number" formControlName="selM"
+            class="w-full border px-3 py-2 rounded shadow-sm" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Error Sexaje Hembras</label>
+          <input type="number" formControlName="errorSexajeHembras"
+            class="w-full border px-3 py-2 rounded shadow-sm" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Error Sexaje Machos</label>
+          <input type="number" formControlName="errorSexajeMachos"
+            class="w-full border px-3 py-2 rounded shadow-sm" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Ciclo</label>
+          <input type="text" formControlName="ciclo"
+            class="w-full border px-3 py-2 rounded shadow-sm" />
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Observaciones</label>
+        <textarea formControlName="observaciones"
+          class="w-full border px-3 py-2 rounded shadow-sm"></textarea>
+      </div>
+
+      <div class="flex justify-end space-x-2 pt-4">
+        <button type="button" (click)="cancel()"
+          class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 transition">
+          Cancelar
+        </button>
+        <button type="submit"
+          class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
+          [disabled]="loading">
+          Guardar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+

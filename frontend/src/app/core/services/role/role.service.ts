@@ -45,14 +45,4 @@ export class RoleService {
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
-
-  assignPermissions(roleId: number, keys: string[]) {
-    return this.http.post<Role>(`${this.baseUrl}/${roleId}/Permissions/assign`, { keys });
-  }
-  unassignPermissions(roleId: number, keys: string[]) {
-    return this.http.post<Role>(`${this.baseUrl}/${roleId}/Permissions/unassign`, { keys });
-  }
-  replacePermissions(roleId: number, keys: string[]) {
-    return this.http.put<Role>(`${this.baseUrl}/${roleId}/Permissions`, { keys });
-  }
 }

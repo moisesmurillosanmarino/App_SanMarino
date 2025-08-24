@@ -5,27 +5,19 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 
 export interface Company {
-  id?: number;
+  id: number;
   name: string;
-  identifier: string;
-  documentType: string;
-  address?: string;
-  phone?: string;
-  email?: string;
-  // antiguos (fallback visual)
-  country?: string;
-  state?: string;
-  city?: string;
-  // nuevos preferidos
-  countryId?: number;
-  departamentoId?: number;
-  municipioId?: number;
-
-  roleIds?: number[];
-  visualPermissions?: string[];
-  mobileAccess?: boolean;
+  identifier: string;        // número de documento
+  documentType: string;      // ← nuevo
+  address: string;
+  phone: string;
+  email: string;
+  country: string;
+  state: string;
+  city: string;
+  visualPermissions: string[];
+  mobileAccess: boolean;
 }
-
 
 @Injectable({ providedIn: 'root' })
 export class CompanyService {

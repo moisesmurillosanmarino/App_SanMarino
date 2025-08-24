@@ -1,300 +1,91 @@
-<div class="db-page" [attr.aria-busy]="loadingSummary ? 'true' : null">
-  <app-sidebar class="db-sidebar"></app-sidebar>
-
-  <main class="db-main">
-    <!-- Header -->
-    <header class="db-header">
-      <div class="db-title">
-        <h1>Dashboard</h1>
-        <p class="db-subtitle">Indicadores operativos de Reproductora</p>
-        <div class="db-meta">
-          <span class="chip chip--info">
-            <span class="chip__dot" aria-hidden="true"></span>
-            Módulo: Reproductora
-          </span>
-          <span class="chip chip--muted">
-            <span class="chip__dot" aria-hidden="true"></span>
-            Usuarios: {{ totalUsers || 0 }}
-          </span>
-          <span class="chip chip--muted">
-            <span class="chip__dot" aria-hidden="true"></span>
-            Granjas: {{ totalFarms || 0 }}
-          </span>
-          <span class="chip chip--muted">
-            <span class="chip__dot" aria-hidden="true"></span>
-            Lotes: {{ totalLotes || 0 }}
-          </span>
+<!-- src/app/features/dashboard/dashboard.component.html -->
+<div class="flex">
+    <app-sidebar></app-sidebar>
+    <main class="flex-1 p-8 bg-warm-gray-100 min-h-screen">
+      <h1 class="text-3xl font-bold text-brand-red mb-6">Dashboard</h1>
+  
+      <!-- Resumen rápido -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow p-4 flex flex-col">
+          <span class="text-sm text-warm-gray-500">Actividades</span>
+          <span class="text-2xl font-bold text-chicken-yellow">{{ activities.length }}</span>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 flex flex-col">
+          <span class="text-sm text-warm-gray-500">Registros Hoy</span>
+          <span class="text-2xl font-bold text-brand-red">{{ dailyLogs[0].entries }}</span>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 flex flex-col">
+          <span class="text-sm text-warm-gray-500">Producción Promedio</span>
+          <span class="text-2xl font-bold text-chicken-yellow">{{ averageProduction }}%</span>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 flex flex-col">
+          <span class="text-sm text-warm-gray-500">Última Mortalidad</span>
+          <span class="text-2xl font-bold text-brand-red">{{ mortalities[0].deaths }}</span>
         </div>
       </div>
-    </header>
-
-    <!-- Alert resumen -->
-    <div
-      class="alert alert--error"
-      *ngIf="errorSummary"
-      role="alert"
-      aria-live="polite"
-    >
-      <div class="alert__icon">⚠️</div>
-      <div class="alert__content">
-        <strong>Error en resumen</strong>
-        <div class="alert__text">{{ errorSummary }}</div>
-      </div>
-      <div class="alert__actions">
-        <button type="button" class="btn btn--ghost" (click)="retrySummary()">
-          Reintentar
-        </button>
-      </div>
-    </div>
-
-    <!-- KPI cards -->
-    <section class="db-kpis">
-      <!-- Usuarios -->
-      <article class="db-kpi db-card" [class.db-card--loading]="loadingSummary">
-        <div class="db-kpi__header">
-          <span class="db-kpi__label">Usuarios</span>
-          <span class="db-kpi__pill">Total</span>
-        </div>
-        <div class="db-kpi__value" *ngIf="!loadingSummary; else kpiSk">{{ totalUsers }}</div>
-        <div class="db-kpi__meter">
-          <span class="db-kpi__bar" [style.--w.%]="(totalUsers || 0) ? 100 : 0"></span>
-        </div>
-      </article>
-
-      <!-- Activos -->
-      <article class="db-kpi db-card" [class.db-card--loading]="loadingSummary">
-        <div class="db-kpi__header">
-          <span class="db-kpi__label">Usuarios Activos</span>
-          <span class="db-kpi__pill db-kpi__pill--brand">Hoy</span>
-        </div>
-        <div class="db-kpi__value" *ngIf="!loadingSummary; else kpiSk">{{ activeUsers }}</div>
-        <div class="db-kpi__meter">
-          <span
-            class="db-kpi__bar db-kpi__bar--brand"
-            [style.--w.%]="totalUsers ? (activeUsers * 100) / totalUsers : 0">
-          </span>
-        </div>
-      </article>
-
-      <!-- Granjas -->
-      <article class="db-kpi db-card" [class.db-card--loading]="loadingSummary">
-        <div class="db-kpi__header">
-          <span class="db-kpi__label">Granjas</span>
-          <span class="db-kpi__pill">Activas</span>
-        </div>
-        <div class="db-kpi__value" *ngIf="!loadingSummary; else kpiSk">{{ totalFarms }}</div>
-        <div class="db-kpi__meter">
-          <span class="db-kpi__bar" [style.--w.%]="(totalFarms || 0) ? 100 : 0"></span>
-        </div>
-      </article>
-
-      <!-- Lotes -->
-      <article class="db-kpi db-card" [class.db-card--loading]="loadingSummary">
-        <div class="db-kpi__header">
-          <span class="db-kpi__label">Lotes</span>
-          <span class="db-kpi__pill">Vigentes</span>
-        </div>
-        <div class="db-kpi__value" *ngIf="!loadingSummary; else kpiSk">{{ totalLotes }}</div>
-        <div class="db-kpi__meter">
-          <span class="db-kpi__bar db-kpi__bar--yellow" [style.--w.%]="(totalLotes || 0) ? 100 : 0"></span>
-        </div>
-      </article>
-    </section>
-
-    <!-- Actividades + Registros -->
-    <section class="db-grid">
-      <!-- Actividades -->
-      <article class="db-card" appLazyObserve (visible)="onActivitiesVisible()">
-        <header class="db-card__header db-card__header--brand">
-          <h2>Actividades Recientes</h2>
-          <span class="db-dot" [class.db-dot--blink]="loadingActivities" aria-hidden="true"></span>
-        </header>
-
-        <!-- Alert actividades -->
-        <div
-          class="alert alert--error"
-          *ngIf="errorActivities"
-          role="alert"
-          aria-live="polite"
-        >
-          <div class="alert__icon">⚠️</div>
-          <div class="alert__content">
-            <strong>Error al cargar actividades</strong>
-            <div class="alert__text">{{ errorActivities }}</div>
-          </div>
-          <div class="alert__actions">
-            <button type="button" class="btn btn--ghost" (click)="retryActivities()">
-              Reintentar
-            </button>
-          </div>
-        </div>
-
-        <ng-container *ngIf="!loadingActivities && activities?.length; else listSk">
-          <ul class="db-list">
-            <li *ngFor="let a of activities" class="db-list__item">
-              <span class="db-list__time">{{ a.time }}</span>
-              <span class="db-list__text">{{ a.description }}</span>
+  
+      <!-- Actividades recientes y registros diarios -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Actividades -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+          <h2 class="px-4 py-2 bg-brand-red text-white font-semibold">Actividades Recientes</h2>
+          <ul class="divide-y divide-warm-gray-200">
+            <li *ngFor="let a of activities" class="px-4 py-3 flex justify-between">
+              <span>{{ a.time }}</span>
+              <span class="text-warm-gray-700">{{ a.description }}</span>
             </li>
           </ul>
-        </ng-container>
-      </article>
-
-      <!-- Registros diarios -->
-      <article class="db-card" appLazyObserve (visible)="onDailyVisible()">
-        <header class="db-card__header db-card__header--yellow">
-          <h2>Registros Diarios</h2>
-          <span class="db-dot" [class.db-dot--blink]="loadingDaily" aria-hidden="true"></span>
-        </header>
-
-        <!-- Alert diarios -->
-        <div
-          class="alert alert--error"
-          *ngIf="errorDaily"
-          role="alert"
-          aria-live="polite"
-        >
-          <div class="alert__icon">⚠️</div>
-          <div class="alert__content">
-            <strong>Error al cargar registros diarios</strong>
-            <div class="alert__text">{{ errorDaily }}</div>
-          </div>
-          <div class="alert__actions">
-            <button type="button" class="btn btn--ghost" (click)="retryDaily()">
-              Reintentar
-            </button>
-          </div>
         </div>
-
-        <ng-container *ngIf="!loadingDaily && dailyLogs?.length; else listSk">
-          <ul class="db-list">
-            <li *ngFor="let d of dailyLogs" class="db-list__item">
-              <span class="db-list__time">{{ d.date }}</span>
-              <span class="db-list__badge">{{ d.entries }}</span>
+  
+        <!-- Registros diarios -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+          <h2 class="px-4 py-2 bg-chicken-yellow text-warm-gray-900 font-semibold">Registros Diarios</h2>
+          <ul class="divide-y divide-warm-gray-200">
+            <li *ngFor="let d of dailyLogs" class="px-4 py-3 flex justify-between">
+              <span>{{ d.date }}</span>
+              <span class="font-bold text-brand-red">{{ d.entries }}</span>
             </li>
           </ul>
-        </ng-container>
-      </article>
-    </section>
-
-    <!-- Producción + Mortalidad -->
-    <section class="db-grid">
-      <!-- Producción por granja -->
-      <article class="db-card" appLazyObserve (visible)="onProductionVisible()">
-        <header class="db-card__header">
-          <h2>Producción por Granja</h2>
-          <span class="db-sub">Promedio relativo</span>
-          <span class="db-badge">{{ averageProduction }}%</span>
-        </header>
-
-        <!-- Alert producción -->
-        <div
-          class="alert alert--error"
-          *ngIf="errorProduction"
-          role="alert"
-          aria-live="polite"
-        >
-          <div class="alert__icon">⚠️</div>
-          <div class="alert__content">
-            <strong>Error al cargar producción</strong>
-            <div class="alert__text">{{ errorProduction }}</div>
-          </div>
-          <div class="alert__actions">
-            <button type="button" class="btn btn--ghost" (click)="retryProduction()">
-              Reintentar
-            </button>
-          </div>
         </div>
-
-        <ng-container *ngIf="!loadingProduction && farms?.length; else barsSk">
-          <div *ngFor="let f of farms" class="db-bar">
-            <div class="db-bar__top">
-              <span class="db-bar__label">{{ f.name }}</span>
-              <span class="db-bar__value">{{ f.production }}%</span>
+      </div>
+  
+      <!-- Gráficas de producción -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow p-4">
+          <h2 class="text-xl font-semibold text-brand-red mb-4">Producción por Granja</h2>
+          <div *ngFor="let f of farms" class="mb-4">
+            <div class="flex justify-between mb-1">
+              <span>{{ f.name }}</span>
+              <span class="font-semibold">{{ f.production }}%</span>
             </div>
-            <div class="db-bar__track">
-              <div class="db-bar__fill" [style.width.%]="f.production"></div>
+            <div class="bg-warm-gray-300 h-2 rounded">
+              <div
+                class="bg-chicken-yellow h-2 rounded"
+                [style.width.%]="f.production"
+              ></div>
             </div>
           </div>
-        </ng-container>
-      </article>
-
-      <!-- Mortalidad reciente -->
-      <article class="db-card" appLazyObserve (visible)="onMortalityVisible()">
-        <header class="db-card__header">
-          <h2>Mortalidad Reciente</h2>
-        </header>
-
-        <!-- Alert mortalidad -->
-        <div
-          class="alert alert--error"
-          *ngIf="errorMortality"
-          role="alert"
-          aria-live="polite"
-        >
-          <div class="alert__icon">⚠️</div>
-          <div class="alert__content">
-            <strong>Error al cargar mortalidad</strong>
-            <div class="alert__text">{{ errorMortality }}</div>
-          </div>
-          <div class="alert__actions">
-            <button type="button" class="btn btn--ghost" (click)="retryMortality()">
-              Reintentar
-            </button>
-          </div>
         </div>
-
-        <ng-container *ngIf="!loadingMortality && mortalities?.length; else tableSk">
-          <div class="db-table__wrap">
-            <table class="db-table">
-              <caption class="sr-only">Mortalidad por fecha</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Fecha</th>
-                  <th scope="col" class="text-right">Muertes</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let m of mortalities" class="db-row">
-                  <td>{{ m.date }}</td>
-                  <td class="text-right">{{ m.deaths }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </ng-container>
-      </article>
-    </section>
-  </main>
-</div>
-
-<!-- Skeletons -->
-<ng-template #kpiSk>
-  <div class="sk sk--value"></div>
-</ng-template>
-
-<ng-template #listSk>
-  <div class="sk-list">
-    <div class="sk sk--line"></div>
-    <div class="sk sk--line"></div>
-    <div class="sk sk--line"></div>
-    <div class="sk sk--line"></div>
+  
+        <!-- Mortalidad -->
+        <div class="bg-white rounded-lg shadow p-4">
+          <h2 class="text-xl font-semibold text-brand-red mb-4">Mortalidad Reciente</h2>
+          <table class="min-w-full text-left">
+            <thead class="bg-warm-gray-200">
+              <tr>
+                <th class="px-4 py-2">Fecha</th>
+                <th class="px-4 py-2">Muertes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let m of mortalities" class="border-b border-warm-gray-200">
+                <td class="px-4 py-2">{{ m.date }}</td>
+                <td class="px-4 py-2">{{ m.deaths }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
   </div>
-</ng-template>
-
-<ng-template #barsSk>
-  <div class="sk-bars">
-    <div class="sk sk--bar"></div>
-    <div class="sk sk--bar"></div>
-    <div class="sk sk--bar"></div>
-    <div class="sk sk--bar"></div>
-  </div>
-</ng-template>
-
-<ng-template #tableSk>
-  <div class="sk-table">
-    <div class="sk sk--row"></div>
-    <div class="sk sk--row"></div>
-    <div class="sk sk--row"></div>
-    <div class="sk sk--row"></div>
-  </div>
-</ng-template>
+  

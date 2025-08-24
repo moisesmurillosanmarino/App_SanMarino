@@ -1,25 +1,19 @@
-// src/app/app.config.ts
 import { ApplicationConfig, importProvidersFrom } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { authInterceptor } from './core/auth/auth.interceptor';
 import { ReactiveFormsModule } from '@angular/forms';
+import { HttpClientModule }    from '@angular/common/http';
 
-// 👇 Mantén solo los componentes que realmente se usan por referencia directa en rutas.
-// Login se usa de forma no-lazy (ok), Dashboard se cargará en lazy (NO lo importes aquí).
-import { LoginComponent } from './features/auth/login/login.component';
-
-// Rutas “config” que usas con component (no-lazy) – puedes dejarlas así por ahora
+// Auth / Dashboard / Configuración
+import { LoginComponent }             from './features/auth/login/login.component';
+import { DashboardComponent }         from './features/dashboard/dashboard.component';
 import { ConfigComponent }            from './features/config/config.component';
 import { MasterListsComponent }       from './features/config/master-lists/master-lists.component';
 import { ListDetailComponent }        from './features/config/master-lists/list-detail/list-detail.component';
 import { CompanyManagementComponent } from './features/config/company-management/company-management.component';
 import { RoleManagementComponent }    from './features/config/role-management/role-management.component';
-import { UserManagementComponent }    from './features/config/user-management/user-management.component';
-import { authGuard } from './core/auth/auth.guard';
 
 // Geografía
-import { CountryListComponent } from './features/config/geography/country-list/country-list.component';
+import { CountryListComponent }       from './features/config/geography/country-list/country-list.component';
 import { CountryDetailComponent }     from './features/config/geography/country-detail/country-detail.component';
 import { StateListComponent }         from './features/config/geography/state-list/state-list.component';
 import { StateDetailComponent }       from './features/config/geography/state-detail/state-detail.component';
@@ -36,59 +30,50 @@ import { NucleoFormComponent } from './features/nucleo/components/nucleo-form/nu
 import { GalponListComponent } from './features/galpon/components/galpon-list/galpon-list.component';
 import { GalponFormComponent } from './features/galpon/components/galpon-form/galpon-form.component';
 import { LoteListComponent }   from './features/lote/components/lote-list/lote-list.component';
+import { LoteFormComponent }   from './features/lote/components/lote-form/lote-form.component';
+import { UserManagementComponent } from './features/config/user-management/user-management.component';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    importProvidersFrom(ReactiveFormsModule),
-    provideHttpClient(withInterceptors([authInterceptor])),
-
+    importProvidersFrom(
+      ReactiveFormsModule,
+      HttpClientModule
+    ),
     provideRouter([
+      // público
       { path: '', redirectTo: 'login', pathMatch: 'full' },
-
-      // Público
-      { path: 'login', component: LoginComponent },
-
-      // Protegido
-      {
-        path: 'dashboard',
-        canActivate: [authGuard],
-        // 👇 LAZY LOAD del componente standalone
-        loadComponent: () =>
-          import('./features/dashboard/dashboard.component')
-            .then(m => m.DashboardComponent)
-      },
-
+      { path: 'login',    component: LoginComponent },
+      { path: 'dashboard', component: DashboardComponent },
       {
         path: 'daily-log',
-        canActivate: [authGuard],
         children: [
           { path: '', redirectTo: 'seguimiento', pathMatch: 'full' },
           {
             path: 'seguimiento',
             loadChildren: () =>
               import('./features/lote-levante/seguimiento-lote-levante.module')
-                .then(m => m.SeguimientoLoteLevanteModule)
+              .then(m => m.SeguimientoLoteLevanteModule)
           },
           {
             path: 'produccion',
             loadChildren: () =>
               import('./features/lote-produccion/lote-produccion.module')
-                .then(m => m.LoteProduccionModule)
+              .then(m => m.LoteProduccionModule)
           },
           {
             path: 'reproductora',
             loadChildren: () =>
               import('./features/lote-reproductora/lote-reproductora.module')
-                .then(m => m.LoteReproductoraModule)
+              .then(m => m.LoteReproductoraModule)
           }
         ]
       },
-
+      // config
       {
         path: 'config',
         component: ConfigComponent,
-        canActivate: [authGuard],
         children: [
+          // configuración previa...
           { path: 'master-lists',     component: MasterListsComponent },
           { path: 'master-lists/new', component: ListDetailComponent },
           { path: 'master-lists/:id', component: ListDetailComponent },
@@ -98,50 +83,43 @@ export const appConfig: ApplicationConfig = {
           { path: 'users',           component: UserManagementComponent },
 
           // geografía
-          { path: 'countries',        component: CountryListComponent },
-          { path: 'countries/new',    component: CountryDetailComponent },
-          { path: 'countries/:id',    component: CountryDetailComponent },
-          { path: 'states',           component: StateListComponent },
-          { path: 'states/new',       component: StateDetailComponent },
-          { path: 'states/:id',       component: StateDetailComponent },
-          { path: 'departments',      component: DepartmentListComponent },
-          { path: 'departments/new',  component: DepartmentDetailComponent },
-          { path: 'departments/:id',  component: DepartmentDetailComponent },
-          { path: 'cities',           component: CityListComponent },
-          { path: 'cities/new',       component: CityDetailComponent },
-          { path: 'cities/:id',       component: CityDetailComponent },
+          { path: 'countries',       component: CountryListComponent },
+          { path: 'countries/new',   component: CountryDetailComponent },
+          { path: 'countries/:id',   component: CountryDetailComponent },
+          { path: 'states',          component: StateListComponent },
+          { path: 'states/new',      component: StateDetailComponent },
+          { path: 'states/:id',      component: StateDetailComponent },
+          { path: 'departments',     component: DepartmentListComponent },
+          { path: 'departments/new', component: DepartmentDetailComponent },
+          { path: 'departments/:id', component: DepartmentDetailComponent },
+          { path: 'cities',          component: CityListComponent },
+          { path: 'cities/new',      component: CityDetailComponent },
+          { path: 'cities/:id',      component: CityDetailComponent },
 
           // CRUD Granjas
-          { path: 'farms-list',          component: FarmListComponent },
-          { path: 'farms-list/new',      component: FarmFormComponent },
-          { path: 'farms-list/:id/edit', component: FarmFormComponent },
+          { path: 'farms-list',             component: FarmListComponent },
+          { path: 'farms-list/new',         component: FarmFormComponent },
+          { path: 'farms-list/:id/edit',    component: FarmFormComponent },
 
-          // Núcleos
+          // Núcleos dentro de una granja
           { path: 'nucleos',           component: NucleoListComponent },
           { path: 'nucleos/new',       component: NucleoFormComponent },
           { path: 'nucleos/:nucleoId', component: NucleoFormComponent },
 
-          // Galpones
+          // Galpones dentro de un núcleo
           { path: 'galpones',           component: GalponListComponent },
           { path: 'galpones/new',       component: GalponFormComponent },
           { path: 'galpones/:galponId', component: GalponFormComponent },
 
           // Lotes
-          { path: 'lotes', component: LoteListComponent },
+          { path: 'lotes',      component: LoteListComponent },
+          { path: 'lotes/new',  component: LoteFormComponent },
+          { path: 'lotes/:id',  component: LoteFormComponent },
 
-           // 👇 NUEVO: Catálogo de Alimentos (lazy)
-          {
-            path: 'catalogo-alimentos',
-            loadChildren: () =>
-              import('./features/catalogo-alimentos/catalogo-alimentos.module')
-                .then(m => m.CatalogoAlimentosModule)
-          },
-
+          // defecto
           { path: '', redirectTo: 'farms-list', pathMatch: 'full' }
         ]
-      },
-
-      { path: '**', redirectTo: 'login' }
+      }
     ])
   ]
 };

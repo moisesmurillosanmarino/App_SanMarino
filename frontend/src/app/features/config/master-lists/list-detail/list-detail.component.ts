@@ -20,6 +20,7 @@ import {
 import { SidebarComponent } from '../../../../shared/components/sidebar/sidebar.component';
 import {
   MasterListService,
+  MasterListDto,
   CreateMasterListDto,
   UpdateMasterListDto
 } from '../../../../core/services/master-list/master-list.service';
@@ -39,14 +40,12 @@ import { finalize } from 'rxjs';
   styleUrls: ['./list-detail.component.scss']
 })
 export class ListDetailComponent implements OnInit {
-  // Icons
   public faList  = faList;
   public faPlus  = faPlus;
   public faTrash = faTrash;
   public faTimes = faTimes;
   public faSave  = faSave;
 
-  // State
   public listForm!: FormGroup;
   public isEdit = false;
   public loading = false;
@@ -70,57 +69,54 @@ export class ListDetailComponent implements OnInit {
 
     const idParam = this.route.snapshot.paramMap.get('id');
 
-    // Crear
+    // Si la ruta es "/new", nos quedamos en modo CREAR:
     if (idParam === null || idParam === 'new') {
       this.isEdit = false;
       return;
     }
 
-    // Editar
+    // Parsear el ID numericamente:
     const idNum = Number(idParam);
     if (isNaN(idNum)) {
+      // Ruta inválida, volvemos al listado
       this.router.navigate(['/config/master-lists']);
       return;
     }
 
+    // Modo EDITAR
     this.isEdit = true;
     this.listForm.get('key')!.disable();
-    this.loading = true;
 
+    this.loading = true;
     this.svc.getById(idNum)
       .pipe(finalize(() => this.loading = false))
       .subscribe({
         next: dto => {
+          // Parchea *ambos* campos simples de una vez:
           this.listForm.patchValue({
             key:  dto.key,
             name: dto.name
           });
 
-          const fa = this.options;
+          // Reconstruye el FormArray de options
+          const fa = this.options;   // getter del FormArray
           fa.clear();
-          if (dto.options?.length) {
-            dto.options.forEach(opt =>
-              fa.push(this.fb.control(opt, Validators.required))
-            );
-          } else {
-            fa.push(this.fb.control('', Validators.required));
-          }
+          dto.options.forEach(opt =>
+            fa.push(this.fb.control(opt, Validators.required))
+          );
         },
-        error: () => this.router.navigate(['/config/master-lists'])
+        error: () => {
+          // Si falla la carga, volvemos al listado:
+          this.router.navigate(['/config/master-lists']);
+        }
       });
   }
 
-  // === Getters ===
+  // Getter para el FormArray
   get options(): FormArray {
     return this.listForm.get('options') as FormArray;
   }
 
-  // trackBy correcto para *ngFor
-  trackByIndex(index: number): number {
-    return index;
-  }
-
-  // === Actions ===
   addOption() {
     this.options.push(this.fb.control('', Validators.required));
   }
@@ -138,16 +134,14 @@ export class ListDetailComponent implements OnInit {
     }
 
     const raw = this.listForm.getRawValue();
-    this.loading = true;
-
     if (this.isEdit) {
-      const id = Number(this.route.snapshot.paramMap.get('id'));
       const dto: UpdateMasterListDto = {
-        id,
-        key: raw.key,     // aunque está disabled, getRawValue lo incluye
+        id: +this.route.snapshot.paramMap.get('id')!,
+        key: raw.key,
         name: raw.name,
         options: raw.options
       };
+      this.loading = true;
       this.svc.update(dto)
         .pipe(finalize(() => this.loading = false))
         .subscribe(() => this.router.navigate(['/config/master-lists']));
@@ -157,6 +151,7 @@ export class ListDetailComponent implements OnInit {
         name: raw.name,
         options: raw.options
       };
+      this.loading = true;
       this.svc.create(dto)
         .pipe(finalize(() => this.loading = false))
         .subscribe(() => this.router.navigate(['/config/master-lists']));

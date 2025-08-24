@@ -28,8 +28,7 @@ import {
     RouterModule,
     FontAwesomeModule
   ],
-  templateUrl: './farm-form.component.html',
-  styleUrls: ['./farm-form.component.scss']
+  templateUrl: './farm-form.component.html'
 })
 export class FarmFormComponent implements OnInit {
   form!: FormGroup;

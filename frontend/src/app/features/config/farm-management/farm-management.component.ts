@@ -1,6 +1,6 @@
 // src/app/features/config/farm-management/farm-management.component.ts
 import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule }                               from '@angular/common';
 import {
   ReactiveFormsModule,
   FormBuilder,
@@ -8,8 +8,8 @@ import {
   FormArray,
   Validators
 } from '@angular/forms';
-import { SidebarComponent } from '../../../shared/components/sidebar/sidebar.component';
-import { FontAwesomeModule, FaIconLibrary } from '@fortawesome/angular-fontawesome';
+import { SidebarComponent }                           from '../../../shared/components/sidebar/sidebar.component';
+import { FontAwesomeModule, FaIconLibrary }           from '@fortawesome/angular-fontawesome';
 import {
   faTractor,
   faPlus,
@@ -23,19 +23,15 @@ interface Company {
   id: number;
   name: string;
 }
-interface House {
-  id: number;
-  name: string;
-}
 interface Nucleus {
   id: number;
   name: string;
-  houses: House[];
+  houses: { id: number; name: string }[];
 }
 interface Farm {
   id?: number;
   name: string;
-  companyId: number | null;
+  companyId: number;
   address: string;
   nuclei: Nucleus[];
 }
@@ -54,7 +50,7 @@ interface Farm {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class FarmManagementComponent implements OnInit {
-  // Icons (template los usa directamente)
+  // Iconos
   faTractor = faTractor;
   faPlus    = faPlus;
   faTrash   = faTrash;
@@ -62,16 +58,12 @@ export class FarmManagementComponent implements OnInit {
   faEye     = faEye;
   faTimes   = faTimes;
 
-  // Loading para overlays/toast
-  loading = false;
-
-  // Datos demo (puedes reemplazar por servicios cuando quieras)
+  // Datos en memoria
   companies: Company[] = [
     { id: 1, name: 'Agroavicola San Marino' },
     { id: 2, name: 'Piko' }
   ];
-  companyMap: Record<number, string> = {};
-
+  companyMap: Record<number,string> = {};
   farms: Farm[] = [
     {
       id: 1,
@@ -98,8 +90,8 @@ export class FarmManagementComponent implements OnInit {
       companyId: 1,
       address: 'Calle 45-543',
       nuclei: [
-        { id: 31, name: 'Núcleo B', houses: [{ id: 311, name: 'Galpón 1' }, { id: 312, name: 'Galpón 2' }] },
-        { id: 32, name: 'Núcleo C', houses: [{ id: 321, name: 'Galpón 3' }, { id: 322, name: 'Galpón 4' }] }
+        { id: 21, name: 'Núcleo B', houses: [{ id: 211, name: 'Galpón 1' }, { id: 212, name: 'Galpón 2' }] },
+        { id: 22, name: 'Núcleo C', houses: [{ id: 221, name: 'Galpón 3' }, { id: 222, name: 'Galpón 4' }] }
       ]
     }
   ];
@@ -110,8 +102,7 @@ export class FarmManagementComponent implements OnInit {
   detailOpen  = false;
   editing     = false;
   selectedFarm: Farm | null = null;
-
-  private nextId = 1; // se recalcula en ngOnInit
+  private nextId = 3;
 
   constructor(
     private fb: FormBuilder,
@@ -121,15 +112,9 @@ export class FarmManagementComponent implements OnInit {
   }
 
   ngOnInit() {
-    // Mapa de empresas para mostrar en la tabla
-    this.companyMap = this.companies.reduce((m, c) => {
-      m[c.id] = c.name;
-      return m;
-    }, {} as Record<number, string>);
-
-    // Calcular siguiente ID disponible
-    const maxId = Math.max(0, ...this.farms.map(f => f.id || 0));
-    this.nextId = maxId + 1;
+    // Mapeo de empresas
+    this.companyMap = this.companies
+      .reduce((m, c) => ((m[c.id] = c.name), m), {} as Record<number,string>);
 
     // Construir formulario
     this.form = this.fb.group({
@@ -141,123 +126,95 @@ export class FarmManagementComponent implements OnInit {
     });
   }
 
-  // ===== Helpers Form =====
+  // FormArray de Núcleos
   get nucleiFA(): FormArray {
     return this.form.get('nuclei') as FormArray;
   }
 
-  housesFA(nucIndex: number): FormArray {
-    return this.nucleiFA.at(nucIndex).get('houses') as FormArray;
-  }
-
-  // ===== Núcleos =====
+  // Añadir / eliminar núcleos
   newNucleus() {
-    this.nucleiFA.push(
-      this.fb.group({
-        id:     [Date.now()],
-        name:   ['', Validators.required],
-        houses: this.fb.array([])
-      })
-    );
+    this.nucleiFA.push(this.fb.group({
+      id:     [Date.now()],
+      name:   ['', Validators.required],
+      houses: this.fb.array([])
+    }));
   }
-
   removeNucleus(i: number) {
     this.nucleiFA.removeAt(i);
   }
 
-  // ===== Galpones =====
-  addHouse(nucIndex: number) {
-    this.housesFA(nucIndex).push(
-      this.fb.group({
-        id:   [Date.now()],
-        name: ['', Validators.required]
-      })
-    );
+  // FormArray de Galpones dentro de un Núcleo
+  housesFA(nucIndex: number): FormArray {
+    return this.nucleiFA.at(nucIndex).get('houses') as FormArray;
   }
-
+  addHouse(nucIndex: number) {
+    this.housesFA(nucIndex).push(this.fb.group({
+      id:   [Date.now()],
+      name: ['', Validators.required]
+    }));
+  }
   removeHouse(nucIndex: number, houseIndex: number) {
     this.housesFA(nucIndex).removeAt(houseIndex);
   }
 
-  // ===== Modal Crear/Editar =====
+  // Abrir modal Creación/Edición
   openModal(farm?: Farm) {
     this.editing = !!farm;
-    this.modalOpen = true;
-    this.form.reset({ id: null, name: '', companyId: null, address: '' });
+    this.form.reset();
     this.nucleiFA.clear();
 
     if (farm) {
-      // Patch de campos simples
       this.form.patchValue({
-        id:        farm.id ?? null,
-        name:      farm.name ?? '',
-        companyId: farm.companyId ?? null,
-        address:   farm.address ?? ''
+        id:        farm.id,
+        name:      farm.name,
+        companyId: farm.companyId,
+        address:   farm.address
       });
-
-      // Reconstruir núcleos + galpones
-      (farm.nuclei || []).forEach(n => {
-        const housesFA = this.fb.array(
-          (n.houses || []).map(h =>
-            this.fb.group({
-              id:   [h.id],
-              name: [h.name, Validators.required]
-            })
-          )
-        );
-
-        this.nucleiFA.push(
-          this.fb.group({
-            id:     [n.id],
-            name:   [n.name, Validators.required],
-            houses: housesFA
-          })
-        );
+      farm.nuclei.forEach(n => {
+        const grp = this.fb.group({
+          id:     [n.id],
+          name:   [n.name, Validators.required],
+          houses: this.fb.array([])
+        });
+        n.houses.forEach(h => (grp.get('houses') as FormArray).push(
+          this.fb.group({ id: [h.id], name: [h.name, Validators.required] })
+        ));
+        this.nucleiFA.push(grp);
       });
     }
+
+    this.modalOpen = true;
+  }
+
+  // Guardar cambios
+  save() {
+    if (this.form.invalid) return;
+    const farm = this.form.value as Farm;
+
+    if (this.editing && farm.id != null) {
+      this.farms = this.farms.map(f => f.id === farm.id ? farm : f);
+    } else {
+      farm.id = this.nextId++;
+      this.farms.push(farm);
+    }
+    this.closeModal();
+  }
+
+  // Eliminar granja
+  deleteFarm(id: number) {
+    if (!confirm('¿Eliminar esta granja?')) return;
+    this.farms = this.farms.filter(f => f.id !== id);
   }
 
   closeModal() {
     this.modalOpen = false;
   }
 
-  // ===== Guardar =====
-  save() {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      return;
-    }
-
-    this.loading = true;
-
-    const farm: Farm = this.form.getRawValue();
-
-    if (this.editing && farm.id != null) {
-      // Update inmutable para OnPush
-      this.farms = this.farms.map(f => (f.id === farm.id ? { ...farm } : f));
-    } else {
-      farm.id = this.nextId++;
-      this.farms = [...this.farms, { ...farm }];
-    }
-
-    this.loading = false;
-    this.closeModal();
-  }
-
-  // ===== Eliminar =====
-  deleteFarm(id: number) {
-    if (!confirm('¿Eliminar esta granja?')) return;
-    this.loading = true;
-    this.farms = this.farms.filter(f => f.id !== id);
-    this.loading = false;
-  }
-
-  // ===== Detalle (solo lectura) =====
+  // Modal detalle (solo lectura)
   openDetail(farm: Farm) {
     this.selectedFarm = farm;
     this.detailOpen = true;
   }
-
   closeDetail() {
     this.detailOpen = false;
     this.selectedFarm = null;

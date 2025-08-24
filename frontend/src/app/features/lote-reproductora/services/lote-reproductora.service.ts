@@ -1,4 +1,3 @@
-//app/features/lote-reproductora/services/lote-reproductora.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -42,7 +41,7 @@ export interface LoteDtoExtendido {
   avesEncasetadas?: number;
   pesoInicialM?: number;
   pesoInicialH?: number;
-  pesoMixto?: number | null;
+  pesoMixto?: number;
 }
 
 
@@ -60,7 +59,6 @@ export interface LoteReproductoraDto {
   unifM: number;
   pesoInicialM: number;
   pesoInicialH: number;
-  pesoMixto?: number | null;
 }
 
 export interface CreateLoteReproductoraDto extends Omit<LoteReproductoraDto, never> {}
@@ -115,11 +113,6 @@ export class LoteReproductoraService {
 
   updateLote(dto: LoteDtoExtendido): Observable<any> {
     return this.http.put(`${this.base}/Lote/${dto.loteId}`, dto);
-  }
-
-   // 👇 NUEVO: crear varias de una
-  createMany(dtos: CreateLoteReproductoraDto[]): Observable<LoteReproductoraDto[]> {
-    return this.http.post<LoteReproductoraDto[]>(`${this.base}/LoteReproductora/bulk`, dtos);
   }
 
 }
