@@ -1,0 +1,61 @@
+<div class="ux-page" [attr.aria-busy]="loading ? 'true' : null">
+  <app-sidebar class="ux-sidebar"></app-sidebar>
+
+  <div class="ux-main">
+    <header class="ux-header">
+      <div class="ux-header__title">
+        <h1>{{ editingId ? 'Editar Alimento' : 'Nuevo Alimento' }}</h1>
+      </div>
+    </header>
+
+    <section class="ux-card">
+      <form [formGroup]="form" (ngSubmit)="save()" class="ux-form" novalidate>
+        <div class="grid grid-2">
+          <div class="form-field">
+            <label for="f-cod">Código</label>
+            <input id="f-cod" type="text" formControlName="codigo" [readonly]="editingId"/>
+          </div>
+
+          <div class="form-field">
+            <label for="f-nom">Nombre</label>
+            <input id="f-nom" type="text" formControlName="nombre"/>
+          </div>
+
+          <div class="form-field">
+            <label for="f-act">Activo</label>
+            <select id="f-act" formControlName="activo">
+              <option [ngValue]="true">Sí</option>
+              <option [ngValue]="false">No</option>
+            </select>
+          </div>
+
+          <div class="form-field form-field--full">
+            <div class="meta-editor">
+              <div class="meta-header">
+                <strong>Metadata</strong>
+                <button type="button" class="btn btn--ghost" (click)="addMetaRow()">+ Agregar</button>
+              </div>
+
+              <div class="meta-rows" formArrayName="metadata">
+                <div class="meta-row" *ngFor="let row of metadataArray.controls; index as i" [formGroupName]="i">
+                  <input type="text" placeholder="clave" formControlName="key" />
+                  <input type="text" placeholder="valor" formControlName="value" />
+                  <button type="button" class="icon-btn icon-btn--danger" (click)="removeMetaRow(i)" title="Quitar">🗑</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <footer class="form-footer">
+          <button type="button" class="btn btn--ghost" (click)="cancel()">Cancelar</button>
+          <button type="submit" class="btn btn--primary" [disabled]="loading">Guardar</button>
+        </footer>
+      </form>
+
+      <div *ngIf="loading" class="loading-overlay" aria-live="polite" role="status">
+        <div class="spinner"></div> Guardando…
+      </div>
+    </section>
+  </div>
+</div>
