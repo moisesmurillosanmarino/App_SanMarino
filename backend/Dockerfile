@@ -1,21 +1,25 @@
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+# Etapa 1: Runtime base
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
 WORKDIR /app
-EXPOSE 5000
+EXPOSE 80
 
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+# Etapa 2: Build
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
-# Copiar solo el .csproj para restaurar dependencias primero
-COPY ./src/ZooSanMarino.API/ZooSanMarino.API.csproj ./ZooSanMarino.API/
-RUN dotnet restore ./ZooSanMarino.API/ZooSanMarino.API.csproj
+COPY ./ZooSanMarino.sln .
+COPY ./src ./src
+COPY ./tests ./tests
 
-# Copiar el resto del código
-COPY ./src/ZooSanMarino.API ./ZooSanMarino.API
+RUN dotnet restore "ZooSanMarino.sln"
 
-WORKDIR /src/ZooSanMarino.API
-RUN dotnet publish -c Release -o /app/publish
+WORKDIR /src/src/ZooSanMarino.API
+RUN dotnet publish -c Release -o /app/publish --no-restore
 
+# Etapa final: runtime
 FROM base AS final
 WORKDIR /app
 COPY --from=build /app/publish .
+
+ENV ASPNETCORE_URLS=http://+:80
 ENTRYPOINT ["dotnet", "ZooSanMarino.API.dll"]

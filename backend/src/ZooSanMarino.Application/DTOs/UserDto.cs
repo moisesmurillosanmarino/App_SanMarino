@@ -38,3 +38,4 @@ public record UpdateUserDto(
     int[]?   CompanyIds,
     int[]?   RoleIds
 );
+
