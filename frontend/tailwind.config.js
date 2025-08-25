@@ -1,8 +1,6 @@
 // tailwind.config.js
 module.exports = {
-  content: [
-    "./src/**/*.{html,ts}", // OK
-  ],
+  content: ["./src/**/*.{html,ts}"],
   theme: {
     extend: {
       colors: {
@@ -15,9 +13,8 @@ module.exports = {
       },
     },
   },
-  plugins: [
-    require('@tailwindcss/forms'),
-  ],
-}
+  plugins: [require('@tailwindcss/forms')],
+};
+
 
 

@@ -1,30 +1,40 @@
-# Etapa 1: Compilar Angular
-FROM node:18-alpine AS builder
-WORKDIR /app
+# ---------- deps ----------
+  FROM node:20-alpine AS deps
+  WORKDIR /app
 
-# Copiar archivos necesarios
-COPY package.json yarn.lock ./
-COPY angular.json tsconfig*.json ./
-COPY src/ ./src
+  # Usa Yarn si ya está en la imagen; si no existe, lo instala
+  RUN if command -v yarn >/dev/null 2>&1; then yarn --version; else npm i -g yarn@1.22.22; fi
 
-# Instalar dependencias
-RUN yarn install
+  # Copiamos manifests (mejor caché)
+  COPY package.json ./
 
-# Generar build con baseHref correcto
-RUN yarn ng build --configuration production --base-href=/
+  # Instala dependencias con o sin lockfile
+  RUN if [ -f yarn.lock ]; then \
+        yarn install --frozen-lockfile --non-interactive; \
+      else \
+        yarn install --non-interactive; \
+      fi
 
-# Etapa 2: Nginx para servir la app
-FROM nginx:stable-alpine
+  # ---------- build ----------
+  FROM node:20-alpine AS build
+  WORKDIR /app
+  COPY --from=deps /app/node_modules ./node_modules
+  COPY . .
 
-# Limpiar la carpeta por defecto
-WORKDIR /usr/share/nginx/html
-RUN rm -rf ./*
+  # Build de producción (builder "application" => dist/browser)
+  RUN yarn build --configuration docker
 
-# Copiar el build generado
-COPY --from=builder /app/dist/browser/ ./
 
-# Puerto expuesto
-EXPOSE 80
+  # ---------- runtime ----------
+  FROM nginx:1.27-alpine AS runtime
+  WORKDIR /usr/share/nginx/html
+  RUN apk add --no-cache curl
 
-# Comando por defecto
-CMD ["nginx", "-g", "daemon off;"]
+  # NGINX config (SPA con fallback a index.html)
+  COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+  # Copia artefactos del build (Angular 17 application => dist/browser)
+  COPY --from=build /app/dist/browser .
+
+  EXPOSE 80
+  HEALTHCHECK CMD curl -fsS http://localhost/ || exit 1

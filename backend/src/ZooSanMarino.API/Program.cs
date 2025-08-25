@@ -53,16 +53,16 @@ builder.Services.AddSingleton(jwt);
 // ─────────────────────────────────────
 var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
 // CORS totalmente abierto (DEV ONLY)
-builder.Services.AddCors(o =>
+builder.Services.AddCors(options =>
 {
-    o.AddPolicy("AppCors", p =>
-    {
-        p.SetIsOriginAllowed(_ => true)  // acepta cualquier Origin
-         .AllowAnyHeader()                // acepta cualquier header
-         .AllowAnyMethod();               // acepta cualquier método
-        // NO usar .AllowCredentials() con "cualquier origin"
-    });
+    options.AddPolicy("AppCors", policy =>
+        policy
+            .AllowAnyOrigin()   // acepta cualquier Origin
+            .AllowAnyMethod()   // GET, POST, PUT, DELETE, OPTIONS, etc.
+            .AllowAnyHeader()   // Authorization, Content-Type, etc.
+    );
 });
+
 
 
 // ─────────────────────────────────────
