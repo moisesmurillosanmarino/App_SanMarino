@@ -25,3 +25,24 @@ Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To u
 ## Further help
 
 To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
+
+
+
+Y asegúrate que la definición de tarea en ECS esté configurada con:
+
+Arquitectura: Linux/X86_64
+
+Fargate (como ya lo tienes)
+
+
+
+docker buildx build \
+  --platform linux/amd64 \
+  -t 196080479890.dkr.ecr.us-east-2.amazonaws.com/sanmarino/zootecnia/granjas/frontend:latest \
+  --push .
+
+
+Después de guardar este package.json, corre:
+
+yarn build:ssr
+yarn compile:server

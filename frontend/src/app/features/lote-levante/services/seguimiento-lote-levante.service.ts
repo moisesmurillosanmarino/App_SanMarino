@@ -1,3 +1,4 @@
+//app/features/lote-levante/services/seguimiento-lote-levante.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';

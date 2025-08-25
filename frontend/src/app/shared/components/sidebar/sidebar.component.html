@@ -1,4 +1,5 @@
-<div class="flex flex-col h-screen bg-white shadow-lg">
+<!-- src/app/shared/components/sidebar/sidebar.component.html -->
+<div class="flex flex-col h-screen bg-white shadow-lg sidebar-root">
   <!-- Logo -->
   <div class="flex items-center justify-center h-20 bg-white">
     <img
@@ -8,9 +9,34 @@
     />
   </div>
 
+  <!-- Banner Bienvenida -->
+  <div class="mx-3 mt-2">
+    <div class="welcome-card grid grid-cols-[44px_1fr] gap-3 rounded-xl border border-yellow-300/40 bg-gradient-to-b from-yellow-100/30 to-yellow-200/30 p-3 relative overflow-hidden">
+      <!-- brillo diagonal sutil -->
+      <span class="pointer-events-none absolute -top-10 -right-12 w-56 h-56 rounded-full bg-white/30 blur-3xl"></span>
+
+      <div class="avatar grid place-items-center w-11 h-11 rounded-full border border-yellow-300/60 bg-yellow-50 shadow-sm text-gray-800 font-bold">
+        {{ (userBanner$ | async)?.initials }}
+      </div>
+
+      <div class="info flex flex-col">
+        <div class="leading-tight">
+          <span class="text-xs text-gray-500 mr-1">Bienvenido,</span>
+          <strong class="text-sm text-gray-800">{{ (userBanner$ | async)?.fullName }}</strong>
+        </div>
+
+        <div class="mt-1">
+          <span class="inline-block text-[11px] px-2 py-[2px] rounded-full border border-yellow-300 bg-yellow-50 text-amber-900">
+            {{ (userBanner$ | async)?.company }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Menú -->
   <div class="flex-1 overflow-y-auto">
-    <nav class="mt-6">
+    <nav class="mt-4">
       <ul class="space-y-1">
         <li *ngFor="let item of menuItems">
           <!-- Nivel 1: ítem con submenú -->
@@ -106,4 +132,3 @@
     </button>
   </div>
 </div>
- 
