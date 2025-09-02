@@ -1,3 +1,4 @@
+<!-- src/app/features/lote-levante/pages/seguimiento-lote-levante-form/seguimiento-lote-levante-form.component.html -->
 <div class="ux-page">
   <!-- Sidebar -->
   <app-sidebar class="ux-sidebar"></app-sidebar>
@@ -7,21 +8,19 @@
     <!-- Header -->
     <header class="ux-header">
       <div class="ux-header__title">
-        <h1>{{ seguimientoId ? 'Editar Seguimiento de Levante' : 'Nuevo Seguimiento de Levante' }}</h1>
+        <h1>{{ isEdit ? 'Editar Seguimiento de Levante' : 'Nuevo Seguimiento de Levante' }}</h1>
 
         <div class="ux-header__meta">
-          <!-- Si hay lote seleccionado -->
           <ng-container *ngIf="form.get('loteId')?.value as lid; else noLoteChip">
             <span class="chip chip--info">
               <span class="chip__dot"></span>
-              Lote: {{ lotesById[lid]?.loteNombre || lid }}
+              Lote: {{ loteNombre(lid) }}
             </span>
             <span class="chip chip--muted">
               {{ calcularEdadSemanas(lotesById[lid]?.fechaEncaset) }} sem
             </span>
           </ng-container>
 
-          <!-- Si NO hay lote -->
           <ng-template #noLoteChip>
             <span class="chip chip--warning">
               <span class="chip__dot"></span>
@@ -54,39 +53,35 @@
         <!-- Selección de lote y fecha -->
         <div class="grid grid-2">
           <div class="form-field">
-            <label for="fechaRegistro">Fecha <span class="req">*</span></label>
-            <input
-              id="fechaRegistro"
-              type="date"
-              formControlName="fechaRegistro"
-              [attr.aria-invalid]="form.get('fechaRegistro')?.invalid && form.get('fechaRegistro')?.touched ? 'true' : null"
-            />
-            <small class="field-error" *ngIf="form.get('fechaRegistro')?.invalid && form.get('fechaRegistro')?.touched">
-              Obligatorio.
-            </small>
-          </div>
-
-          <div class="form-field">
             <label for="loteId">Lote <span class="req">*</span></label>
             <div class="ux-select">
               <select
                 id="loteId"
                 formControlName="loteId"
-                [attr.aria-invalid]="form.get('loteId')?.invalid && form.get('loteId')?.touched ? 'true' : null"
+                [attr.aria-invalid]="f['loteId'].invalid && f['loteId'].touched ? 'true' : null"
               >
                 <option value="" disabled>— Selecciona un lote —</option>
                 <option *ngFor="let l of lotes" [ngValue]="l.loteId">
-                  {{ l.loteNombre }}
+                  {{ l.loteNombre }} ({{ calcularEdadSemanas(l.fechaEncaset) }} sem)
                 </option>
               </select>
             </div>
-
-            <!-- Edad del lote SIN funciones flecha -->
-            <small class="field-hint" *ngIf="form.get('loteId')?.valid">
-              Edad: {{ calcularEdadSemanas(lotesById[form.value.loteId].fechaEncaset ?? '') || '—' }} sem
+            <small class="field-hint" *ngIf="f['loteId'].valid">
+              Edad: {{ calcularEdadSemanas(lotesById[form.value.loteId]?.fechaEncaset) || '—' }} sem
             </small>
+            <small class="field-error" *ngIf="f['loteId'].invalid && f['loteId'].touched">Obligatorio.</small>
+          </div>
 
-            <small class="field-error" *ngIf="form.get('loteId')?.invalid && form.get('loteId')?.touched">
+          <div class="form-field">
+            <label for="fechaRegistro">Fecha <span class="req">*</span></label>
+            <input
+              id="fechaRegistro"
+              type="date"
+              formControlName="fechaRegistro"
+              [max]="maxDateForInput()"
+              [attr.aria-invalid]="f['fechaRegistro'].invalid && f['fechaRegistro'].touched ? 'true' : null"
+            />
+            <small class="field-error" *ngIf="f['fechaRegistro'].invalid && f['fechaRegistro'].touched">
               Obligatorio.
             </small>
           </div>
@@ -154,9 +149,9 @@
           <div class="form-field">
             <label for="ciclo">Ciclo</label>
             <div class="ux-select">
+              <!-- ⚠️ Backend: sólo 'Normal' -->
               <select id="ciclo" formControlName="ciclo">
                 <option value="Normal">Normal</option>
-                <option value="Reforzado">Reforzado</option>
               </select>
             </div>
           </div>

@@ -1,10 +1,9 @@
-// src/ZooSanMarino.API/Extensions/DatabaseExtensions.cs
+// file: backend/src/ZooSanMarino.API/Extensions/DatabaseExtensions.cs
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ZooSanMarino.Infrastructure.Persistence;
-using ZooSanMarino.Infrastructure.Persistence.Seed; // Seed_CatalogoItems
-using ZooSanMarino.Infrastructure.Seed;            // PermissionSeed, MenuSeed
+using ZooSanMarino.Infrastructure.Seed; // PermissionSeed, MenuSeed
 
 namespace ZooSanMarino.API.Extensions;
 
@@ -13,22 +12,22 @@ public static class DatabaseExtensions
     public static async Task MigrateAndSeedAsync(this WebApplication app)
     {
         using var scope = app.Services.CreateScope();
-        var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
-                                         .CreateLogger("Startup:DB");
+        var logger = scope.ServiceProvider
+                          .GetRequiredService<ILoggerFactory>()
+                          .CreateLogger("Startup:DB");
 
         try
         {
             var ctx = scope.ServiceProvider.GetRequiredService<ZooSanMarinoContext>();
 
-            // 1) Migraciones
-            await ctx.Database.MigrateAsync();
+            // 1) Migraciones (la migración crea/siembra catalogo_items)
+            //await ctx.Database.MigrateAsync();
 
-            // 2) Seeders idempotentes (ajusta el orden si alguno depende de otro)
+            // 2) Seeders idempotentes restantes
             await PermissionSeed.EnsureAsync(ctx);
             await MenuSeed.EnsureAsync(ctx);
-            await Seed_CatalogoItems.RunAsync(ctx, logger); 
 
-            logger.LogInformation("✅ DB migrated & seeded");
+            logger.LogInformation("✅ DB migrated & seeded (catalogo_items seeded via EF migration).");
         }
         catch (Exception ex)
         {

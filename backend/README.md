@@ -186,3 +186,18 @@ dotnet ef migrations add <nombre> --context ZooSanMarinoContext
 dotnet ef database update --context ZooSanMarinoContext
 
 (Recomendado mantener migraciones en Infrastructure).
+
+
+# 1) Asegúrate del cambio GalponId a string en PlanGramajeGalpon y de tener todas las Configuration
+dotnet build
+
+# 2) Genera migración con todos los cambios pendientes
+dotnet ef migrations add Align_Domain_20250901 -p backend/src/ZooSanMarino.Infrastructure -s backend/src/ZooSanMarino.API
+
+# 3) Aplica migración
+dotnet ef database update -s backend/src/ZooSanMarino.API
+
+# 4) Corre la API
+cd backend/src/ZooSanMarino.API
+dotnet run
+

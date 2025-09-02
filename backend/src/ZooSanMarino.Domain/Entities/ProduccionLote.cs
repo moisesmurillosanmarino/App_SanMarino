@@ -1,23 +1,26 @@
+// src/ZooSanMarino.Domain/Entities/ProduccionLote.cs
 namespace ZooSanMarino.Domain.Entities;
 
-public class ProduccionLote
+public class ProduccionLote : AuditableEntity
 {
-    public int Id { get; set; }
-    public string LoteId { get; set; } = null!;
-    public DateTime FechaInicioProduccion { get; set; }
+    public int      Id                     { get; set; }
+    public string   LoteId                 { get; set; } = null!;
+    public DateTime FechaInicioProduccion  { get; set; }
 
-    public int HembrasIniciales { get; set; }
-    public int MachosIniciales { get; set; }
-    public int HuevosIniciales { get; set; }
+    public int  HembrasIniciales { get; set; }
+    public int  MachosIniciales  { get; set; }
+    public int  HuevosIniciales  { get; set; }
+    public string TipoNido       { get; set; } = null!;
 
-    public string TipoNido { get; set; } = null!;
-
-    // Clave foránea compuesta
-    public string NucleoProduccionId { get; set; } = null!;
-    public int GranjaId { get; set; }
+    // Jerarquía ubicación (coherente con el resto del dominio)
+    public int     GranjaId   { get; set; }
+    public string  NucleoId   { get; set; } = null!;  // ← antes NucleoProduccionId
+    public string? GalponId   { get; set; }           // opcional si aplica
 
     public string Ciclo { get; set; } = "Normal";
 
-    public Lote Lote { get; set; } = null!;
-    public Nucleo NucleoProduccion { get; set; } = null!;
+    // Navegaciones
+    public Lote   Lote   { get; set; } = null!;
+    public Nucleo Nucleo { get; set; } = null!;
+    public Galpon? Galpon { get; set; }
 }

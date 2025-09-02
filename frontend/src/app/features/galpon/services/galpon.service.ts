@@ -8,6 +8,7 @@ export interface GalponDto {
   galponId: string;
   galponNombre: string;
   galponNucleoId: string;
+  NucleoId: string;
   granjaId: number;
   ancho: string;
   largo: string;
@@ -19,6 +20,7 @@ export interface CreateGalponDto {
   galponId: string;
   galponNombre: string;
   galponNucleoId: string;
+  NucleoId : string;
   granjaId: number;
   ancho: string;
   largo: string;
@@ -30,6 +32,7 @@ export interface UpdateGalponDto {
   galponNombre: string;
   galponNucleoId: string;
   granjaId: number;
+  NucleoId : string;
   ancho: string;
   largo: string;
   tipoGalpon: string;

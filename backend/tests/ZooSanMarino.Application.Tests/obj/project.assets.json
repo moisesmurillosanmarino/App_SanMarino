@@ -948,11 +948,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/chelsycardona/proyectos/sanmarinoApp/backend/tests/ZooSanMarino.Application.Tests/ZooSanMarino.Application.Tests.csproj",
+      "projectUniqueName": "/Users/chelsycardona/proyectos/copia origina organizando/App_SanMarino/backend/tests/ZooSanMarino.Application.Tests/ZooSanMarino.Application.Tests.csproj",
       "projectName": "ZooSanMarino.Application.Tests",
-      "projectPath": "/Users/chelsycardona/proyectos/sanmarinoApp/backend/tests/ZooSanMarino.Application.Tests/ZooSanMarino.Application.Tests.csproj",
+      "projectPath": "/Users/chelsycardona/proyectos/copia origina organizando/App_SanMarino/backend/tests/ZooSanMarino.Application.Tests/ZooSanMarino.Application.Tests.csproj",
       "packagesPath": "/Users/chelsycardona/.nuget/packages/",
-      "outputPath": "/Users/chelsycardona/proyectos/sanmarinoApp/backend/tests/ZooSanMarino.Application.Tests/obj/",
+      "outputPath": "/Users/chelsycardona/proyectos/copia origina organizando/App_SanMarino/backend/tests/ZooSanMarino.Application.Tests/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "/Users/chelsycardona/.nuget/NuGet/NuGet.Config"

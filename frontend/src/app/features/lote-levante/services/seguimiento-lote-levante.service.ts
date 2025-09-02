@@ -1,7 +1,7 @@
-//app/features/lote-levante/services/seguimiento-lote-levante.service.ts
+// src/app/features/lote-levante/services/seguimiento-lote-levante.service.ts
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 
 export interface SeguimientoLoteLevanteDto {
@@ -24,10 +24,8 @@ export interface SeguimientoLoteLevanteDto {
   ciclo: string;
 }
 
-
-
 export interface CreateSeguimientoLoteLevanteDto {
-  fechaRegistro: string;
+  fechaRegistro: string;   // ISO (ej: 2025-08-27T00:00:00.000Z)
   loteId: string;
   mortalidadHembras: number;
   mortalidadMachos: number;
@@ -42,44 +40,77 @@ export interface CreateSeguimientoLoteLevanteDto {
   protAlH?: number | null;
   kcalAveH?: number | null;
   protAveH?: number | null;
-  ciclo: string;
+  ciclo: string;           // backend valida "Normal"
 }
 
 export interface UpdateSeguimientoLoteLevanteDto extends CreateSeguimientoLoteLevanteDto {
   id: number;
 }
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class SeguimientoLoteLevanteService {
-  private readonly baseUrl = `${environment.apiUrl}/SeguimientoLoteLevante`; // ✅ Esta es la ruta nueva
-  // Si la ruta antigua es correcta, descomentar la línea de arriba y comentar la de abajo.
-  // private readonly baseUrl = `${environment.apiUrl}/seguimiento-lote-levante`; // ❌ Esta es la ruta antigua
+  /**
+   * Nota: environment.apiUrl debe incluir `/api` (p.ej. http://localhost:5002/api)
+   */
+  private readonly baseUrl = `${environment.apiUrl}/SeguimientoLoteLevante`;
 
   constructor(private http: HttpClient) {}
 
+  /** NUEVO: GET todo (usa /filtro sin parámetros) */
   getAll(): Observable<SeguimientoLoteLevanteDto[]> {
-    return this.http.get<SeguimientoLoteLevanteDto[]>(this.baseUrl);
+    return this.http.get<SeguimientoLoteLevanteDto[]>(`${this.baseUrl}/filtro`);
   }
 
+  /**
+   * Polyfill: obtener por id (el backend no expone GET /{id}).
+   * Se trae todo y filtra en cliente.
+   * Sugerencia: si quieres, añadimos en el back:
+   *   [HttpGet("{id}")] public async Task<IActionResult> GetById(int id) { ... }
+   */
   getById(id: number): Observable<SeguimientoLoteLevanteDto> {
-    return this.http.get<SeguimientoLoteLevanteDto>(`${this.baseUrl}/${id}`);
+    return this.getAll().pipe(
+      map((list) => {
+        const found = (list ?? []).find(x => x.id === id);
+        if (!found) throw new Error(`Seguimiento ${id} no encontrado`);
+        return found;
+      })
+    );
   }
 
+  /** GET por lote */
   getByLoteId(loteId: string): Observable<SeguimientoLoteLevanteDto[]> {
-    return this.http.get<SeguimientoLoteLevanteDto[]>(`${this.baseUrl}/por-lote/${loteId}`);
+    return this.http.get<SeguimientoLoteLevanteDto[]>(
+      `${this.baseUrl}/por-lote/${encodeURIComponent(loteId)}`
+    );
   }
 
+  /** GET filtro opcional (loteId, desde, hasta) */
+  filter(params: { loteId?: string; desde?: string | Date; hasta?: string | Date }): Observable<SeguimientoLoteLevanteDto[]> {
+    let httpParams = new HttpParams();
+    if (params.loteId) httpParams = httpParams.set('loteId', params.loteId);
+    if (params.desde)  httpParams = httpParams.set('desde', this.toIsoDate(params.desde));
+    if (params.hasta)  httpParams = httpParams.set('hasta', this.toIsoDate(params.hasta));
+    return this.http.get<SeguimientoLoteLevanteDto[]>(`${this.baseUrl}/filtro`, { params: httpParams });
+  }
+
+  /** Crear */
   create(dto: CreateSeguimientoLoteLevanteDto): Observable<SeguimientoLoteLevanteDto> {
     return this.http.post<SeguimientoLoteLevanteDto>(this.baseUrl, dto);
   }
 
+  /** Actualizar */
   update(dto: UpdateSeguimientoLoteLevanteDto): Observable<SeguimientoLoteLevanteDto> {
     return this.http.put<SeguimientoLoteLevanteDto>(`${this.baseUrl}/${dto.id}`, dto);
   }
 
+  /** Eliminar */
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${id}`);
+  }
+
+  // Helpers
+  private toIsoDate(d: string | Date): string {
+    const dd = typeof d === 'string' ? new Date(d) : d;
+    return dd.toISOString();
   }
 }

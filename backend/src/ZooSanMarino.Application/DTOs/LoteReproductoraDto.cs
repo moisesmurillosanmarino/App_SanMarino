@@ -1,3 +1,4 @@
+// file: src/ZooSanMarino.Application/DTOs/LoteReproductoraDto.cs
 namespace ZooSanMarino.Application.DTOs;
 
 public record LoteReproductoraDto(

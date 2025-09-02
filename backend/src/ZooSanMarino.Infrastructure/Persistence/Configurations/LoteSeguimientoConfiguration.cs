@@ -1,69 +1,34 @@
-// src/ZooSanMarino.Infrastructure/Persistence/Configurations/LoteSeguimientoConfiguration.cs
+// LoteSeguimientoConfiguration.cs
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using ZooSanMarino.Domain.Entities;
 
-namespace ZooSanMarino.Infrastructure.Persistence.Configurations;
-
 public class LoteSeguimientoConfiguration : IEntityTypeConfiguration<LoteSeguimiento>
 {
-    public void Configure(EntityTypeBuilder<LoteSeguimiento> e)
+    public void Configure(EntityTypeBuilder<LoteSeguimiento> builder)
     {
-        e.ToTable("lote_seguimientos");
-        e.HasKey(x => x.Id);
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).UseIdentityAlwaysColumn();
 
-        e.Property(x => x.Fecha)
-         .HasColumnName("fecha")
-         .IsRequired();
+        builder.Property(x => x.LoteId).HasMaxLength(50).IsRequired();
+        builder.Property(x => x.ReproductoraId).HasMaxLength(50).IsRequired();
 
-        e.Property(x => x.LoteId)
-         .HasColumnName("lote_id")
-         .HasMaxLength(50)
-         .IsRequired();
+        builder.Property(x => x.TipoAlimento).HasMaxLength(100);
+        builder.Property(x => x.Observaciones).HasMaxLength(1000);
 
-        e.Property(x => x.ReproductoraId)
-         .HasColumnName("reproductora_id")
-         .HasMaxLength(50)
-         .IsRequired();
+        builder.Property(x => x.PesoInicial).HasPrecision(10, 2);
+        builder.Property(x => x.PesoFinal).HasPrecision(10, 2);
+        builder.Property(x => x.ConsumoAlimento).HasPrecision(12, 3);
 
-        e.Property(x => x.PesoInicial)
-         .HasColumnName("peso_inicial");
+        // FK a LoteReproductora (compuesta)
+        builder.HasOne(x => x.LoteReproductora)
+               .WithMany(r => r.LoteSeguimientos)
+               .HasForeignKey(x => new { x.LoteId, x.ReproductoraId })
+               .OnDelete(DeleteBehavior.Cascade);
 
-        e.Property(x => x.PesoFinal)
-         .HasColumnName("peso_final");
-
-        e.Property(x => x.MortalidadM)
-         .HasColumnName("mortalidad_m");
-
-        e.Property(x => x.MortalidadH)
-         .HasColumnName("mortalidad_h");
-
-        e.Property(x => x.SelM)
-         .HasColumnName("sel_m");
-
-        e.Property(x => x.SelH)
-         .HasColumnName("sel_h");
-
-        e.Property(x => x.ErrorM)
-         .HasColumnName("error_m");
-
-        e.Property(x => x.ErrorH)
-         .HasColumnName("error_h");
-
-        e.Property(x => x.TipoAlimento)
-         .HasColumnName("tipo_alimento")
-         .HasMaxLength(100);
-
-        e.Property(x => x.ConsumoAlimento)
-         .HasColumnName("consumo_alimento");
-
-        e.Property(x => x.Observaciones)
-         .HasColumnName("observaciones")
-         .HasMaxLength(500);
-
-        e.HasOne(x => x.LoteReproductora)
-         .WithMany(r => r.LoteSeguimientos)
-         .HasForeignKey(x => new { x.LoteId, x.ReproductoraId })
-         .OnDelete(DeleteBehavior.Cascade);
+        builder.HasOne(x => x.Lote)
+               .WithMany()
+               .HasForeignKey(x => x.LoteId)
+               .OnDelete(DeleteBehavior.Restrict);
     }
 }

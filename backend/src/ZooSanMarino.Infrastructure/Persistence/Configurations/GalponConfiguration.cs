@@ -1,53 +1,30 @@
-// src/ZooSanMarino.Infrastructure/Persistence/Configurations/GalponConfiguration.cs
+// GalponConfiguration.cs
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using ZooSanMarino.Domain.Entities;
 
-namespace ZooSanMarino.Infrastructure.Persistence.Configurations;
 public class GalponConfiguration : IEntityTypeConfiguration<Galpon>
 {
-    public void Configure(EntityTypeBuilder<Galpon> e)
+    public void Configure(EntityTypeBuilder<Galpon> builder)
     {
-        e.ToTable("galpones");
-        e.HasKey(g => g.GalponId);
+        builder.HasKey(x => x.GalponId);
+        builder.Property(x => x.GalponId).HasMaxLength(50).IsRequired();
 
-        e.Property(g => g.GalponId)
-         .HasColumnName("galpon_id")
-         .HasMaxLength(50);
+        builder.Property(x => x.NucleoId).HasMaxLength(50).IsRequired();
+        builder.Property(x => x.GalponNombre).HasMaxLength(150).IsRequired();
+        builder.Property(x => x.Ancho).HasMaxLength(50);
+        builder.Property(x => x.Largo).HasMaxLength(50);
+        builder.Property(x => x.TipoGalpon).HasMaxLength(100);
 
-        e.Property(g => g.GalponNucleoId)
-         .HasColumnName("galpon_nucleo_id")
-         .HasMaxLength(50);
+        builder.HasOne(x => x.Farm)
+               .WithMany(f => f.Galpones)
+               .HasForeignKey(x => x.GranjaId)
+               .OnDelete(DeleteBehavior.Restrict);
 
-        e.Property(g => g.GranjaId)
-         .HasColumnName("granja_id");
-
-        e.Property(g => g.GalponNombre)
-         .HasColumnName("galpon_nombre")
-         .HasMaxLength(100)
-         .IsRequired();
-
-        e.Property(g => g.Ancho)
-         .HasColumnName("ancho")
-         .HasMaxLength(50);
-
-        e.Property(g => g.Largo)
-         .HasColumnName("largo")
-         .HasMaxLength(50);
-
-        e.Property(g => g.TipoGalpon)
-         .HasColumnName("tipo_galpon")
-         .HasMaxLength(100);
-
-        // FKs
-        e.HasOne(g => g.Nucleo)
-         .WithMany(n => n.Galpones)
-         .HasForeignKey(g => new { g.GalponNucleoId, g.GranjaId })
-         .OnDelete(DeleteBehavior.Cascade);
-
-        e.HasOne(g => g.Farm)
-         .WithMany()
-         .HasForeignKey(g => g.GranjaId)
-         .OnDelete(DeleteBehavior.Cascade);
+        // FK compuesta a Nucleo (NucleoId, GranjaId)
+        builder.HasOne(x => x.Nucleo)
+               .WithMany(n => n.Galpones)
+               .HasForeignKey(x => new { x.NucleoId, x.GranjaId })
+               .OnDelete(DeleteBehavior.Restrict);
     }
 }

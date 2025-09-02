@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "0EEry5BHnNM=",
+  "dgSpecHash": "cxUcgKOgZwY=",
   "success": true,
-  "projectFilePath": "/Users/chelsycardona/proyectos/sanmarinoApp/backend/tests/ZooSanMarino.Domain.Tests/ZooSanMarino.Domain.Tests.csproj",
+  "projectFilePath": "/Users/chelsycardona/proyectos/copia origina organizando/App_SanMarino/backend/tests/ZooSanMarino.Domain.Tests/ZooSanMarino.Domain.Tests.csproj",
   "expectedPackageFiles": [
     "/Users/chelsycardona/.nuget/packages/coverlet.collector/6.0.2/coverlet.collector.6.0.2.nupkg.sha512",
     "/Users/chelsycardona/.nuget/packages/microsoft.codecoverage/17.12.0/microsoft.codecoverage.17.12.0.nupkg.sha512",

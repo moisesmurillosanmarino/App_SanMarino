@@ -1,3 +1,4 @@
+/// file: backend/src/ZooSanMarino.Domain/Entities/SeguimientoLoteLevante.cs
 namespace ZooSanMarino.Domain.Entities;
 
 public class SeguimientoLoteLevante
@@ -21,10 +22,9 @@ public class SeguimientoLoteLevante
     public double? ProtAlH { get; set; }
     public double? KcalAveH { get; set; }
     public double? ProtAveH { get; set; }
-    public DateTime? FechaUltimoCambio { get; set; }
 
     public string Ciclo { get; set; } = "Normal";
 
+    // Nav
     public Lote Lote { get; set; } = null!;
-    public User? Usuario { get; set; }
 }

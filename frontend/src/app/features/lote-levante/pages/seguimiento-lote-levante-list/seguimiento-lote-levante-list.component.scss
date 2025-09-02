@@ -1,5 +1,5 @@
 /* ===========================
-   Tokens del componente
+   Tokens / Design system
    =========================== */
    :host {
     display: block;
@@ -8,19 +8,47 @@
     --brand-red-600:     #c62828;
     --brand-red-700:     #b71c1c;
 
-    --chicken-yellow:    #f6d860;
-    --chicken-yellow-200:#fde68a;
+    --accent-amber-50:   #fffbeb;
+    --accent-amber-100:  #fef3c7;
+    --accent-amber-200:  #fde68a;
 
+    --warm-gray-25:      #fdfdfc;
     --warm-gray-50:      #fafaf9;
     --warm-gray-100:     #f5f5f4;
     --warm-gray-200:     #e7e5e4;
     --warm-gray-300:     #d6d3d1;
     --warm-gray-400:     #a8a29e;
+    --warm-gray-500:     #78716c;
     --warm-gray-600:     #57534e;
 
     --white:             #ffffff;
+    --shadow-sm:         0 4px 12px rgba(31, 41, 55, .08);
     --shadow-lg:         0 10px 25px rgba(31, 41, 55, .10);
   }
+
+  /* ===========================
+     Helpers / Utilities
+     =========================== */
+  .sr-only {
+    position: absolute !important;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0,0,0,0);
+    white-space: nowrap; border: 0;
+  }
+
+  .text-right { text-align: right; }
+
+  :host [aria-busy="true"] { cursor: progress; }
+
+  /* Grid utilitario reutilizable para filtros/forms */
+  .grid {
+    display: grid;
+    gap: .9rem;
+  }
+  .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 
   /* ===========================
      Layout base
@@ -56,7 +84,7 @@
     justify-content: space-between;
     gap: .75rem;
     padding-bottom: .5rem;
-    border-bottom: 3px solid var(--chicken-yellow);
+    border-bottom: 3px solid var(--accent-amber-200);
   }
 
   :host .ux-header__title {
@@ -71,7 +99,6 @@
     color: var(--brand-red);
     letter-spacing: .2px;
   }
-
   :host .ux-header__meta {
     display: flex;
     align-items: center;
@@ -91,26 +118,21 @@
     padding: .45rem .6rem;
     border-radius: 999px;
     border: 1px solid transparent;
-    font-weight: 600;
-  }
-  :host .chip__dot {
-    width: .5rem;
-    height: .5rem;
-    border-radius: 999px;
-    display: inline-block;
-  }
-  :host .chip--info {
-    background: var(--chicken-yellow-200);
-    color: var(--warm-gray-600);
-    border-color: #f6e3a8;
-  }
-  :host .chip--info .chip__dot { background: var(--brand-red); }
-  :host .chip--muted {
+    font-weight: 700;
     background: var(--warm-gray-100);
     color: var(--warm-gray-600);
     border-color: var(--warm-gray-200);
   }
-  :host .chip--muted .chip__dot { background: var(--warm-gray-400); }
+  :host .chip__dot {
+    width: .5rem; height: .5rem;
+    border-radius: 999px; display: inline-block;
+    background: var(--warm-gray-400);
+  }
+  :host .chip--info {
+    background: var(--accent-amber-100);
+    border-color: var(--accent-amber-200);
+  }
+  :host .chip--info .chip__dot { background: var(--brand-red); }
   :host .chip--warning {
     background: #fff7ed;
     color: #7c2d12;
@@ -170,21 +192,24 @@
     border-radius: .55rem;
     padding: .35rem .55rem;
     line-height: 1;
-    transition: background .15s ease, color .15s ease, transform .12s ease;
+    transition: background .15s ease, color .15s ease, transform .12s ease, border-color .12s ease;
   }
   :host .icon-btn:hover { background: var(--warm-gray-100); color: var(--brand-red); transform: translateY(-1px); }
   :host .icon-btn--danger:hover { color: var(--brand-red-700); background: #fff1f2; border-color: #fecaca; }
 
-  /* ===========================
-     Toolbar / Select
-     =========================== */
-  :host .ux-toolbar {
-    display: flex;
-    align-items: center;
-    gap: .75rem;
-    flex-wrap: wrap;
+  /* Focus visible accesible */
+  :host .btn:focus-visible,
+  :host .icon-btn:focus-visible,
+  :host select:focus-visible,
+  :host input:focus-visible,
+  :host textarea:focus-visible {
+    outline: 3px solid rgba(211,47,47,.25);
+    outline-offset: 2px;
   }
 
+  /* ===========================
+     Selects (filtros y formularios)
+     =========================== */
   :host .ux-label {
     font-size: .85rem;
     color: var(--warm-gray-600);
@@ -194,16 +219,17 @@
   :host .ux-select { position: relative; }
   :host .ux-select select {
     appearance: none;
+    width: 100%;
     padding: .55rem 2.25rem .55rem .75rem;
     border: 1px solid var(--warm-gray-300);
     border-radius: .65rem;
     background: var(--white);
     color: var(--warm-gray-600);
     font-weight: 600;
-    min-width: 260px;
     outline: none;
-    transition: border-color .15s ease, box-shadow .15s ease;
+    transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
   }
+  :host .ux-select select:hover { background: var(--warm-gray-50); }
   :host .ux-select select:focus {
     border-color: var(--brand-red);
     box-shadow: 0 0 0 3px rgba(211,47,47,.15);
@@ -220,7 +246,7 @@
   }
 
   /* ===========================
-     Card + Tabla
+     Cards / Tabla
      =========================== */
   :host .ux-card {
     position: relative;
@@ -228,8 +254,11 @@
     border: 1px solid var(--warm-gray-200);
     border-radius: 1rem;
     box-shadow: var(--shadow-lg);
+    padding: 1rem;
   }
-  :host .ux-scroll { max-height: 65vh; overflow: auto; }
+  :host .ux-card.mb-4 { margin-bottom: 1rem; }
+
+  :host .ux-scroll { max-height: 65vh; overflow: auto; border-radius: .75rem; }
 
   :host .ux-table {
     width: 100%;
@@ -237,9 +266,7 @@
     border-spacing: 0;
   }
   :host .ux-table thead {
-    position: sticky;
-    top: 0;
-    z-index: 10;
+    position: sticky; top: 0; z-index: 10;
     background: linear-gradient(180deg, var(--brand-red) 0%, var(--brand-red-600) 100%);
     color: var(--white);
   }
@@ -252,21 +279,18 @@
     padding: .8rem 1rem;
     border-bottom: 2px solid var(--brand-red-700);
   }
-  :host .ux-table thead th:first-child { border-top-left-radius: 1rem; }
-  :host .ux-table thead th:last-child  { border-top-right-radius: 1rem; text-align: right; }
+  :host .ux-table thead th:first-child { border-top-left-radius: .75rem; }
+  :host .ux-table thead th:last-child  { border-top-right-radius: .75rem; text-align: right; }
 
-  :host .ux-table tbody tr {
-    transition: background-color .12s ease;
-  }
+  :host .ux-table tbody tr { transition: background-color .12s ease; }
   :host .ux-table tbody tr:nth-child(even) { background: var(--warm-gray-50); }
-  :host .ux-table tbody tr:hover { background: #fff7ed; } /* amarillo suave */
+  :host .ux-table tbody tr:hover { background: var(--accent-amber-50); }
   :host .ux-table tbody td {
     padding: .7rem 1rem;
-    font-size: .9rem;
+    font-size: .92rem;
     color: var(--warm-gray-600);
     border-bottom: 1px solid var(--warm-gray-200);
   }
-  :host .text-right { text-align: right; }
   :host .btn-group { display: inline-flex; align-items: center; gap: .25rem; }
 
   /* ===========================
@@ -278,44 +302,38 @@
     color: var(--warm-gray-600);
   }
   :host .empty-state .empty-illustration {
-    font-size: 2rem;
-    margin-bottom: .35rem;
+    font-size: 2rem; margin-bottom: .35rem;
   }
 
   :host .loading-overlay {
-    position: absolute;
-    inset: 0;
+    position: absolute; inset: 0;
     background: rgba(245, 245, 244, .6);
     border-radius: 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: .6rem;
-    font-weight: 700;
-    color: var(--warm-gray-600);
+    display: flex; align-items: center; justify-content: center;
+    gap: .6rem; font-weight: 700; color: var(--warm-gray-600);
     backdrop-filter: blur(1px);
   }
   :host .spinner {
-    width: 1rem;
-    height: 1rem;
+    width: 1rem; height: 1rem;
     border-radius: 999px;
     border: 2px solid var(--warm-gray-300);
     border-left-color: var(--brand-red);
-    animation: spin 0.9s linear infinite;
+    animation: spin .9s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    :host .btn:hover, :host .icon-btn:hover { transform: none; }
+    :host .spinner { animation: none; }
+  }
 
   /* ===========================
      Modal
      =========================== */
   :host .ux-modal {
-    position: fixed;
-    inset: 0;
+    position: fixed; inset: 0;
     background: rgba(87, 83, 78, .45);
-    display: grid;
-    place-items: center;
-    padding: 1rem;
-    z-index: 50;
+    display: grid; place-items: center;
+    padding: 1rem; z-index: 50;
   }
   :host .ux-modal__dialog {
     width: min(900px, 95vw);
@@ -323,78 +341,55 @@
     border-radius: 1.25rem;
     box-shadow: var(--shadow-lg);
     border: 1px solid var(--warm-gray-200);
-    position: relative;
-    overflow: hidden;
+    position: relative; overflow: hidden;
   }
   :host .ux-modal__header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: .5rem;
-    padding: 1rem 1.25rem;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: .5rem; padding: 1rem 1.25rem;
     border-bottom: 1px solid var(--warm-gray-200);
   }
   :host .ux-modal__header h2 {
-    margin: 0;
-    font-size: 1.05rem;
-    font-weight: 800;
-    color: var(--brand-red);
+    margin: 0; font-size: 1.05rem; font-weight: 800; color: var(--brand-red);
   }
   :host .ux-modal__footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: .5rem;
-    padding: 1rem 1.25rem;
-    border-top: 1px solid var(--warm-gray-200);
+    display: flex; justify-content: flex-end; gap: .5rem;
+    padding: 1rem 1.25rem; border-top: 1px solid var(--warm-gray-200);
   }
   :host .modal-loading {
-    position: absolute;
-    inset: 0;
-    background: rgba(255,255,255,.6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: .6rem;
-    font-weight: 700;
-    color: var(--warm-gray-600);
+    position: absolute; inset: 0; background: rgba(255,255,255,.6);
+    display: flex; align-items: center; justify-content: center;
+    gap: .6rem; font-weight: 700; color: var(--warm-gray-600);
   }
 
   /* ===========================
-     Form
+     Formulario
      =========================== */
   :host .ux-form { padding: 1.25rem; }
-  :host .ux-form .grid {
-    display: grid;
-    gap: .9rem;
-  }
-  :host .ux-form .grid.grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-  :host .ux-form .form-field {
-    display: flex;
-    flex-direction: column;
-    gap: .35rem;
+  :host .form-field {
+    display: flex; flex-direction: column; gap: .35rem;
   }
-  :host .ux-form .form-field--full { grid-column: 1 / -1; }
-  :host .ux-form .form-field label {
-    font-size: .8rem;
-    font-weight: 700;
-    color: var(--warm-gray-600);
+  :host .form-field--full { grid-column: 1 / -1; }
+  :host .form-field label {
+    font-size: .8rem; font-weight: 700; color: var(--warm-gray-600);
   }
-  :host .ux-form .form-field input,
-  :host .ux-form .form-field textarea,
-  :host .ux-form .form-field select {
+  :host .form-field input,
+  :host .form-field textarea,
+  :host .form-field select {
     border: 1px solid var(--warm-gray-300);
     border-radius: .65rem;
     padding: .55rem .75rem;
     font-size: .92rem;
     color: var(--warm-gray-600);
-    outline: none;
-    background: var(--white);
-    transition: border-color .15s ease, box-shadow .15s ease;
+    outline: none; background: var(--white);
+    transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
   }
-  :host .ux-form .form-field input:focus,
-  :host .ux-form .form-field textarea:focus,
-  :host .ux-form .form-field select:focus {
+  :host .form-field input:hover,
+  :host .form-field textarea:hover,
+  :host .form-field select:hover { background: var(--warm-gray-50); }
+  :host .form-field input:focus,
+  :host .form-field textarea:focus,
+  :host .form-field select:focus {
     border-color: var(--brand-red);
     box-shadow: 0 0 0 3px rgba(211,47,47,.15);
   }
@@ -402,14 +397,17 @@
   /* ===========================
      Responsivo
      =========================== */
-  @media (max-width: 960px) {
-    :host .ux-form .grid.grid-2 { grid-template-columns: 1fr; }
+  @media (max-width: 1200px) {
+    .grid-4 { grid-template-columns: repeat(3, minmax(0,1fr)); }
   }
-  @media (max-width: 768px) {
+  @media (max-width: 960px) {
+    .grid-4, .grid-3, .grid-2 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    :host .ux-form { padding: 1rem; }
+  }
+  @media (max-width: 680px) {
+    .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
     :host .ux-header { flex-direction: column; align-items: flex-start; gap: .75rem; }
-    :host .ux-select select { min-width: 220px; }
   }
   @media (max-width: 480px) {
-    :host .ux-select select { min-width: 100%; }
     :host .ux-header__title h1 { font-size: 1.1rem; }
   }

@@ -1,44 +1,54 @@
+/// file: backend/src/ZooSanMarino.Infrastructure/Persistence/Configurations/CatalogItemConfiguration.cs
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using ZooSanMarino.Domain.Entities;
 
 namespace ZooSanMarino.Infrastructure.Persistence.Configurations;
 
-public class CatalogItemConfig : IEntityTypeConfiguration<CatalogItem>
+public class CatalogItemConfiguration : IEntityTypeConfiguration<CatalogItem>
 {
-    public void Configure(EntityTypeBuilder<CatalogItem> b)
+    public void Configure(EntityTypeBuilder<CatalogItem> e)
     {
-        b.ToTable("catalogo_items");
+        e.ToTable("catalogo_items");
+        e.HasKey(x => x.Id);
 
-        b.HasKey(x => x.Id);
-        b.Property(x => x.Id).ValueGeneratedOnAdd();
+        e.Property(x => x.Id).HasColumnName("id");
 
-        b.Property(x => x.Codigo)
-            .IsRequired()
-            .HasMaxLength(10);
+        e.Property(x => x.Codigo)
+         .HasColumnName("codigo")
+         .HasMaxLength(50)
+         .IsRequired();
 
-        b.Property(x => x.Nombre)
-            .IsRequired()
-            .HasMaxLength(150);
+        e.Property(x => x.Nombre)
+         .HasColumnName("nombre")
+         .HasMaxLength(200)
+         .IsRequired();
 
-        b.HasIndex(x => x.Codigo).IsUnique();
+        e.Property(x => x.Metadata)
+         .HasColumnName("metadata")
+         .HasColumnType("jsonb");
 
-        // jsonb
-        b.Property(x => x.Metadata)
-            .HasColumnType("jsonb")
-            .HasDefaultValueSql("'{}'::jsonb");
+        e.Property(x => x.Activo)
+         .HasColumnName("activo")
+         .HasDefaultValue(true);
 
-        b.Property(x => x.Activo).HasDefaultValue(true);
+        e.Property(x => x.CreatedAt)
+         .HasColumnName("created_at")
+         .HasDefaultValueSql("now()");
 
-        b.Property(x => x.CreatedAt)
-            .HasColumnName("created_at")
-            .HasDefaultValueSql("now()");
+        e.Property(x => x.UpdatedAt)
+         .HasColumnName("updated_at")
+         .HasDefaultValueSql("now()");
 
-        b.Property(x => x.UpdatedAt)
-            .HasColumnName("updated_at")
-            .HasDefaultValueSql("now()");
+        // 🔑 Único requerido por el seeder (ON CONFLICT (codigo))
+        e.HasIndex(x => x.Codigo)
+         .IsUnique()
+         .HasDatabaseName("ux_catalogo_items_codigo");
 
-        // Concurrencia: xmin (PostgreSQL)
-        b.Property<uint>("xmin").HasColumnName("xmin").IsRowVersion();
+        // índices auxiliares (opcionales)
+        e.HasIndex(x => x.Nombre)
+         .HasDatabaseName("ix_catalogo_items_nombre");
+        e.HasIndex(x => x.Activo)
+         .HasDatabaseName("ix_catalogo_items_activo");
     }
 }

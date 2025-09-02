@@ -1,7 +1,9 @@
+// file: src/ZooSanMarino.API/Controllers/LoteController.cs
 using Microsoft.AspNetCore.Mvc;
-using System.Text.Json;
-using ZooSanMarino.Application.DTOs;
 using ZooSanMarino.Application.Interfaces;
+using ZooSanMarino.Application.DTOs;                    // CreateLoteDto, UpdateLoteDto, LoteDto
+using CommonDtos = ZooSanMarino.Application.DTOs.Common; // PagedResult<T>
+using LoteDtos   = ZooSanMarino.Application.DTOs.Lotes;  // LoteDetailDto, LoteSearchRequest
 
 namespace ZooSanMarino.API.Controllers;
 
@@ -12,83 +14,87 @@ public class LoteController : ControllerBase
     private readonly ILoteService _svc;
     public LoteController(ILoteService svc) => _svc = svc;
 
+    // ===========================
+    // LISTADO SIMPLE (compat)
+    // ===========================
     [HttpGet]
-    public async Task<IActionResult> GetAll() =>
-        Ok(await _svc.GetAllAsync());
-
-    [HttpGet("{loteId}")]
-    public async Task<IActionResult> GetById(string loteId) =>
-        (await _svc.GetByIdAsync(loteId)) is LoteDto dto
-            ? Ok(dto)
-            : NotFound();
-
-    [HttpPost]
-    public async Task<IActionResult> Create([FromBody] JsonElement input)
+    public async Task<ActionResult<IEnumerable<LoteDto>>> GetAll()
     {
-        var payload = input.TryGetProperty("dto", out var innerDto) ? innerDto : input;
+        var items = await _svc.GetAllAsync();
+        return Ok(items);
+    }
 
-        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+    // ===========================
+    // BÚSQUEDA AVANZADA
+    // ===========================
+    [HttpGet("search")]
+    public async Task<ActionResult<CommonDtos.PagedResult<LoteDtos.LoteDetailDto>>> Search([FromQuery] LoteDtos.LoteSearchRequest req)
+    {
+        var res = await _svc.SearchAsync(req);
+        return Ok(res);
+    }
 
-        // 🔐 Serializamos como texto para forzar la conversión correcta
-        var json = payload.GetRawText();
+    // ===========================
+    // DETALLE
+    // ===========================
+    [HttpGet("{loteId}")]
+    public async Task<ActionResult<LoteDtos.LoteDetailDto>> GetById(string loteId)
+    {
+        var res = await _svc.GetByIdAsync(loteId);
+        if (res is null) return NotFound();
+        return Ok(res);
+    }
 
-        // Verificamos manualmente el valor de LoteId
-        using var doc = JsonDocument.Parse(json);
-        if (!doc.RootElement.TryGetProperty("loteId", out var loteIdProp))
-            return BadRequest("Falta el campo loteId.");
-
-        // 🔄 Forzamos a string (sea int o string)
-        var loteId = loteIdProp.ValueKind switch
-        {
-            JsonValueKind.Number => loteIdProp.GetInt32().ToString(),
-            JsonValueKind.String => loteIdProp.GetString(),
-            _ => null
-        };
-
-        if (string.IsNullOrWhiteSpace(loteId))
-            return BadRequest("El LoteId es obligatorio y debe ser válido.");
-
-        var dto = JsonSerializer.Deserialize<CreateLoteDto>(json, options);
-        if (dto is null)
-            return BadRequest("No se pudo deserializar el objeto recibido.");
-
-        // ✅ LoteId corregido explícitamente
-        dto.LoteId = loteId!.Trim();
+    // ===========================
+    // CREATE
+    // ===========================
+    [HttpPost]
+    public async Task<ActionResult<LoteDtos.LoteDetailDto>> Create([FromBody] CreateLoteDto dto)
+    {
+        if (dto is null) return BadRequest("Body requerido.");
+        if (string.IsNullOrWhiteSpace(dto.LoteId))
+            return BadRequest("LoteId es obligatorio.");
 
         var created = await _svc.CreateAsync(dto);
         return CreatedAtAction(nameof(GetById), new { loteId = created.LoteId }, created);
     }
 
+    // ===========================
+    // UPDATE
+    // ===========================
     [HttpPut("{loteId}")]
-    public async Task<IActionResult> Update(string loteId, [FromBody] JsonElement input)
+    public async Task<ActionResult<LoteDtos.LoteDetailDto>> Update(string loteId, [FromBody] UpdateLoteDto dto)
     {
-        // Soporta ambos formatos: { ... } o { dto: { ... } }
-        var payload = input.TryGetProperty("dto", out var innerDto) ? innerDto : input;
-
-        var dto = JsonSerializer.Deserialize<UpdateLoteDto>(payload.GetRawText(), new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        });
-
-        if (dto is null)
-            return BadRequest("No se pudo deserializar el objeto recibido.");
-
+        if (dto is null) return BadRequest("Body requerido.");
         if (string.IsNullOrWhiteSpace(dto.LoteId))
-            return BadRequest("El campo LoteId es obligatorio.");
+            return BadRequest("LoteId es obligatorio.");
+        if (!string.Equals(loteId, dto.LoteId, StringComparison.OrdinalIgnoreCase))
+            return BadRequest("El id de la ruta no coincide con el del cuerpo.");
 
-        if (dto.LoteId.Trim() != loteId)
-            return BadRequest("El ID en la URL no coincide con el del cuerpo de la solicitud.");
-
-        // Usamos `with` para asegurarnos de que LoteId esté limpio, sin mutarlo directamente
-        var fixedDto = dto with { LoteId = dto.LoteId.Trim() };
-
-        var updated = await _svc.UpdateAsync(fixedDto);
-        return updated is not null
-            ? Ok(updated)
-            : NotFound();
+        var updated = await _svc.UpdateAsync(dto);
+        if (updated is null) return NotFound();
+        return Ok(updated);
     }
 
+    // ===========================
+    // DELETE (soft)
+    // ===========================
     [HttpDelete("{loteId}")]
-    public async Task<IActionResult> Delete(string loteId) =>
-        (await _svc.DeleteAsync(loteId)) ? NoContent() : NotFound();
+    public async Task<IActionResult> Delete(string loteId)
+    {
+        var ok = await _svc.DeleteAsync(loteId);
+        if (!ok) return NotFound();
+        return NoContent();
+    }
+
+    // ===========================
+    // DELETE (hard)
+    // ===========================
+    [HttpDelete("{loteId}/hard")]
+    public async Task<IActionResult> HardDelete(string loteId)
+    {
+        var ok = await _svc.HardDeleteAsync(loteId);
+        if (!ok) return NotFound();
+        return NoContent();
+    }
 }

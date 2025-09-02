@@ -95,6 +95,7 @@ export class GalponListComponent implements OnInit {
       galponId:       ['', Validators.required],
       galponNombre:   ['', Validators.required],
       galponNucleoId: ['', Validators.required],
+      NucleoId:       ['', Validators.required],
       granjaId:       [null, Validators.required],
       ancho:          ['', Validators.required],
       largo:          ['', Validators.required],
@@ -133,7 +134,10 @@ export class GalponListComponent implements OnInit {
         .subscribe(id => {
           const sel = this.allNucleos.find(x => x.nucleoId === id);
           if (sel) {
-            this.form.patchValue({ granjaId: sel.granjaId }, { emitEvent: false });
+            this.form.patchValue({ granjaId: sel.granjaId, NucleoId: id }, { emitEvent: false });
+          } else {
+            // si limpian el select, limpiamos espejo también
+            this.form.patchValue({ NucleoId: '' }, { emitEvent: false });
           }
         });
 
@@ -169,6 +173,7 @@ export class GalponListComponent implements OnInit {
         galponId:       newId,
         galponNucleoId: '',
         galponNombre:   '',
+        NucleoId : '',
         granjaId:       null,
         ancho:          '',
         largo:          '',
@@ -185,12 +190,21 @@ export class GalponListComponent implements OnInit {
 
   save() {
     if (this.form.invalid) return;
-    const v = this.form.value as CreateGalponDto | UpdateGalponDto;
+
+    // getRawValue por si algún control llega a estar deshabilitado
+    const raw = this.form.getRawValue();
+
+    // espejo garantizado: NucleoId = galponNucleoId
+    const payload = {
+      ...raw,
+      NucleoId: raw.galponNucleoId
+    } as CreateGalponDto | UpdateGalponDto;
 
     this.loading = true;
-    let call$ = this.svc.create(v as CreateGalponDto);
+
+    let call$ = this.svc.create(payload as CreateGalponDto);
     if (this.editing) {
-      call$ = this.svc.update(v as UpdateGalponDto);
+      call$ = this.svc.update(payload as UpdateGalponDto);
     }
 
     call$

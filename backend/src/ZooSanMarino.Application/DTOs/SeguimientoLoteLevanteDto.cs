@@ -1,3 +1,4 @@
+/// file: backend/src/ZooSanMarino.Application/DTOs/SeguimientoLoteLevanteDto.cs
 namespace ZooSanMarino.Application.DTOs;
 
 public record SeguimientoLoteLevanteDto(
