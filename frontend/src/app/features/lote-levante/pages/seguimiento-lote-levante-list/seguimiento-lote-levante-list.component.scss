@@ -411,3 +411,46 @@
   @media (max-width: 480px) {
     :host .ux-header__title h1 { font-size: 1.1rem; }
   }
+
+  /* ===========================
+   Toolbar de filtros (horizontal / responsiva)
+   =========================== */
+:host .ux-toolbar {
+  display: grid;
+  gap: .9rem 1rem;
+  align-items: end;
+  /* 3 columnas en desktop (span 4 de 12) */
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+:host .ux-toolbar > .ux-field {
+  grid-column: span 4;
+}
+
+/* 2 columnas en tablets */
+@media (max-width: 960px) {
+  :host .ux-toolbar > .ux-field { grid-column: span 6; }
+}
+
+/* 1 columna en móviles */
+@media (max-width: 680px) {
+  :host .ux-toolbar > .ux-field { grid-column: span 12; }
+}
+
+/* Campo estándar (label arriba, control abajo) */
+:host .ux-field {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+}
+
+/* Altura consistente de selects en toolbar */
+:host .ux-toolbar .ux-select select {
+  min-height: 2.6rem;
+  font-weight: 700;
+}
+
+/* Guarda un poco de aire dentro de la card de filtros */
+:host section.ux-card[role="group"] {
+  padding: 1rem 1.1rem;
+}

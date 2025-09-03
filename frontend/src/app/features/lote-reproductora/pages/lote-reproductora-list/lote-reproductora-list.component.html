@@ -320,9 +320,6 @@
               <div>
                 <label class="ux-label" for="inp-fecha">Fecha Encasetamiento</label>
                 <input id="inp-fecha" type="date" class="ux-input" formControlName="fechaEncasetamiento" />
-                <small class="field-hint" *ngIf="form.get('fechaEncasetamiento')?.invalid && form.get('fechaEncasetamiento')?.touched">
-                  La fecha es requerida.
-                </small>
               </div>
             </div>
 
@@ -341,7 +338,7 @@
 
             <div class="ux-modal__actions">
               <button type="button" class="btn-ghost" (click)="cancel()">Cancelar</button>
-              <button type="submit" class="btn-primary" [disabled]="form.invalid">{{ editing ? 'Actualizar' : 'Guardar' }}</button>
+              <button type="submit" class="btn-primary">{{ editing ? 'Actualizar' : 'Guardar' }}</button>
             </div>
           </form>
 

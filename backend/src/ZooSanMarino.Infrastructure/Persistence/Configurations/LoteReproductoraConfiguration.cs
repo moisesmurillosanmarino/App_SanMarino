@@ -11,7 +11,7 @@ public class LoteReproductoraConfiguration : IEntityTypeConfiguration<LoteReprod
 {
     public void Configure(EntityTypeBuilder<LoteReproductora> b)
     {
-    b.ToTable("lote_reproductora", schema: "public");
+    b.ToTable("lote_reproductoras", schema: "public");
     b.HasKey(x => new { x.LoteId, x.ReproductoraId });
 
 

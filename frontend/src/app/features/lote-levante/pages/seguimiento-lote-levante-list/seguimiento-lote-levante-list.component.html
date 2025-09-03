@@ -11,7 +11,6 @@
         <h1>Seguimiento Diario de Levante</h1>
 
         <div class="ux-header__meta">
-          <!-- Fallback cuando no hay granja -->
           <ng-template #noGranjaChip>
             <span class="chip chip--warning">
               <span class="chip__dot" aria-hidden="true"></span>
@@ -19,34 +18,28 @@
             </span>
           </ng-template>
 
-          <!-- Granja -->
           <span class="chip chip--info" *ngIf="selectedGranjaId; else noGranjaChip">
             <span class="chip__dot" aria-hidden="true"></span>
             Granja: {{ selectedGranjaName || selectedGranjaId }}
           </span>
 
-          <!-- Galpón -->
           <span class="chip chip--muted" *ngIf="selectedGalponId">
             Galpón: {{ selectedGalponId === SIN_GALPON ? '— Sin galpón —' : selectedGalponId }}
           </span>
 
-          <!-- Lote -->
           <span class="chip chip--info" *ngIf="selectedLoteId">
             <span class="chip__dot" aria-hidden="true"></span>
             Lote: {{ selectedLoteNombre }}
           </span>
 
-          <!-- Edad del lote (sin arrow function en template) -->
           <span class="chip chip--muted" *ngIf="selectedLoteId">
             {{ calcularEdadSemanas(selectedLote?.fechaEncaset) }} sem
           </span>
 
-          <!-- Conteo -->
           <span class="chip chip--muted" *ngIf="selectedLoteId">
             {{ seguimientos?.length || 0 }} registro(s)
           </span>
         </div>
-
       </div>
 
       <button

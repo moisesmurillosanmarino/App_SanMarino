@@ -2,7 +2,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
-  FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormArray
+  FormBuilder, FormGroup, ReactiveFormsModule, FormArray
 } from '@angular/forms';
 import { FormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
@@ -76,11 +76,11 @@ export class LoteReproductoraListComponent implements OnInit {
       loteId: [''],
       nombreLote: [''],
       reproductoraId: [''],
-      fechaEncasetamiento: ['', Validators.required],
-      m: [0], h: [0], mixtas: [0],
-      mortCajaH: [0], mortCajaM: [0],
-      unifH: [0], unifM: [0],
-      pesoInicialM: [0], pesoInicialH: [0],
+      fechaEncasetamiento: [''],
+      m: [null], h: [null], mixtas: [null],
+      mortCajaH: [null], mortCajaM: [null],
+      unifH: [null], unifM: [null],
+      pesoInicialM: [null], pesoInicialH: [null],
 
       // multiple
       incubadoras: this.fb.array([] as FormGroup[])
@@ -97,21 +97,20 @@ export class LoteReproductoraListComponent implements OnInit {
   private buildIncubadoraGroup(prefill?: Partial<CreateLoteReproductoraDto>): FormGroup {
     return this.fb.group({
       // lote se setea con selectedLoteId al armar el DTO
-      nombreLote: [prefill?.nombreLote ?? this.loteSeleccionado?.loteNombre ?? '', Validators.required],
-      reproductoraId: [prefill?.reproductoraId ?? '', Validators.required],
+      nombreLote: [prefill?.nombreLote ?? this.loteSeleccionado?.loteNombre ?? ''],
+      reproductoraId: [prefill?.reproductoraId ?? ''],
       fechaEncasetamiento: [
-        prefill?.fechaEncasetamiento ? String(prefill.fechaEncasetamiento).slice(0, 10) : '',
-        Validators.required
+        prefill?.fechaEncasetamiento ? String(prefill.fechaEncasetamiento).slice(0, 10) : ''
       ],
-      m: [prefill?.m ?? 0],
-      h: [prefill?.h ?? 0],
-      mixtas: [prefill?.mixtas ?? 0],
-      mortCajaH: [prefill?.mortCajaH ?? 0],
-      mortCajaM: [prefill?.mortCajaM ?? 0],
-      unifH: [prefill?.unifH ?? 0],
-      unifM: [prefill?.unifM ?? 0],
-      pesoInicialM: [prefill?.pesoInicialM ?? 0],
-      pesoInicialH: [prefill?.pesoInicialH ?? 0],
+      m: [prefill?.m ?? null],
+      h: [prefill?.h ?? null],
+      mixtas: [prefill?.mixtas ?? null],
+      mortCajaH: [prefill?.mortCajaH ?? null],
+      mortCajaM: [prefill?.mortCajaM ?? null],
+      unifH: [prefill?.unifH ?? null],
+      unifM: [prefill?.unifM ?? null],
+      pesoInicialM: [prefill?.pesoInicialM ?? null],
+      pesoInicialH: [prefill?.pesoInicialH ?? null],
     });
   }
 
@@ -140,15 +139,15 @@ export class LoteReproductoraListComponent implements OnInit {
       reproductoraId: v.reproductoraId?.trim() || 'Sanmarino',
       nombreLote: v.nombreLote?.trim() || '',
       fechaEncasetamiento: fecha,
-      m: v.m ?? 0,
-      h: v.h ?? 0,
-      mixtas: v.mixtas ?? 0,
-      mortCajaH: v.mortCajaH ?? 0,
-      mortCajaM: v.mortCajaM ?? 0,
-      unifH: v.unifH ?? 0,
-      unifM: v.unifM ?? 0,
-      pesoInicialM: v.pesoInicialM ?? 0,
-      pesoInicialH: v.pesoInicialH ?? 0,
+      m: v.m ?? null,
+      h: v.h ?? null,
+      mixtas: v.mixtas ?? null,
+      mortCajaH: v.mortCajaH ?? null,
+      mortCajaM: v.mortCajaM ?? null,
+      unifH: v.unifH ?? null,
+      unifM: v.unifM ?? null,
+      pesoInicialM: v.pesoInicialM ?? null,
+      pesoInicialH: v.pesoInicialH ?? null,
       // pesoMixto: (si lo agregas en UI)
     } as CreateLoteReproductoraDto;
   }
@@ -213,7 +212,7 @@ export class LoteReproductoraListComponent implements OnInit {
     const reqId = ++this.registrosReq;
     this.loading = true;
 
-    // ✅ Ahora pedimos directamente al backend por lote (evita traer todo)
+    // ✅ pedir directamente por lote (evita traer todo)
     this.svc.getByLoteId(this.selectedLoteId)
       .pipe(finalize(() => { if (reqId === this.registrosReq) this.loading = false; }))
       .subscribe({
@@ -237,10 +236,10 @@ export class LoteReproductoraListComponent implements OnInit {
       nombreLote: lote?.loteNombre || '',
       reproductoraId: '',
       fechaEncasetamiento: '',
-      m: 0, h: 0, mixtas: 0,
-      mortCajaH: 0, mortCajaM: 0,
-      unifH: 0, unifM: 0,
-      pesoInicialM: 0, pesoInicialH: 0
+      m: null, h: null, mixtas: null,
+      mortCajaH: null, mortCajaM: null,
+      unifH: null, unifM: null,
+      pesoInicialM: null, pesoInicialH: null
     });
 
     // prepara 1 formulario en el array por si cambian a múltiple
@@ -255,14 +254,14 @@ export class LoteReproductoraListComponent implements OnInit {
 
     this.form.patchValue({
       loteId: r.loteId,
-      nombreLote: r.nombreLote,
-      reproductoraId: r.reproductoraId,
+      nombreLote: r.nombreLote ?? '',
+      reproductoraId: r.reproductoraId ?? '',
       // tolera null
       fechaEncasetamiento: r.fechaEncasetamiento ? r.fechaEncasetamiento.slice(0,10) : '',
-      m: r.m ?? 0, h: r.h ?? 0, mixtas: r.mixtas ?? 0,
-      mortCajaH: r.mortCajaH ?? 0, mortCajaM: r.mortCajaM ?? 0,
-      unifH: r.unifH ?? 0, unifM: r.unifM ?? 0,
-      pesoInicialM: r.pesoInicialM ?? 0, pesoInicialH: r.pesoInicialH ?? 0,
+      m: r.m ?? null, h: r.h ?? null, mixtas: r.mixtas ?? null,
+      mortCajaH: r.mortCajaH ?? null, mortCajaM: r.mortCajaM ?? null,
+      unifH: r.unifH ?? null, unifM: r.unifM ?? null,
+      pesoInicialM: r.pesoInicialM ?? null, pesoInicialH: r.pesoInicialH ?? null,
     });
     this.modalOpen = true;
   }
@@ -279,16 +278,16 @@ export class LoteReproductoraListComponent implements OnInit {
     if (this.editing) {
       // UPDATE (single)
       const v = this.form.value;
-      const dto = {
+      const dto: CreateLoteReproductoraDto = {
         loteId: this.editing.loteId,
         reproductoraId: this.editing.reproductoraId,
         nombreLote: (v.nombreLote ?? '').trim(),
         fechaEncasetamiento: v.fechaEncasetamiento ? new Date(v.fechaEncasetamiento as string).toISOString() : null,
-        m: v.m ?? 0, h: v.h ?? 0, mixtas: v.mixtas ?? 0,
-        mortCajaH: v.mortCajaH ?? 0, mortCajaM: v.mortCajaM ?? 0,
-        unifH: v.unifH ?? 0, unifM: v.unifM ?? 0,
-        pesoInicialM: v.pesoInicialM ?? 0, pesoInicialH: v.pesoInicialH ?? 0,
-      } as CreateLoteReproductoraDto;
+        m: v.m ?? null, h: v.h ?? null, mixtas: v.mixtas ?? null,
+        mortCajaH: v.mortCajaH ?? null, mortCajaM: v.mortCajaM ?? null,
+        unifH: v.unifH ?? null, unifM: v.unifM ?? null,
+        pesoInicialM: v.pesoInicialM ?? null, pesoInicialH: v.pesoInicialH ?? null,
+      };
 
       this.svc.update(dto).subscribe(() => { this.modalOpen = false; this.onLoteChange(); });
       return;
@@ -303,10 +302,10 @@ export class LoteReproductoraListComponent implements OnInit {
         reproductoraId: (v.reproductoraId || 'Sanmarino').trim(),
         nombreLote: (v.nombreLote || '').trim(),
         fechaEncasetamiento: v.fechaEncasetamiento ? new Date(v.fechaEncasetamiento as string).toISOString() : null,
-        m: v.m ?? 0, h: v.h ?? 0, mixtas: v.mixtas ?? 0,
-        mortCajaH: v.mortCajaH ?? 0, mortCajaM: v.mortCajaM ?? 0,
-        unifH: v.unifH ?? 0, unifM: v.unifM ?? 0,
-        pesoInicialM: v.pesoInicialM ?? 0, pesoInicialH: v.pesoInicialH ?? 0,
+        m: v.m ?? null, h: v.h ?? null, mixtas: v.mixtas ?? null,
+        mortCajaH: v.mortCajaH ?? null, mortCajaM: v.mortCajaM ?? null,
+        unifH: v.unifH ?? null, unifM: v.unifM ?? null,
+        pesoInicialM: v.pesoInicialM ?? null, pesoInicialH: v.pesoInicialH ?? null,
       };
       this.svc.create(dto).subscribe(() => { this.modalOpen = false; this.onLoteChange(); });
       return;
