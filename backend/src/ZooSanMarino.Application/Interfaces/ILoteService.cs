@@ -1,7 +1,5 @@
-// src/ZooSanMarino.Application/Interfaces/ILoteService.cs
-using ZooSanMarino.Application.DTOs;          // LoteDto, Create/Update DTOs
-using ZooSanMarino.Application.DTOs.Lotes;    // LoteDetailDto, LoteSearchRequest
-// 👇 alias al namespace "Common"
+using ZooSanMarino.Application.DTOs;           // LoteDto, Create/Update DTOs
+using ZooSanMarino.Application.DTOs.Lotes;     // LoteDetailDto, LoteSearchRequest
 using CommonDtos = ZooSanMarino.Application.DTOs.Common;
 
 namespace ZooSanMarino.Application.Interfaces;

@@ -1,23 +1,26 @@
 // src/ZooSanMarino.Domain/Entities/Lote.cs
 namespace ZooSanMarino.Domain.Entities;
 
+// src/ZooSanMarino.Domain/Entities/Lote.cs
 public class Lote : AuditableEntity
 {
     public string LoteId      { get; set; } = null!;
     public string LoteNombre  { get; set; } = null!;
-
-    public int     GranjaId  { get; set; }
-    public string? NucleoId  { get; set; }   // ← unificado a string?
-    public string? GalponId  { get; set; }   // ← unificado a string?
+    public int    GranjaId    { get; set; }
+    public string? NucleoId   { get; set; }
+    public string? GalponId   { get; set; }
 
     public string?   Regional           { get; set; }
     public DateTime? FechaEncaset       { get; set; }
     public int?      HembrasL           { get; set; }
     public int?      MachosL            { get; set; }
+
+    // ← OJO: todos como double? (coincide con columnas double precision)
     public double?   PesoInicialH       { get; set; }
     public double?   PesoInicialM       { get; set; }
     public double?   UnifH              { get; set; }
     public double?   UnifM              { get; set; }
+
     public int?      MortCajaH          { get; set; }
     public int?      MortCajaM          { get; set; }
     public string?   Raza               { get; set; }
@@ -27,17 +30,14 @@ public class Lote : AuditableEntity
     public string?   CodigoGuiaGenetica { get; set; }
     public string?   Tecnico            { get; set; }
 
-    // Campos agregados previamente
-    public int?    Mixtas          { get; set; }
-    public double? PesoMixto       { get; set; }
-    public int?    AvesEncasetadas { get; set; }
-    public int?    EdadInicial     { get; set; }
+    public int?      Mixtas             { get; set; }
+    public double?   PesoMixto          { get; set; } // ← double?
+    public int?      AvesEncasetadas    { get; set; }
+    public int?      EdadInicial        { get; set; }
 
-    // Navegación
     public Farm    Farm   { get; set; } = null!;
-    public Nucleo? Nucleo { get; set; }    // compuesta: (NucleoId, GranjaId)
-    public Galpon? Galpon { get; set; }    // FK a GalponId
+    public Nucleo? Nucleo { get; set; }
+    public Galpon? Galpon { get; set; }
 
-    // Reproductoras
     public List<LoteReproductora> Reproductoras { get; set; } = new();
 }

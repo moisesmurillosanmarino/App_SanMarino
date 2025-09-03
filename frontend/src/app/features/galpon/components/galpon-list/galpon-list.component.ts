@@ -1,211 +1,178 @@
+// src/app/features/galpon/pages/galpon-list/galpon-list.component.ts
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
-  ReactiveFormsModule,
-  FormBuilder,
-  FormGroup,
-  Validators,
-  FormsModule
+  ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormsModule
 } from '@angular/forms';
 import { finalize, forkJoin } from 'rxjs';
 
 import { SidebarComponent } from '../../../../shared/components/sidebar/sidebar.component';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import { faPlus, faPen, faTrash,faEye  } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faPen, faTrash, faEye } from '@fortawesome/free-solid-svg-icons';
 
-import {
-  GalponService,
-  GalponDto,
-  CreateGalponDto,
-  UpdateGalponDto
-} from '../../services/galpon.service';
-import {
-  NucleoService,
-  NucleoDto
-} from '../../../nucleo/services/nucleo.service';
-import {
-  FarmService,
-  FarmDto
-} from '../../../farm/services/farm.service';
+import { GalponService } from '../../services/galpon.service';
+import { GalponDetailDto, CreateGalponDto, UpdateGalponDto } from '../../models/galpon.models';
+
+import { NucleoService, NucleoDto } from '../../../nucleo/services/nucleo.service';
+import { FarmService, FarmDto } from '../../../farm/services/farm.service';
 import { GalponFilterPipe } from '../../pipe/galpon-filter.pipe';
-import {  CompanyService,Company } from '../../../../core/services/company/company.service';
+import { Company } from '../../../../core/services/company/company.service';
 import { MasterListService } from '../../../../core/services/master-list/master-list.service';
 
-interface Option {
-  id: string;
-  label: string;
-  granjaId: number;
-}
+interface NucleoOption { id: string; label: string; granjaId: number; }
 
 @Component({
   selector: 'app-galpon-list',
   standalone: true,
-  imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    SidebarComponent,
-    FontAwesomeModule,
-    FormsModule,
-    GalponFilterPipe
-  ],
+  imports: [CommonModule, ReactiveFormsModule, SidebarComponent, FontAwesomeModule, FormsModule, GalponFilterPipe],
   templateUrl: './galpon-list.component.html',
   styleUrls: ['./galpon-list.component.scss']
 })
 export class GalponListComponent implements OnInit {
-  faPlus  = faPlus;
-  faPen   = faPen;
-  faTrash = faTrash;
-  faEye = faEye;
+  faPlus = faPlus; faPen = faPen; faTrash = faTrash; faEye = faEye;
 
-  galpones: GalponDto[] = [];
-
+  galpones: GalponDetailDto[] = [];
   allNucleos: NucleoDto[] = [];
   farms: FarmDto[] = [];
-  companies: Company[] = [];
+  companies: Company[] = []; // si tu service de company ya existe
 
-
-  nucleoOptions: Option[] = [];
-  nucleoMap: Record<string, string> = {};
-
+  nucleoOptions: NucleoOption[] = [];
   loading = false;
-  filterText = '';
+  filtro = '';
 
   // modal & form
   modalOpen = false;
   form!: FormGroup;
-  editing: GalponDto | null = null;
-  filtro: string = '';
-  typegarponOptions: string[] = [];
+  editing: GalponDetailDto | null = null;
 
+  // modal detalle
   detailOpen = false;
-  selectedDetail: GalponDto | null = null;
+  selectedDetail: GalponDetailDto | null = null;
+
+  // combos
+  typegarponOptions: string[] = [];
 
   constructor(
     private fb: FormBuilder,
     private svc: GalponService,
     private nucleoSvc: NucleoService,
     private farmSvc: FarmService,
-    private companySvc: CompanyService,
-     private mlSvc: MasterListService,    // inyectamos el servicio de master-lists
+    private mlSvc: MasterListService
   ) {}
 
-  ngOnInit() {
-    // Inicializa form
+  ngOnInit(): void {
+    // Form alineado con Create/Update del backend
     this.form = this.fb.group({
-      galponId:       ['', Validators.required],
-      galponNombre:   ['', Validators.required],
-      galponNucleoId: ['', Validators.required],
-      NucleoId:       ['', Validators.required],
-      granjaId:       [null, Validators.required],
-      ancho:          ['', Validators.required],
-      largo:          ['', Validators.required],
-      tipoGalpon:     ['', Validators.required]
+      galponId:    ['', Validators.required],
+      galponNombre:['', Validators.required],
+      nucleoId:    ['', Validators.required],
+      granjaId:    [null, Validators.required],
+      ancho:       [''],
+      largo:       [''],
+      tipoGalpon:  ['']
     });
 
-    // Cargo farms + nucleos antes de cargar galpones
     forkJoin({
-      farms:    this.farmSvc.getAll(),
-      nucleos:  this.nucleoSvc.getAll(),
-      companies: this.companySvc.getAll()
-    }).subscribe(({ farms, nucleos, companies }) => {
+      farms:   this.farmSvc.getAll(),
+      nucleos: this.nucleoSvc.getAll()
+    }).subscribe(({ farms, nucleos }) => {
       this.farms = farms;
       this.allNucleos = nucleos;
-      this.companies = companies;
 
-      // Mapa farmId → nombre
-      const farmMap = farms.reduce((m, f) => {
-        m[f.id] = f.name;
-        return m;
-      }, {} as Record<number, string>);
-
+      // opciones de select núcleo
       this.nucleoOptions = nucleos.map(n => ({
         id: n.nucleoId,
         granjaId: n.granjaId,
-        label: `${n.nucleoNombre}`
+        label: `${n.nucleoNombre} (Granja #${n.granjaId})`
       }));
 
-      this.nucleoMap = nucleos.reduce((m, n) => {
-        m[n.nucleoId] = `${n.nucleoNombre} (${farmMap[n.granjaId]})`;
-        return m;
-      }, {} as Record<string, string>);
-
-      this.form.get('galponNucleoId')!
-        .valueChanges
-        .subscribe(id => {
-          const sel = this.allNucleos.find(x => x.nucleoId === id);
-          if (sel) {
-            this.form.patchValue({ granjaId: sel.granjaId, NucleoId: id }, { emitEvent: false });
-          } else {
-            // si limpian el select, limpiamos espejo también
-            this.form.patchValue({ NucleoId: '' }, { emitEvent: false });
-          }
-        });
+      // sincronizar granjaId desde núcleo seleccionado
+      this.form.get('nucleoId')!.valueChanges.subscribe(id => {
+        const sel = this.allNucleos.find(x => x.nucleoId === id);
+        this.form.patchValue({ granjaId: sel?.granjaId ?? null }, { emitEvent: false });
+      });
 
       this.loadGalpones();
     });
 
-    // 2) Carga los tipos de identificación del master-list con key "identi-select"
+    // master-list para tipo de galpón
     this.mlSvc.getByKey('type_galpon').subscribe({
       next: ml => this.typegarponOptions = ml.options,
-      error: err => console.error('No pude cargar tipos de galpon', err)
+      error: err => console.error('No pude cargar tipos de galpón', err)
     });
   }
 
-  private loadGalpones() {
+  private loadGalpones(): void {
     this.loading = true;
     this.svc.getAll()
       .pipe(finalize(() => this.loading = false))
       .subscribe(list => this.galpones = list);
   }
 
-  openModal(g?: GalponDto) {
+  openModal(g?: GalponDetailDto): void {
     this.editing = g ?? null;
 
     if (g) {
-      this.form.patchValue(g);
+      // Modo edición: rellenar y bloquear ID
+      this.form.reset({
+        galponId:     g.galponId,
+        galponNombre: g.galponNombre,
+        nucleoId:     g.nucleoId,      // clave para guardar
+        granjaId:     g.granjaId,
+        ancho:        g.ancho ?? '',
+        largo:        g.largo ?? '',
+        tipoGalpon:   g.tipoGalpon ?? ''
+      });
+      this.form.get('galponId')?.disable(); // ID no editable si ya existe
     } else {
-      const lastId = this.galpones
-        .map(g => parseInt(g.galponId.replace(/\D/g, '')))
+      // Modo creación: sugerir nuevo ID incremental
+      const last = this.galpones
+        .map(x => parseInt((x.galponId || '').replace(/\D/g, '')))
+        .filter(n => !isNaN(n))
         .reduce((max, cur) => cur > max ? cur : max, 0);
-      const newId = `G${(lastId + 1).toString().padStart(4, '0')}`;
+      const newId = `G${(last + 1).toString().padStart(4, '0')}`;
 
       this.form.reset({
-        galponId:       newId,
-        galponNucleoId: '',
-        galponNombre:   '',
-        NucleoId : '',
-        granjaId:       null,
-        ancho:          '',
-        largo:          '',
-        tipoGalpon:     ''
+        galponId:     newId,
+        galponNombre: '',
+        nucleoId:     '',
+        granjaId:     null,
+        ancho:        '',
+        largo:        '',
+        tipoGalpon:   ''
       });
+      this.form.get('galponId')?.enable();
     }
+
     this.modalOpen = true;
   }
 
-  showDetail(g: GalponDto) {
+  showDetail(g: GalponDetailDto): void {
+    // Si quisieras re-consultar del backend:
+    // this.svc.getById(g.galponId).subscribe(d => { this.selectedDetail = d; this.detailOpen = true; });
     this.selectedDetail = g;
     this.detailOpen = true;
   }
 
-  save() {
+  save(): void {
     if (this.form.invalid) return;
 
-    // getRawValue por si algún control llega a estar deshabilitado
-    const raw = this.form.getRawValue();
-
-    // espejo garantizado: NucleoId = galponNucleoId
-    const payload = {
-      ...raw,
-      NucleoId: raw.galponNucleoId
-    } as CreateGalponDto | UpdateGalponDto;
+    const raw = this.form.getRawValue(); // incluye galponId si estaba disabled
+    const payload: CreateGalponDto | UpdateGalponDto = {
+      galponId:     raw.galponId,
+      galponNombre: raw.galponNombre,
+      nucleoId:     raw.nucleoId,
+      granjaId:     raw.granjaId,
+      ancho:        raw.ancho || null,
+      largo:        raw.largo || null,
+      tipoGalpon:   raw.tipoGalpon || null
+    };
 
     this.loading = true;
 
-    let call$ = this.svc.create(payload as CreateGalponDto);
-    if (this.editing) {
-      call$ = this.svc.update(payload as UpdateGalponDto);
-    }
+    const call$ = this.editing
+      ? this.svc.update(payload as UpdateGalponDto)
+      : this.svc.create(payload as CreateGalponDto);
 
     call$
       .pipe(finalize(() => {
@@ -216,7 +183,7 @@ export class GalponListComponent implements OnInit {
       .subscribe();
   }
 
-  delete(id: string) {
+  delete(id: string): void {
     if (!confirm('¿Eliminar este galpón?')) return;
     this.loading = true;
     this.svc.delete(id)
@@ -224,40 +191,12 @@ export class GalponListComponent implements OnInit {
       .subscribe();
   }
 
-  /** Info del núcleo seleccionado */
-  get selectedNucleoInfo(): NucleoDto | undefined {
-    const id = this.form.get('galponNucleoId')!.value;
-    return this.allNucleos.find(n => n.nucleoId === id);
-  }
-
-  // Métodos auxiliares para la vista
-  getCompanyNameByGalpon(g: GalponDto): string {
-    const nucleo = this.allNucleos.find(n => n.nucleoId === g.galponNucleoId);
-    const farm = this.farms.find(f => f.id === nucleo?.granjaId);
-    const company = this.companies.find(c => c.id === farm?.companyId);
-    return company?.name || '–';
-  }
-
-  getNucleoNameByGalpon(g: GalponDto): string {
-    const nucleo = this.allNucleos.find(n => n.nucleoId === g.galponNucleoId);
-    return nucleo?.nucleoNombre || '–';
-  }
-
-  getGranjaNameByGalpon(g: GalponDto): string {
-    const nucleo = this.allNucleos.find(n => n.nucleoId === g.galponNucleoId);
-    const farm = this.farms.find(f => f.id === nucleo?.granjaId);
-    return farm?.name || '–';
-  }
-
-  getArea(g: GalponDto | null): string {
+  // Auxiliares de vista
+  getArea(g: GalponDetailDto | null): string {
     if (!g?.ancho || !g?.largo) return '–';
-
-    const ancho = parseFloat(g.ancho);
-    const largo = parseFloat(g.largo);
-
-    if (isNaN(ancho) || isNaN(largo)) return '–';
-
-    return (ancho * largo).toFixed(2);
+    const a = parseFloat(String(g.ancho)); const l = parseFloat(String(g.largo));
+    if (isNaN(a) || isNaN(l)) return '–';
+    return (a * l).toFixed(2);
   }
 
   getGranjaNombreByNucleoId(nucleoId: string): string {
@@ -265,6 +204,4 @@ export class GalponListComponent implements OnInit {
     const granja = this.farms.find(f => f.id === nucleo?.granjaId);
     return granja?.name || '–';
   }
-
-
 }

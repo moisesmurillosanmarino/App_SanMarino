@@ -4,14 +4,9 @@ using System.Linq.Expressions;
 
 using ZooSanMarino.Application.DTOs;           // LoteDto, Create/Update
 using ZooSanMarino.Application.DTOs.Lotes;     // LoteDetailDto, LoteSearchRequest
-
-// 👇 Alias para evitar ambigüedad con PagedResult<>
 using CommonDtos = ZooSanMarino.Application.DTOs.Common;
-// 👇 Alias para usar SIEMPRE la ICurrentUser de Application
 using AppInterfaces = ZooSanMarino.Application.Interfaces;
-using LoteDtos = ZooSanMarino.Application.DTOs.Lotes;
 
-// 👇 Lite DTOs centralizados en Shared
 using FarmLiteDto   = ZooSanMarino.Application.DTOs.Shared.FarmLiteDto;
 using NucleoLiteDto = ZooSanMarino.Application.DTOs.Shared.NucleoLiteDto;
 using GalponLiteDto = ZooSanMarino.Application.DTOs.Shared.GalponLiteDto;
@@ -21,12 +16,9 @@ using ZooSanMarino.Infrastructure.Persistence;
 
 namespace ZooSanMarino.Infrastructure.Services
 {
-    // Implementa la ILoteService de Application con alias explícito por seguridad
     public class LoteService : AppInterfaces.ILoteService
     {
         private readonly ZooSanMarinoContext _ctx;
-
-        // 👇 Aseguramos que esta es la ICurrentUser “buena”
         private readonly AppInterfaces.ICurrentUser _current;
 
         public LoteService(ZooSanMarinoContext ctx, AppInterfaces.ICurrentUser current)
@@ -35,34 +27,58 @@ namespace ZooSanMarino.Infrastructure.Services
             _current = current;
         }
 
-        // ===========================
-        // LISTADO SIMPLE (compat)
-        // ===========================
+        // ======================================================
+        // LISTADO SIMPLE (compat con front existente)
+        // ======================================================
         public async Task<IEnumerable<LoteDto>> GetAllAsync() =>
             await _ctx.Lotes
                 .AsNoTracking()
                 .Where(l => l.CompanyId == _current.CompanyId && l.DeletedAt == null)
+                .OrderBy(l => l.LoteId)
                 .Select(l => new LoteDto(
-                    l.LoteId, l.LoteNombre, l.GranjaId, l.NucleoId, l.GalponId,
-                    l.Regional, l.FechaEncaset, l.HembrasL, l.MachosL,
-                    l.PesoInicialH, l.PesoInicialM, l.UnifH, l.UnifM,
-                    l.MortCajaH, l.MortCajaM, l.Raza, l.AnoTablaGenetica,
-                    l.Linea, l.TipoLinea, l.CodigoGuiaGenetica,
-                    l.Mixtas, l.PesoMixto, l.AvesEncasetadas, l.EdadInicial,
+                    l.LoteId,
+                    l.LoteNombre,
+                    l.GranjaId,
+                    l.NucleoId,
+                    l.GalponId,
+                    l.Regional,
+                    l.FechaEncaset,
+                    l.HembrasL,
+                    l.MachosL,
+                    l.PesoInicialH,  // ← tipos decimales alineados en entidad/config
+                    l.PesoInicialM,
+                    l.UnifH,
+                    l.UnifM,
+                    l.MortCajaH,
+                    l.MortCajaM,
+                    l.Raza,
+                    l.AnoTablaGenetica,
+                    l.Linea,
+                    l.TipoLinea,
+                    l.CodigoGuiaGenetica,
+                    l.Mixtas,
+                    l.PesoMixto,
+                    l.AvesEncasetadas,
+                    l.EdadInicial,
                     l.Tecnico
                 ))
                 .ToListAsync();
 
-        // ===========================
-        // BÚSQUEDA / LISTADO AVANZADO
-        // ===========================
+        // ======================================================
+        // BÚSQUEDA / LISTADO AVANZADO (paginado)
+        // ======================================================
         public async Task<CommonDtos.PagedResult<LoteDetailDto>> SearchAsync(LoteSearchRequest req)
         {
+            // saneo mínimo
+            var page     = req.Page     <= 0 ? 1 : req.Page;
+            var pageSize = req.PageSize <= 0 ? 50 : req.PageSize;
+
             var q = _ctx.Lotes
                 .AsNoTracking()
                 .Where(l => l.CompanyId == _current.CompanyId);
 
-            if (req.SoloActivos) q = q.Where(l => l.DeletedAt == null);
+            if (req.SoloActivos)
+                q = q.Where(l => l.DeletedAt == null);
 
             if (!string.IsNullOrWhiteSpace(req.Search))
             {
@@ -72,12 +88,12 @@ namespace ZooSanMarino.Infrastructure.Services
                     l.LoteNombre.ToLower().Contains(term));
             }
 
-            if (req.GranjaId.HasValue)                    q = q.Where(l => l.GranjaId == req.GranjaId.Value);
-            if (!string.IsNullOrWhiteSpace(req.NucleoId)) q = q.Where(l => l.NucleoId == req.NucleoId);
-            if (!string.IsNullOrWhiteSpace(req.GalponId)) q = q.Where(l => l.GalponId == req.GalponId);
+            if (req.GranjaId.HasValue)                     q = q.Where(l => l.GranjaId == req.GranjaId.Value);
+            if (!string.IsNullOrWhiteSpace(req.NucleoId))  q = q.Where(l => l.NucleoId == req.NucleoId);
+            if (!string.IsNullOrWhiteSpace(req.GalponId))  q = q.Where(l => l.GalponId == req.GalponId);
 
-            if (req.FechaDesde.HasValue) q = q.Where(l => l.FechaEncaset >= req.FechaDesde);
-            if (req.FechaHasta.HasValue) q = q.Where(l => l.FechaEncaset <= req.FechaHasta);
+            if (req.FechaDesde.HasValue)                   q = q.Where(l => l.FechaEncaset >= req.FechaDesde!.Value);
+            if (req.FechaHasta.HasValue)                   q = q.Where(l => l.FechaEncaset <= req.FechaHasta!.Value);
 
             if (!string.IsNullOrWhiteSpace(req.TipoLinea)) q = q.Where(l => l.TipoLinea == req.TipoLinea);
             if (!string.IsNullOrWhiteSpace(req.Raza))      q = q.Where(l => l.Raza == req.Raza);
@@ -87,61 +103,77 @@ namespace ZooSanMarino.Infrastructure.Services
 
             var total = await q.LongCountAsync();
             var items = await ProjectToDetail(q)
-                .Skip((req.Page - 1) * req.PageSize)
-                .Take(req.PageSize)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
             return new CommonDtos.PagedResult<LoteDetailDto>
             {
-                Page = req.Page,
-                PageSize = req.PageSize,
+                Page = page,
+                PageSize = pageSize,
                 Total = total,
                 Items = items
             };
         }
 
-        // ===========================
-        // GET DETALLE POR ID
-        // ===========================
+        // ======================================================
+        // GET DETALLE POR ID (tenant-safe)
+        // ======================================================
         public async Task<LoteDetailDto?> GetByIdAsync(string loteId)
         {
             var q = _ctx.Lotes
                 .AsNoTracking()
-                .Where(l => l.CompanyId == _current.CompanyId && l.LoteId == loteId && l.DeletedAt == null);
+                .Where(l => l.CompanyId == _current.CompanyId &&
+                            l.LoteId    == loteId &&
+                            l.DeletedAt == null);
 
             return await ProjectToDetail(q).SingleOrDefaultAsync();
         }
 
-        // ===========================
-        // CREATE
-        // ===========================
+        // ======================================================
+        // CREATE (valida pertenencia y relaciones)
+        // ======================================================
         public async Task<LoteDetailDto> CreateAsync(CreateLoteDto dto)
         {
             if (string.IsNullOrWhiteSpace(dto.LoteId))
-                throw new InvalidOperationException("LoteId no puede ser null.");
+                throw new InvalidOperationException("LoteId no puede ser nulo o vacío.");
+
+            // LoteId único por company
+            var existsLote = await _ctx.Lotes
+                .AnyAsync(l => l.CompanyId == _current.CompanyId &&
+                               l.LoteId    == dto.LoteId &&
+                               l.DeletedAt == null);
+            if (existsLote)
+                throw new InvalidOperationException($"El Lote '{dto.LoteId}' ya existe.");
 
             await EnsureFarmExists(dto.GranjaId);
 
-            string? nucleoId = dto.NucleoId;
-            string? galponId = dto.GalponId;
+            string? nucleoId = string.IsNullOrWhiteSpace(dto.NucleoId) ? null : dto.NucleoId.Trim();
+            string? galponId = string.IsNullOrWhiteSpace(dto.GalponId) ? null : dto.GalponId.Trim();
 
+            // Si viene Galpón, validamos pertenencia y, si falta, derivamos NucleoId del galpón
             if (!string.IsNullOrWhiteSpace(galponId))
             {
                 var g = await _ctx.Galpones
                     .AsNoTracking()
                     .SingleOrDefaultAsync(x =>
                         x.GalponId == galponId &&
-                        x.CompanyId == _current.CompanyId); // si Galpon no tiene CompanyId, elimina este filtro
+                        x.CompanyId == _current.CompanyId);
 
-                if (g is null) throw new InvalidOperationException("Galpón no existe o no pertenece a la compañía.");
-                if (g.GranjaId != dto.GranjaId) throw new InvalidOperationException("Galpón no pertenece a la granja indicada.");
-                if (!string.IsNullOrWhiteSpace(dto.NucleoId) &&
-                    !string.Equals(g.NucleoId, dto.NucleoId, StringComparison.OrdinalIgnoreCase))
+                if (g is null)
+                    throw new InvalidOperationException("Galpón no existe o no pertenece a la compañía.");
+
+                if (g.GranjaId != dto.GranjaId)
+                    throw new InvalidOperationException("Galpón no pertenece a la granja indicada.");
+
+                if (!string.IsNullOrWhiteSpace(nucleoId) &&
+                    !string.Equals(g.NucleoId, nucleoId, StringComparison.OrdinalIgnoreCase))
                     throw new InvalidOperationException("Galpón no pertenece al núcleo indicado.");
 
-                nucleoId ??= g.NucleoId; // deriva núcleo si no vino
+                nucleoId ??= g.NucleoId;
             }
 
+            // Si viene Núcleo, validar que existe en la granja
             if (!string.IsNullOrWhiteSpace(nucleoId))
             {
                 var n = await _ctx.Nucleos
@@ -149,35 +181,44 @@ namespace ZooSanMarino.Infrastructure.Services
                     .SingleOrDefaultAsync(x =>
                         x.NucleoId == nucleoId &&
                         x.GranjaId == dto.GranjaId
-                        // && x.CompanyId == _current.CompanyId // ← si Nucleo tiene CompanyId en tu modelo, re-habilita esta línea
+                        // Si Nucleo tiene CompanyId, añadir filtro CompanyId == _current.CompanyId
                     );
 
-                if (n is null) throw new InvalidOperationException("Núcleo no existe en la granja (o no pertenece a la compañía).");
+                if (n is null)
+                    throw new InvalidOperationException("Núcleo no existe en la granja (o no pertenece a la compañía).");
             }
 
             var ent = new Lote
             {
-                LoteId             = dto.LoteId,
-                LoteNombre         = dto.LoteNombre,
+                LoteId             = dto.LoteId.Trim(),
+                LoteNombre         = (dto.LoteNombre ?? string.Empty).Trim(),
                 GranjaId           = dto.GranjaId,
                 NucleoId           = nucleoId,
                 GalponId           = galponId,
+
                 Regional           = dto.Regional,
-                FechaEncaset       = dto.FechaEncaset,
+                // Fechas en UTC para consistencia
+                FechaEncaset       = dto.FechaEncaset?.ToUniversalTime(),
+
                 HembrasL           = dto.HembrasL,
                 MachosL            = dto.MachosL,
+
+                // ← tipos decimales: asignación directa
                 PesoInicialH       = dto.PesoInicialH,
                 PesoInicialM       = dto.PesoInicialM,
                 UnifH              = dto.UnifH,
                 UnifM              = dto.UnifM,
+
                 MortCajaH          = dto.MortCajaH,
                 MortCajaM          = dto.MortCajaM,
+
                 Raza               = dto.Raza,
                 AnoTablaGenetica   = dto.AnoTablaGenetica,
                 Linea              = dto.Linea,
                 TipoLinea          = dto.TipoLinea,
                 CodigoGuiaGenetica = dto.CodigoGuiaGenetica,
                 Tecnico            = dto.Tecnico,
+
                 Mixtas             = dto.Mixtas,
                 PesoMixto          = dto.PesoMixto,
                 AvesEncasetadas    = dto.AvesEncasetadas,
@@ -195,80 +236,98 @@ namespace ZooSanMarino.Infrastructure.Services
             return result ?? throw new InvalidOperationException("No fue posible leer el lote recién creado.");
         }
 
-        // ===========================
-        // UPDATE
-        // ===========================
+        // ======================================================
+        // UPDATE (tenant-safe + validaciones de relaciones)
+        // ======================================================
         public async Task<LoteDetailDto?> UpdateAsync(UpdateLoteDto dto)
         {
             var ent = await _ctx.Lotes
-                .SingleOrDefaultAsync(x => x.LoteId == dto.LoteId &&
-                                           x.CompanyId == _current.CompanyId &&
-                                           x.DeletedAt == null);
+                .SingleOrDefaultAsync(x =>
+                    x.LoteId    == dto.LoteId &&
+                    x.CompanyId == _current.CompanyId &&
+                    x.DeletedAt == null);
+
             if (ent is null) return null;
 
             await EnsureFarmExists(dto.GranjaId);
 
-            if (!string.IsNullOrWhiteSpace(dto.GalponId))
-            {
-                var g = await _ctx.Galpones.AsNoTracking()
-                    .SingleOrDefaultAsync(x => x.GalponId == dto.GalponId &&
-                                               x.CompanyId == _current.CompanyId); // quitar si Galpon no tiene CompanyId
+            string? nucleoId = string.IsNullOrWhiteSpace(dto.NucleoId) ? null : dto.NucleoId.Trim();
+            string? galponId = string.IsNullOrWhiteSpace(dto.GalponId) ? null : dto.GalponId.Trim();
 
-                if (g is null) throw new InvalidOperationException("Galpón no existe o no pertenece a la compañía.");
-                if (g.GranjaId != dto.GranjaId) throw new InvalidOperationException("Galpón no pertenece a la granja indicada.");
-                if (!string.IsNullOrWhiteSpace(dto.NucleoId) &&
-                    !string.Equals(g.NucleoId, dto.NucleoId, StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrWhiteSpace(galponId))
+            {
+                var g = await _ctx.Galpones
+                    .AsNoTracking()
+                    .SingleOrDefaultAsync(x =>
+                        x.GalponId == galponId &&
+                        x.CompanyId == _current.CompanyId);
+
+                if (g is null)
+                    throw new InvalidOperationException("Galpón no existe o no pertenece a la compañía.");
+
+                if (g.GranjaId != dto.GranjaId)
+                    throw new InvalidOperationException("Galpón no pertenece a la granja indicada.");
+
+                if (!string.IsNullOrWhiteSpace(nucleoId) &&
+                    !string.Equals(g.NucleoId, nucleoId, StringComparison.OrdinalIgnoreCase))
                     throw new InvalidOperationException("Galpón no pertenece al núcleo indicado.");
             }
 
-            if (!string.IsNullOrWhiteSpace(dto.NucleoId))
+            if (!string.IsNullOrWhiteSpace(nucleoId))
             {
-                var n = await _ctx.Nucleos.AsNoTracking()
+                var n = await _ctx.Nucleos
+                    .AsNoTracking()
                     .SingleOrDefaultAsync(x =>
-                        x.NucleoId == dto.NucleoId &&
+                        x.NucleoId == nucleoId &&
                         x.GranjaId == dto.GranjaId
-                        // && x.CompanyId == _current.CompanyId // re-habilita si existe en el modelo
+                        // Si Nucleo tiene CompanyId, añadir filtro CompanyId == _current.CompanyId
                     );
 
-                if (n is null) throw new InvalidOperationException("Núcleo no existe en la granja (o no pertenece a la compañía).");
+                if (n is null)
+                    throw new InvalidOperationException("Núcleo no existe en la granja (o no pertenece a la compañía).");
             }
 
-            // Mutación
-            ent.LoteNombre         = dto.LoteNombre;
+            // Mutación (fechas en UTC y decimales directos)
+            ent.LoteNombre         = (dto.LoteNombre ?? string.Empty).Trim();
             ent.GranjaId           = dto.GranjaId;
-            ent.NucleoId           = dto.NucleoId ?? ent.NucleoId;
-            ent.GalponId           = dto.GalponId ?? ent.GalponId;
+            ent.NucleoId           = nucleoId ?? ent.NucleoId;
+            ent.GalponId           = galponId ?? ent.GalponId;
             ent.Regional           = dto.Regional;
-            ent.FechaEncaset       = dto.FechaEncaset;
+            ent.FechaEncaset       = dto.FechaEncaset?.ToUniversalTime();
+
             ent.HembrasL           = dto.HembrasL;
             ent.MachosL            = dto.MachosL;
+
             ent.PesoInicialH       = dto.PesoInicialH;
             ent.PesoInicialM       = dto.PesoInicialM;
             ent.UnifH              = dto.UnifH;
             ent.UnifM              = dto.UnifM;
+
             ent.MortCajaH          = dto.MortCajaH;
             ent.MortCajaM          = dto.MortCajaM;
+
             ent.Raza               = dto.Raza;
             ent.AnoTablaGenetica   = dto.AnoTablaGenetica;
             ent.Linea              = dto.Linea;
             ent.TipoLinea          = dto.TipoLinea;
             ent.CodigoGuiaGenetica = dto.CodigoGuiaGenetica;
             ent.Tecnico            = dto.Tecnico;
+
             ent.Mixtas             = dto.Mixtas;
             ent.PesoMixto          = dto.PesoMixto;
             ent.AvesEncasetadas    = dto.AvesEncasetadas;
             ent.EdadInicial        = dto.EdadInicial;
 
-            ent.UpdatedByUserId = _current.UserId;
-            ent.UpdatedAt       = DateTime.UtcNow;
+            ent.UpdatedByUserId    = _current.UserId;
+            ent.UpdatedAt          = DateTime.UtcNow;
 
             await _ctx.SaveChangesAsync();
             return await GetByIdAsync(ent.LoteId);
         }
 
-        // ===========================
-        // DELETE (soft) / HARD DELETE
-        // ===========================
+        // ======================================================
+        // DELETE (soft) y HARD DELETE
+        // ======================================================
         public async Task<bool> DeleteAsync(string loteId)
         {
             var ent = await _ctx.Lotes
@@ -294,9 +353,9 @@ namespace ZooSanMarino.Infrastructure.Services
             return true;
         }
 
-        // ===========================
+        // ======================================================
         // Helpers
-        // ===========================
+        // ======================================================
         private async Task EnsureFarmExists(int granjaId)
         {
             var exists = await _ctx.Farms
@@ -305,14 +364,14 @@ namespace ZooSanMarino.Infrastructure.Services
             if (!exists) throw new InvalidOperationException("Granja no existe o no pertenece a la compañía.");
         }
 
-        // Proyección -> LoteDetailDto usando Lite DTOs de Shared
-        private static IQueryable<LoteDtos.LoteDetailDto> ProjectToDetail(IQueryable<Lote> q)
+        // Proyección consistente a LoteDetailDto con Lite DTOs
+        private static IQueryable<LoteDetailDto> ProjectToDetail(IQueryable<Lote> q)
         {
             return q
                 .Include(l => l.Farm)
                 .Include(l => l.Nucleo)
                 .Include(l => l.Galpon)
-                .Select(l => new LoteDtos.LoteDetailDto(
+                .Select(l => new LoteDetailDto(
                     l.LoteId,
                     l.LoteNombre,
                     l.GranjaId,
@@ -367,9 +426,9 @@ namespace ZooSanMarino.Infrastructure.Services
                 ));
         }
 
-        private static IQueryable<Lote> ApplyOrder(IQueryable<Lote> q, string sortBy, bool desc)
+        private static IQueryable<Lote> ApplyOrder(IQueryable<Lote> q, string? sortBy, bool desc)
         {
-            Expression<Func<Lote, object>> key = (sortBy ?? "").ToLower() switch
+            Expression<Func<Lote, object>> key = (sortBy ?? string.Empty).ToLower() switch
             {
                 "lote_nombre"   => l => l.LoteNombre,
                 "lote_id"       => l => l.LoteId,

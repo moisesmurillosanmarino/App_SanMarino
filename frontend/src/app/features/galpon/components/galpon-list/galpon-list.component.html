@@ -1,3 +1,4 @@
+<!-- src/app/features/galpon/pages/galpon-list/galpon-list.component.html -->
 <div class="flex h-screen" [attr.aria-busy]="loading ? 'true' : null">
   <app-sidebar class="w-64"></app-sidebar>
 
@@ -35,7 +36,6 @@
       <div class="ux-scroll">
         <table class="ux-table">
           <caption class="sr-only">Listado de galpones</caption>
-
           <thead>
             <tr>
               <th scope="col">Empresa</th>
@@ -44,22 +44,22 @@
               <th scope="col">Galpón</th>
               <th scope="col">Ancho (m)</th>
               <th scope="col">Largo (m)</th>
+              <th scope="col">Área (m²)</th>
               <th scope="col">Tipo</th>
               <th scope="col" class="text-center">Acciones</th>
             </tr>
           </thead>
 
           <tbody>
-            <tr *ngFor="let g of galpones | galponFilter:filtro:allNucleos:farms:companies" class="ux-row">
-              <td>{{ getCompanyNameByGalpon(g) }}</td>
-              <td>{{ getGranjaNameByGalpon(g) }}</td>
-              <td>{{ getNucleoNameByGalpon(g) }}</td>
+            <tr *ngFor="let g of galpones | galponFilter:filtro" class="ux-row">
+              <td>{{ g.company?.name }}</td>
+              <td>{{ g.farm?.name }}</td>
+              <td>{{ g.nucleo?.nucleoNombre }}</td>
               <td>{{ g.galponNombre }}</td>
-              <td>{{ g.ancho }}</td>
-              <td>{{ g.largo }}</td>
-              <td>
-                <span class="ux-badge">{{ g.tipoGalpon || '—' }}</span>
-              </td>
+              <td>{{ g.ancho || '–' }}</td>
+              <td>{{ g.largo || '–' }}</td>
+              <td>{{ getArea(g) }}</td>
+              <td><span class="ux-badge">{{ g.tipoGalpon || '—' }}</span></td>
               <td class="text-center">
                 <div class="inline-flex items-center gap-2">
                   <button (click)="openModal(g)" class="icon-btn" title="Editar">
@@ -75,8 +75,8 @@
               </td>
             </tr>
 
-            <tr *ngIf="(galpones | galponFilter:filtro:allNucleos:farms:companies)?.length === 0">
-              <td colspan="8" class="empty-state">
+            <tr *ngIf="(galpones | galponFilter:filtro)?.length === 0">
+              <td colspan="9" class="empty-state">
                 <div class="empty-illustration">🏠</div>
                 <p>No hay galpones que coincidan con el filtro.</p>
                 <button (click)="openModal()" class="btn-secondary mt-2">
@@ -89,7 +89,7 @@
         </table>
       </div>
 
-      <!-- Overlay de carga sobre la card -->
+      <!-- Overlay de carga -->
       <div *ngIf="loading" class="loading-overlay" aria-live="polite">
         <div class="spinner"></div>
         Cargando…
@@ -100,17 +100,15 @@
     <div *ngIf="modalOpen" class="ux-modal" role="dialog" aria-modal="true" aria-labelledby="galpon-modal-title">
       <div class="ux-modal__panel">
         <div class="ux-modal__header">
-          <h2 id="galpon-modal-title" class="ux-title">
-            {{ editing ? 'Editar Galpón' : 'Nuevo Galpón' }}
-          </h2>
+          <h2 id="galpon-modal-title" class="ux-title">{{ editing ? 'Editar Galpón' : 'Nuevo Galpón' }}</h2>
           <button type="button" (click)="modalOpen = false" class="btn-muted">Cerrar</button>
         </div>
 
         <form [formGroup]="form" (ngSubmit)="save()" class="ux-modal__body grid grid-cols-1 md:grid-cols-2 gap-4" novalidate>
-          <!-- ID (solo lectura) -->
+          <!-- ID (solo lectura en edición) -->
           <div>
             <label class="ux-label">ID Galpón</label>
-            <input formControlName="galponId" readonly class="ux-input ux-input--readonly" />
+            <input formControlName="galponId" [readonly]="editing" class="ux-input" />
           </div>
 
           <div>
@@ -121,22 +119,19 @@
 
           <div>
             <label class="ux-label">Núcleo <span class="req">*</span></label>
-            <select formControlName="galponNucleoId" class="ux-input"
-                    [class.is-invalid]="form.get('galponNucleoId')?.invalid && form.get('galponNucleoId')?.touched">
+            <select formControlName="nucleoId" class="ux-input"
+                    [class.is-invalid]="form.get('nucleoId')?.invalid && form.get('nucleoId')?.touched">
               <option value="">Seleccione…</option>
               <option *ngFor="let opt of nucleoOptions" [value]="opt.id">{{ opt.label }}</option>
             </select>
           </div>
 
-          <!-- Hidden para enviar la granjaId -->
+          <!-- Hidden para enviar la granjaId (se llena automático al elegir núcleo) -->
           <input type="hidden" formControlName="granjaId" />
 
           <div>
             <label class="ux-label">Granja</label>
-            <input type="text"
-                   [value]="getGranjaNombreByNucleoId(form.get('galponNucleoId')?.value)"
-                   readonly
-                   class="ux-input ux-input--readonly" />
+            <input type="text" [value]="getGranjaNombreByNucleoId(form.get('nucleoId')?.value)" readonly class="ux-input ux-input--readonly" />
           </div>
 
           <div>
@@ -157,6 +152,15 @@
             </select>
           </div>
 
+          <!-- Meta: solo en edición -->
+          <div *ngIf="editing" class="md:col-span-2 ux-meta">
+            <div class="ux-meta__item"><strong>Empresa:</strong> {{ editing?.company?.name }} ({{ editing?.company?.identifier }})</div>
+            <div class="ux-meta__item"><strong>Granja:</strong> {{ editing?.farm?.name }} (ID {{ editing?.farm?.id }})</div>
+            <div class="ux-meta__item"><strong>Núcleo:</strong> {{ editing?.nucleo?.nucleoNombre }} ({{ editing?.nucleo?.nucleoId }})</div>
+            <div class="ux-meta__item"><strong>Creado:</strong> {{ editing?.createdAt | date:'short' }}</div>
+            <div class="ux-meta__item"><strong>Actualizado:</strong> {{ editing?.updatedAt | date:'short' }}</div>
+          </div>
+
           <div class="md:col-span-2 ux-actions">
             <button type="button" (click)="modalOpen = false" class="btn-muted">Cancelar</button>
             <button type="submit" [disabled]="form.invalid" class="btn-primary">
@@ -175,16 +179,20 @@
           <button type="button" (click)="detailOpen = false" class="btn-muted">Cerrar</button>
         </div>
 
-        <div class="ux-modal__body grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <div class="ux-modal__body grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div><strong>ID:</strong> {{ selectedDetail?.galponId }}</div>
           <div><strong>Nombre:</strong> {{ selectedDetail?.galponNombre }}</div>
-          <div><strong>Núcleo:</strong> {{ getNucleoNameByGalpon(selectedDetail!) }}</div>
-          <div><strong>Granja:</strong> {{ getGranjaNameByGalpon(selectedDetail!) }}</div>
-          <div><strong>Empresa:</strong> {{ getCompanyNameByGalpon(selectedDetail!) }}</div>
-          <div><strong>Ancho (m):</strong> {{ selectedDetail?.ancho }}</div>
-          <div><strong>Largo (m):</strong> {{ selectedDetail?.largo }}</div>
+          <div><strong>Tipo:</strong> {{ selectedDetail?.tipoGalpon || '—' }}</div>
+
+          <div><strong>Núcleo:</strong> {{ selectedDetail?.nucleo?.nucleoNombre }} ({{ selectedDetail?.nucleo?.nucleoId }})</div>
+          <div><strong>Granja:</strong> {{ selectedDetail?.farm?.name }} (ID {{ selectedDetail?.farm?.id }})</div>
+          <div><strong>Empresa:</strong> {{ selectedDetail?.company?.name }}</div>
+
+          <div><strong>Dimensiones:</strong> {{ selectedDetail?.ancho || '—' }} × {{ selectedDetail?.largo || '—' }} m</div>
           <div><strong>Área (m²):</strong> {{ getArea(selectedDetail) }}</div>
-          <div><strong>Tipo:</strong> {{ selectedDetail?.tipoGalpon }}</div>
+          <div><strong>Auditoría:</strong>
+            C: {{ selectedDetail?.createdAt | date:'short' }} • U: {{ selectedDetail?.updatedAt | date:'short' }}
+          </div>
         </div>
 
         <div class="ux-actions">

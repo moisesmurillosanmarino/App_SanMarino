@@ -7,11 +7,14 @@ import { LoteReproductoraDto } from '../../lote-reproductora/services/lote-repro
 export interface LoteDto {
   loteId: string;
   loteNombre: string;
+
   granjaId: number;
-  nucleoId?: number;
-  galponId?: number;
+  nucleoId?: string | null;   // ← string
+  galponId?: string | null;   // ← string
+
   regional?: string;
   fechaEncaset?: string;
+
   hembrasL?: number;
   machosL?: number;
   pesoInicialH?: number;
@@ -20,15 +23,18 @@ export interface LoteDto {
   unifM?: number;
   mortCajaH?: number;
   mortCajaM?: number;
+
   raza?: string;
   anoTablaGenetica?: number;
   linea?: string;
   tipoLinea?: string;
   codigoGuiaGenetica?: string;
   tecnico?: string;
+
   mixtas?: number;
   pesoMixto?: number;
   avesEncasetadas?: number;
+
   loteErp?: string;
   lineaGenetica?: string;
 }
@@ -39,9 +45,7 @@ export interface CreateLoteDto extends Omit<LoteDto, 'loteId'> {
 
 export interface UpdateLoteDto extends LoteDto {}
 
-@Injectable({
-  providedIn: 'root'
-})
+@Injectable({ providedIn: 'root' })
 export class LoteService {
   private readonly baseUrl = `${environment.apiUrl}/Lote`;
   private readonly base = environment.apiUrl;
@@ -57,11 +61,11 @@ export class LoteService {
   }
 
   create(dto: CreateLoteDto): Observable<LoteDto> {
-    return this.http.post<LoteDto>(this.baseUrl, dto); // ✅ sin envolver
+    return this.http.post<LoteDto>(this.baseUrl, dto);
   }
 
   update(dto: UpdateLoteDto): Observable<LoteDto> {
-    return this.http.put<LoteDto>(`${this.baseUrl}/${dto.loteId}`, dto); // ✅ sin envolver
+    return this.http.put<LoteDto>(`${this.baseUrl}/${dto.loteId}`, dto);
   }
 
   delete(loteId: string): Observable<void> {

@@ -1,7 +1,9 @@
-// CompanyConfiguration.cs
+// file: src/ZooSanMarino.Infrastructure/Persistence/Configurations/CompanyConfiguration.cs
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using ZooSanMarino.Domain.Entities;
+
+namespace ZooSanMarino.Infrastructure.Persistence.Configurations;
 
 public class CompanyConfiguration : IEntityTypeConfiguration<Company>
 {
@@ -21,9 +23,11 @@ public class CompanyConfiguration : IEntityTypeConfiguration<Company>
         builder.Property(x => x.State).HasMaxLength(80);
         builder.Property(x => x.City).HasMaxLength(80);
 
-        // string[] en PostgreSQL → text[] por defecto (Npgsql)
+        // text[] en PostgreSQL
         builder.Property(x => x.VisualPermissions).HasColumnType("text[]");
 
         builder.Property(x => x.MobileAccess).HasDefaultValue(false);
+
+        builder.HasIndex(x => x.Identifier);
     }
 }

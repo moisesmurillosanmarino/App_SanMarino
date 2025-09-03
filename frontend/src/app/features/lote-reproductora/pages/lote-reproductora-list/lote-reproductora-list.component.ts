@@ -7,6 +7,8 @@ import {
 import { FormsModule } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
 
+import { finalize } from 'rxjs/operators';
+
 import { SidebarComponent } from '../../../../shared/components/sidebar/sidebar.component';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { faPlus, faPen, faTrash, faEye } from '@fortawesome/free-solid-svg-icons';
@@ -131,7 +133,8 @@ export class LoteReproductoraListComponent implements OnInit {
 
   private toDtoFromGroup(g: FormGroup): CreateLoteReproductoraDto {
     const v = g.value;
-    const fecha = new Date(v.fechaEncasetamiento as string).toISOString();
+    // el service convierte 'yyyy-MM-dd' a ISO, pero aquí lo dejamos en ISO igual
+    const fecha = v.fechaEncasetamiento ? new Date(v.fechaEncasetamiento as string).toISOString() : null;
     return {
       loteId: this.selectedLoteId!, // bajo el flow, todos van al lote seleccionado
       reproductoraId: v.reproductoraId?.trim() || 'Sanmarino',
@@ -209,17 +212,14 @@ export class LoteReproductoraListComponent implements OnInit {
 
     const reqId = ++this.registrosReq;
     this.loading = true;
-    // Puedes usar getByLoteId para no traer todo:
-    // this.svc.getByLoteId(this.selectedLoteId).subscribe({...})
-    this.svc.getAll().subscribe({
-      next: (r) => { if (reqId !== this.registrosReq) return;
-        this.registros = r.filter(x => x.loteId === this.selectedLoteId);
-        this.loading = false;
-      },
-      error: () => { if (reqId !== this.registrosReq) return;
-        this.registros = []; this.loading = false;
-      }
-    });
+
+    // ✅ Ahora pedimos directamente al backend por lote (evita traer todo)
+    this.svc.getByLoteId(this.selectedLoteId)
+      .pipe(finalize(() => { if (reqId === this.registrosReq) this.loading = false; }))
+      .subscribe({
+        next: (r) => { if (reqId !== this.registrosReq) return; this.registros = r ?? []; },
+        error: () => { if (reqId !== this.registrosReq) return; this.registros = []; }
+      });
   }
 
   // ---------- CRUD ----------
@@ -257,7 +257,8 @@ export class LoteReproductoraListComponent implements OnInit {
       loteId: r.loteId,
       nombreLote: r.nombreLote,
       reproductoraId: r.reproductoraId,
-      fechaEncasetamiento: r.fechaEncasetamiento?.slice(0,10) || '',
+      // tolera null
+      fechaEncasetamiento: r.fechaEncasetamiento ? r.fechaEncasetamiento.slice(0,10) : '',
       m: r.m ?? 0, h: r.h ?? 0, mixtas: r.mixtas ?? 0,
       mortCajaH: r.mortCajaH ?? 0, mortCajaM: r.mortCajaM ?? 0,
       unifH: r.unifH ?? 0, unifM: r.unifM ?? 0,
@@ -268,7 +269,10 @@ export class LoteReproductoraListComponent implements OnInit {
 
   delete(loteId: string, repId: string): void {
     if (!confirm('¿Deseas eliminar este lote reproductora?')) return;
-    this.svc.delete(loteId, repId).subscribe(() => this.onLoteChange());
+    this.svc.delete(loteId, repId).subscribe({
+      next: () => this.onLoteChange(),
+      error: () => this.onLoteChange()
+    });
   }
 
   save(): void {
@@ -278,13 +282,13 @@ export class LoteReproductoraListComponent implements OnInit {
       const dto = {
         loteId: this.editing.loteId,
         reproductoraId: this.editing.reproductoraId,
-        nombreLote: v.nombreLote?.trim() || '',
-        fechaEncasetamiento: new Date(v.fechaEncasetamiento as string).toISOString(),
+        nombreLote: (v.nombreLote ?? '').trim(),
+        fechaEncasetamiento: v.fechaEncasetamiento ? new Date(v.fechaEncasetamiento as string).toISOString() : null,
         m: v.m ?? 0, h: v.h ?? 0, mixtas: v.mixtas ?? 0,
         mortCajaH: v.mortCajaH ?? 0, mortCajaM: v.mortCajaM ?? 0,
         unifH: v.unifH ?? 0, unifM: v.unifM ?? 0,
         pesoInicialM: v.pesoInicialM ?? 0, pesoInicialH: v.pesoInicialH ?? 0,
-      } as any; // tipo UpdateLoteReproductoraDto
+      } as CreateLoteReproductoraDto;
 
       this.svc.update(dto).subscribe(() => { this.modalOpen = false; this.onLoteChange(); });
       return;
@@ -298,7 +302,7 @@ export class LoteReproductoraListComponent implements OnInit {
         loteId: this.selectedLoteId!,
         reproductoraId: (v.reproductoraId || 'Sanmarino').trim(),
         nombreLote: (v.nombreLote || '').trim(),
-        fechaEncasetamiento: new Date(v.fechaEncasetamiento as string).toISOString(),
+        fechaEncasetamiento: v.fechaEncasetamiento ? new Date(v.fechaEncasetamiento as string).toISOString() : null,
         m: v.m ?? 0, h: v.h ?? 0, mixtas: v.mixtas ?? 0,
         mortCajaH: v.mortCajaH ?? 0, mortCajaM: v.mortCajaM ?? 0,
         unifH: v.unifH ?? 0, unifM: v.unifM ?? 0,
@@ -318,4 +322,8 @@ export class LoteReproductoraListComponent implements OnInit {
   }
 
   cancel(): void { this.modalOpen = false; }
+
+  // ---------- trackBy para listas grandes ----------
+  trackByRegistro = (_: number, r: LoteReproductoraDto) => `${r.loteId}::${r.reproductoraId}`;
+  trackByIdx = (i: number) => i;
 }
