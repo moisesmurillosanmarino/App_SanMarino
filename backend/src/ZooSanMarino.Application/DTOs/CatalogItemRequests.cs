@@ -6,14 +6,14 @@ public class CatalogItemCreateRequest
 {
     public string Codigo { get; set; } = null!;
     public string Nombre { get; set; } = null!;
-    public JsonDocument? Metadata { get; set; }
+    public JsonDocument? Metadata { get; set; }  // si viene null, guardamos {}
     public bool Activo { get; set; } = true;
 }
 
 public class CatalogItemUpdateRequest
 {
     public string Nombre { get; set; } = null!;
-    public JsonDocument? Metadata { get; set; }
+    public JsonDocument? Metadata { get; set; }  // si viene null, conservamos la actual
     public bool Activo { get; set; } = true;
 }
 

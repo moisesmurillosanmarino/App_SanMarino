@@ -7,9 +7,6 @@ public class CatalogItem
     public int Id { get; set; }
     public string Codigo { get; set; } = null!;
     public string Nombre { get; set; } = null!;
-    /// <summary>
-    /// Campos dinámicos (jsonb). Ej: { "presentacion": "granel", "etapa": "produccion" }
-    /// </summary>
     public JsonDocument Metadata { get; set; } = JsonDocument.Parse("{}");
     public bool Activo { get; set; } = true;
 

@@ -1,4 +1,3 @@
-/// file: backend/src/ZooSanMarino.Infrastructure/Persistence/Configurations/CatalogItemConfiguration.cs
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using ZooSanMarino.Domain.Entities;
@@ -9,9 +8,9 @@ public class CatalogItemConfiguration : IEntityTypeConfiguration<CatalogItem>
 {
     public void Configure(EntityTypeBuilder<CatalogItem> e)
     {
-        e.ToTable("catalogo_items");
-        e.HasKey(x => x.Id);
+        e.ToTable("catalogo_items", "public");
 
+        e.HasKey(x => x.Id);
         e.Property(x => x.Id).HasColumnName("id");
 
         e.Property(x => x.Codigo)
@@ -26,29 +25,28 @@ public class CatalogItemConfiguration : IEntityTypeConfiguration<CatalogItem>
 
         e.Property(x => x.Metadata)
          .HasColumnName("metadata")
-         .HasColumnType("jsonb");
+         .HasColumnType("jsonb")
+         .IsRequired();
 
         e.Property(x => x.Activo)
          .HasColumnName("activo")
-         .HasDefaultValue(true);
+         .HasDefaultValue(true)
+         .IsRequired();
 
         e.Property(x => x.CreatedAt)
          .HasColumnName("created_at")
-         .HasDefaultValueSql("now()");
+         .HasColumnType("timestamptz")
+         .HasDefaultValueSql("now()")
+         .ValueGeneratedOnAdd();
 
         e.Property(x => x.UpdatedAt)
          .HasColumnName("updated_at")
-         .HasDefaultValueSql("now()");
+         .HasColumnType("timestamptz")
+         .HasDefaultValueSql("now()")
+         .ValueGeneratedOnAddOrUpdate();
 
-        // 🔑 Único requerido por el seeder (ON CONFLICT (codigo))
-        e.HasIndex(x => x.Codigo)
-         .IsUnique()
-         .HasDatabaseName("ux_catalogo_items_codigo");
-
-        // índices auxiliares (opcionales)
-        e.HasIndex(x => x.Nombre)
-         .HasDatabaseName("ix_catalogo_items_nombre");
-        e.HasIndex(x => x.Activo)
-         .HasDatabaseName("ix_catalogo_items_activo");
+        e.HasIndex(x => x.Codigo).HasDatabaseName("ux_catalogo_items_codigo").IsUnique();
+        e.HasIndex(x => x.Activo).HasDatabaseName("ix_catalogo_items_activo");
+        e.HasIndex(x => x.Nombre).HasDatabaseName("ix_catalogo_items_nombre");
     }
 }

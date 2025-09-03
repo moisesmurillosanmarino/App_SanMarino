@@ -26,6 +26,7 @@ public static class DatabaseExtensions
             // 2) Seeders idempotentes restantes
             await PermissionSeed.EnsureAsync(ctx);
             await MenuSeed.EnsureAsync(ctx);
+           // await CatalogItemSeed.EnsureAsync(ctx);
 
             logger.LogInformation("✅ DB migrated & seeded (catalogo_items seeded via EF migration).");
         }

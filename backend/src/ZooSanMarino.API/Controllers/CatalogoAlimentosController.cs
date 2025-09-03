@@ -1,7 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Authorization;
-using System.Text.Json;
 using ZooSanMarino.Application.DTOs;
 using ZooSanMarino.Application.Interfaces;
 
@@ -18,13 +15,22 @@ public class CatalogoAlimentosController : ControllerBase
         _service = service;
     }
 
-    /// <summary>Lista con filtro, paginación y total.</summary>
+    // ✅ Lista completa (sin paginación)
+    [HttpGet("old")]
+    [ProducesResponseType(typeof(IEnumerable<CatalogItemDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAll([FromQuery] string? q = null, CancellationToken ct = default)
+    {
+        var items = await _service.GetAllAsync(q, ct);
+        return Ok(items);
+    }
+
+    // ✅ Lista paginada en otra ruta
     [HttpGet]
     [ProducesResponseType(typeof(PagedResult<CatalogItemDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> Get([FromQuery] string? q = null,
-                                         [FromQuery] int page = 1,
-                                         [FromQuery] int pageSize = 20,
-                                         CancellationToken ct = default)
+    public async Task<IActionResult> GetPaged([FromQuery] string? q = null,
+                                              [FromQuery] int page = 1,
+                                              [FromQuery] int pageSize = 20,
+                                              CancellationToken ct = default)
     {
         var result = await _service.GetAsync(q, page, pageSize, ct);
         return Ok(result);
@@ -77,10 +83,4 @@ public class CatalogoAlimentosController : ControllerBase
         var ok = await _service.DeleteAsync(id, hard, ct);
         return ok ? NoContent() : NotFound();
     }
-
-    /// <summary>Upsert masivo por código.</summary>
-    [HttpPost("bulk")]
-    [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
-    public async Task<IActionResult> UpsertBulk([FromBody] IEnumerable<CatalogItemDto> items, CancellationToken ct = default)
-        => Ok(await _service.UpsertBulkAsync(items, ct));
 }
