@@ -105,6 +105,9 @@ builder.Services.AddScoped<IProduccionLoteService, ProduccionLoteService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IMenuService, MenuService>();
 builder.Services.AddScoped<ICatalogItemService, CatalogItemService>();
+builder.Services.AddScoped<IFarmInventoryService, FarmInventoryService>();
+builder.Services.AddScoped<IFarmInventoryMovementService, FarmInventoryMovementService>();
+
 
 // Proveedores de nutrición/gramaje
 builder.Services.AddScoped<IAlimentoNutricionProvider, EfAlimentoNutricionProvider>();

@@ -40,6 +40,9 @@ namespace ZooSanMarino.Infrastructure.Persistence
         public DbSet<Menu> Menus => Set<Menu>();
         public DbSet<MenuPermission> MenuPermissions => Set<MenuPermission>();
         public DbSet<CatalogItem> CatalogItems { get; set; } = null!;
+        public DbSet<FarmProductInventory> FarmProductInventory => Set<FarmProductInventory>();
+        public DbSet<FarmInventoryMovement> FarmInventoryMovements => Set<FarmInventoryMovement>();
+
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -108,6 +111,24 @@ namespace ZooSanMarino.Infrastructure.Persistence
                 }
             }
         }
+
+        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        var now = DateTimeOffset.UtcNow;
+
+        foreach (var e in ChangeTracker.Entries<FarmInventoryMovement>())
+        {
+            if (e.State == EntityState.Added)
+            {
+                e.Entity.CreatedAt = now;
+                e.Entity.Unit = string.IsNullOrWhiteSpace(e.Entity.Unit) ? "kg" : e.Entity.Unit.Trim();
+                e.Entity.Metadata ??= System.Text.Json.JsonDocument.Parse("{}");
+            }
+        }
+
+        // (se mantiene la lógica que ya tenías para FarmProductInventory)
+        return await base.SaveChangesAsync(cancellationToken);
+    }
 
         private void TouchUserUpdatedAt(Guid userId, DateTime utcNow)
         {
