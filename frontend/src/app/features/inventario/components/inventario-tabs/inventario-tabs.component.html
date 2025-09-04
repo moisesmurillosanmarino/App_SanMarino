@@ -1,0 +1,60 @@
+<!-- src/app/features/inventario/components/inventario-tabs/inventario-tabs.component.html -->
+<div class="flex h-screen">
+  <app-sidebar class="w-64"></app-sidebar>
+
+  <div class="main-content">
+    <!-- Header -->
+    <div class="header">
+      <div class="header__title">
+        <h1>Inventario de Productos</h1>
+      </div>
+
+      <!-- “Tabs” -->
+      <div class="actions">
+        <button
+          type="button"
+          class="btn-ghost"
+          [class.btn-secondary]="activeTab==='mov'"
+          (click)="setTab('mov')"
+          [attr.aria-pressed]="activeTab==='mov' ? 'true' : 'false'">
+          Entrada / Salida
+        </button>
+
+        <button
+          type="button"
+          class="btn-ghost"
+          [class.btn-secondary]="activeTab==='tras'"
+          (click)="setTab('tras')"
+          [attr.aria-pressed]="activeTab==='tras' ? 'true' : 'false'">
+          Traslado
+        </button>
+
+        <button
+          type="button"
+          class="btn-ghost"
+          [class.btn-secondary]="activeTab==='stock'"
+          (click)="setTab('stock')"
+          [attr.aria-pressed]="activeTab==='stock' ? 'true' : 'false'">
+          Stock
+        </button>
+      </div>
+    </div>
+
+    <!-- Contenido -->
+    <div class="ux-card ux-card--soft">
+      <div class="ux-card__body" style="padding:1rem;">
+        <ng-container *ngIf="activeTab==='mov'">
+          <app-movimientos-form></app-movimientos-form>
+        </ng-container>
+
+        <ng-container *ngIf="activeTab==='tras'">
+          <app-traslado-form></app-traslado-form>
+        </ng-container>
+
+        <ng-container *ngIf="activeTab==='stock'">
+          <app-inventario-list></app-inventario-list>
+        </ng-container>
+      </div>
+    </div>
+  </div>
+</div>

@@ -9,7 +9,7 @@ import { ReactiveFormsModule } from '@angular/forms';
 // Login se usa de forma no-lazy (ok), Dashboard se cargará en lazy (NO lo importes aquí).
 import { LoginComponent } from './features/auth/login/login.component';
 
-// Rutas “config” que usas con component (no-lazy) – puedes dejarlas así por ahora
+// Rutas “config” que usas con component (no-lazy)
 import { ConfigComponent }            from './features/config/config.component';
 import { MasterListsComponent }       from './features/config/master-lists/master-lists.component';
 import { ListDetailComponent }        from './features/config/master-lists/list-detail/list-detail.component';
@@ -19,14 +19,14 @@ import { UserManagementComponent }    from './features/config/user-management/us
 import { authGuard } from './core/auth/auth.guard';
 
 // Geografía
-import { CountryListComponent } from './features/config/geography/country-list/country-list.component';
-import { CountryDetailComponent }     from './features/config/geography/country-detail/country-detail.component';
-import { StateListComponent }         from './features/config/geography/state-list/state-list.component';
-import { StateDetailComponent }       from './features/config/geography/state-detail/state-detail.component';
-import { DepartmentListComponent }    from './features/config/geography/department-list/department-list.component';
-import { DepartmentDetailComponent }  from './features/config/geography/department-detail/department-detail.component';
-import { CityListComponent }          from './features/config/geography/city-list/city-list.component';
-import { CityDetailComponent }        from './features/config/geography/city-detail/city-detail.component';
+import { CountryListComponent }     from './features/config/geography/country-list/country-list.component';
+import { CountryDetailComponent }   from './features/config/geography/country-detail/country-detail.component';
+import { StateListComponent }       from './features/config/geography/state-list/state-list.component';
+import { StateDetailComponent }     from './features/config/geography/state-detail/state-detail.component';
+import { DepartmentListComponent }  from './features/config/geography/department-list/department-list.component';
+import { DepartmentDetailComponent }from './features/config/geography/department-detail/department-detail.component';
+import { CityListComponent }        from './features/config/geography/city-list/city-list.component';
+import { CityDetailComponent }      from './features/config/geography/city-detail/city-detail.component';
 
 // Granjas / Núcleos / Galpones / Lotes
 import { FarmListComponent }   from './features/farm/components/farm-list/farm-list.component';
@@ -129,12 +129,20 @@ export const appConfig: ApplicationConfig = {
           // Lotes
           { path: 'lotes', component: LoteListComponent },
 
-           // 👇 NUEVO: Catálogo de Alimentos (lazy)
+          // Catálogo de Alimentos (lazy)
           {
             path: 'catalogo-alimentos',
             loadChildren: () =>
               import('./features/catalogo-alimentos/catalogo-alimentos.module')
                 .then(m => m.CatalogoAlimentosModule)
+          },
+
+          // Inventario (nuevo, lazy)
+          {
+            path: 'inventario',
+            loadChildren: () =>
+              import('./features/inventario/inventario.module')
+                .then(m => m.InventarioModule)
           },
 
           { path: '', redirectTo: 'farms-list', pathMatch: 'full' }

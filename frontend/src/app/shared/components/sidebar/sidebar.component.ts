@@ -83,28 +83,25 @@ export class SidebarComponent {
       label: 'Configuración',
       icon: this.faCog,
       children: [
-        { label: 'Listas maestras',  icon: this.faList,        link: ['/config','master-lists'] },
-        { label: 'Usuarios',         icon: this.faUsers,       link: ['/config','users'] },
-        { label: 'Roles y permisos', icon: this.faUsers,       link: ['/config','role-management'] },
-        { label: 'Geografía',           icon: this.faGlobe,       link: ['/config','countries'] },
-        //{ label: 'Departamentos',    icon: this.faMapMarkerAlt,link: ['/config','departments'] },
-       // { label: 'Ciudades',         icon: this.faCity,        link: ['/config','cities'] },
-        { label: 'Empresas',         icon: this.faBuilding,    link: ['/config','companies'] },
-         // 👇 NUEVO: Catálogo de Alimentos
-        { label: 'Catálogo de alimentos', icon: this.faList, link: ['/config','catalogo-alimentos'] }
+        { label: 'Listas maestras',        icon: this.faList,     link: ['/config','master-lists'] },
+        { label: 'Usuarios',               icon: this.faUsers,    link: ['/config','users'] },
+        { label: 'Roles y permisos',       icon: this.faUsers,    link: ['/config','role-management'] },
+        { label: 'Geografía',              icon: this.faGlobe,    link: ['/config','countries'] },
+        { label: 'Empresas',               icon: this.faBuilding, link: ['/config','companies'] },
+        { label: 'Catálogo de alimentos',  icon: this.faList,     link: ['/config','catalogo-alimentos'] },
+
+        // 👇 Nuevo: Inventario
+        { label: 'Inventario',             icon: this.faWarehouse, link: ['/config','inventario'] }
       ]
     }
   ];
 
-  /**
-   * Datos para el banner “Bienvenido”.
-   * Provienen de la sesión guardada por AuthService/TokenStorageService.
-   */
+  /** Banner Bienvenida */
   userBanner$ = this.auth.session$.pipe(
     map(s => ({
-      fullName: s?.user.fullName ?? s?.user.username ?? 'Usuario',
+      fullName: s?.user?.fullName ?? s?.user?.username ?? 'Usuario',
       company:  s?.activeCompany ?? (s?.companies?.[0] ?? '—'),
-      initials: (s?.user.fullName ?? s?.user.username ?? 'U')
+      initials: (s?.user?.fullName ?? s?.user?.username ?? 'U')
                   .trim()
                   .split(/\s+/)
                   .map(w => w[0])
@@ -143,7 +140,6 @@ export class SidebarComponent {
     item.expanded = !item.expanded;
   }
 
-  /** Cierra sesión: limpia token + navegación a /login */
   logout() {
     this.auth.logout();
     this.router.navigate(['/login']);

@@ -4,6 +4,20 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { LoteReproductoraDto } from '../../lote-reproductora/services/lote-reproductora.service';
 
+
+// ⬇️ NUEVO: DTO del resumen de mortalidad
+export interface LoteMortalidadResumenDto {
+  loteId: string;
+  mortalidadAcumHembras: number;
+  mortalidadAcumMachos: number;
+  hembrasIniciales: number;
+  machosIniciales: number;
+  mortCajaHembras: number;
+  mortCajaMachos: number;
+  saldoHembras: number;
+  saldoMachos: number;
+}
+
 export interface LoteDto {
   loteId: string;
   loteNombre: string;
@@ -74,5 +88,13 @@ export class LoteService {
 
   getReproductorasByLote(loteId: string): Observable<LoteReproductoraDto[]> {
     return this.http.get<LoteReproductoraDto[]>(`${this.base}/LoteReproductora?loteId=${loteId}`);
+  }
+
+   // ⬇️ NUEVO: resumen de mortalidad por lote
+  getResumenMortalidad(loteId: string): Observable<LoteMortalidadResumenDto> {
+    // Si tu backend quedó como /api/Lotes/{id}/..., cambia baseUrl por `${this.base}/Lotes`
+    return this.http.get<LoteMortalidadResumenDto>(
+      `${this.baseUrl}/${encodeURIComponent(loteId)}/resumen-mortalidad`
+    );
   }
 }
