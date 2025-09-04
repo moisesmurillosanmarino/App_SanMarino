@@ -1,0 +1,248 @@
+<div class="flex h-screen">
+  <app-sidebar class="w-64"></app-sidebar>
+
+  <div class="main-content" [attr.aria-busy]="loading ? 'true' : null">
+    <!-- Header -->
+    <div class="header">
+      <div class="header__title">
+        <h1>Seguimiento Diario Lote Reproductora</h1>
+        <span class="summary-chip ml-2" *ngIf="selectedReproId">{{ seguimientos?.length || 0 }} registro(s)</span>
+      </div>
+
+      <button
+        class="btn-primary"
+        (click)="create()"
+        [disabled]="!selectedReproId"
+        [attr.aria-disabled]="!selectedReproId ? 'true' : null"
+        [title]="!selectedReproId ? 'Primero selecciona la Reproductora' : 'Crear nuevo registro'">
+        Nuevo registro
+      </button>
+    </div>
+
+    <!-- Filtros en cascada -->
+    <div class="ux-card mb-4" role="group" aria-labelledby="filtros-title">
+      <div class="sr-only" id="filtros-title">Filtros en cascada</div>
+
+      <div class="filters">
+        <!-- Granja -->
+        <div class="filter">
+          <label class="ux-label" for="sel-granja">Granja</label>
+          <select id="sel-granja" class="ux-select"
+                  [(ngModel)]="selectedGranjaId" (change)="onGranjaChange()">
+            <option [ngValue]="null">— Seleccione —</option>
+            <option *ngFor="let g of granjas; trackBy: trackByIdx" [ngValue]="g.id">{{ g.name }}</option>
+          </select>
+        </div>
+
+        <!-- Núcleo -->
+        <div class="filter">
+          <label class="ux-label" for="sel-nucleo">Núcleo</label>
+          <select id="sel-nucleo" class="ux-select"
+                  [(ngModel)]="selectedNucleoId" (change)="onNucleoChange()"
+                  [disabled]="!selectedGranjaId" [attr.aria-disabled]="!selectedGranjaId ? 'true' : null">
+            <option [ngValue]="null">— Seleccione —</option>
+            <option *ngFor="let n of nucleos; trackBy: trackByIdx" [ngValue]="n.nucleoId">{{ n.nucleoNombre }}</option>
+          </select>
+        </div>
+
+        <!-- Lote -->
+        <div class="filter">
+          <label class="ux-label" for="sel-lote">Lote</label>
+          <select id="sel-lote" class="ux-select"
+                  [(ngModel)]="selectedLoteId" (change)="onLoteChange()"
+                  [disabled]="!selectedNucleoId" [attr.aria-disabled]="!selectedNucleoId ? 'true' : null">
+            <option [ngValue]="null">— Seleccione —</option>
+            <option *ngFor="let l of lotes; trackBy: trackByIdx" [ngValue]="l.loteId">{{ l.loteNombre || l.loteId }}</option>
+          </select>
+        </div>
+
+        <!-- Reproductora (Incubadora del lote) -->
+        <div class="filter">
+          <label class="ux-label" for="sel-repro">Reproductora</label>
+          <select id="sel-repro" class="ux-select"
+                  [(ngModel)]="selectedReproId" (change)="onReproChange()"
+                  [disabled]="!selectedLoteId" [attr.aria-disabled]="!selectedLoteId ? 'true' : null"
+                  aria-describedby="hint-repro">
+            <option [ngValue]="null">— Seleccione —</option>
+            <option *ngFor="let r of repros; trackBy: trackByIdx" [ngValue]="r.reproductoraId">
+              {{ r.nombreLote || r.reproductoraId }}
+            </option>
+          </select>
+          <small id="hint-repro" class="text-[12px] text-warm-gray-700">
+            Selecciona la Reproductora para habilitar “Nuevo”.
+          </small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Aviso cuando no hay Reproductora seleccionada -->
+    <div *ngIf="!selectedReproId" class="ux-card ux-card--soft mb-4" role="status" aria-live="polite">
+      <div class="summary-grid">
+        <div class="summary-item">
+          <span class="summary-label">Estado</span>
+          <span class="summary-value">Reproductora sin seleccionar</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Siguiente paso</span>
+          <span class="summary-value">Elige una Reproductora para registrar seguimiento diario</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">Acción</span>
+          <span class="summary-chip">“Nuevo” deshabilitado</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla principal -->
+    <div class="ux-card">
+      <div class="ux-scroll">
+       <table class="ux-table ux-table--brand">
+          <caption class="sr-only">Registros diarios</caption>
+
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Mort. H</th>
+              <th>Mort. M</th>
+              <th>Sel H</th>
+              <th>Sel M</th>
+              <th>Err H</th>
+              <th>Err M</th>
+              <th>Tipo alimento</th>
+              <th>Consumo (kg)</th>
+              <th class="text-center">Acciones</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <!-- Cargando -->
+            <tr *ngIf="loading" aria-live="polite">
+              <td colspan="10" class="empty-state">
+                <div class="spinner"></div>
+                Cargando datos…
+              </td>
+            </tr>
+
+            <!-- Vacío -->
+            <tr *ngIf="!loading && (!seguimientos || !seguimientos.length)">
+              <td colspan="10" class="empty-state">
+                <div class="empty-illustration">🫥</div>
+                <p *ngIf="!selectedReproId">Selecciona una Reproductora para comenzar.</p>
+                <p *ngIf="selectedReproId">Sin registros para esta Reproductora.</p>
+
+                <button class="btn-secondary mt-2" (click)="create()" [disabled]="!selectedReproId">
+                  Crear el primero
+                </button>
+              </td>
+            </tr>
+
+            <!-- Filas -->
+            <tr *ngFor="let s of seguimientos; trackBy: trackById" class="ux-row">
+              <td>{{ s.fechaRegistro | date:'shortDate' }}</td>
+              <td>{{ s.mortalidadHembras }}</td>
+              <td>{{ s.mortalidadMachos }}</td>
+              <td>{{ s.selH }}</td>
+              <td>{{ s.selM }}</td>
+              <td>{{ s.errorSexajeHembras }}</td>
+              <td>{{ s.errorSexajeMachos }}</td>
+              <td>{{ s.tipoAlimento }}</td>
+              <td>{{ s.consumoKgHembras }}</td>
+              <td class="text-center">
+                <div class="actions">
+                  <button class="icon-btn" title="Editar" aria-label="Editar" (click)="edit(s)">✎</button>
+                  <button class="icon-btn danger" title="Eliminar" aria-label="Eliminar" (click)="delete(s.id)">🗑</button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Overlay de carga sobre la card -->
+      <div *ngIf="loading" class="loading-overlay" aria-live="polite">
+        <div class="spinner"></div>
+        Cargando…
+      </div>
+    </div>
+
+    <!-- Modal Crear/Editar -->
+    <div *ngIf="modalOpen" class="ux-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="ux-modal__panel ux-modal__panel--lg">
+        <div class="ux-modal__header">
+          <h2 id="modal-title">{{ editing ? 'Editar' : 'Nuevo' }} registro</h2>
+          <button class="ux-modal__close" (click)="cancel()" aria-label="Cerrar">×</button>
+        </div>
+
+        <div class="ux-modal__body">
+          <form [formGroup]="form" (ngSubmit)="save()" class="ux-form" novalidate>
+            <div class="form-section__title">Datos del registro</div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="ux-label" for="f-fecha">Fecha</label>
+                <input id="f-fecha" type="date" class="ux-input" formControlName="fechaRegistro" />
+              </div>
+              <div>
+                <label class="ux-label" for="f-lote">Lote</label>
+                <select id="f-lote" class="ux-select" formControlName="loteId">
+                  <option value="" disabled>— Seleccione —</option>
+                  <option *ngFor="let l of lotes; trackBy: trackByIdx" [ngValue]="l.loteId">
+                    {{ l.loteNombre || l.loteId }}
+                  </option>
+                </select>
+              </div>
+              <div>
+                <label class="ux-label" for="f-repro">Reproductora</label>
+                <select id="f-repro" class="ux-select" formControlName="reproductoraId">
+                  <option value="" disabled>— Seleccione —</option>
+                  <option *ngFor="let r of repros; trackBy: trackByIdx" [ngValue]="r.reproductoraId">
+                    {{ r.nombreLote || r.reproductoraId }}
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-section__title">Producción diaria</div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div><label class="ux-label" for="f-mh">Mort. Hembras</label><input id="f-mh" type="number" class="ux-input" min="0" formControlName="mortalidadHembras" /></div>
+              <div><label class="ux-label" for="f-mm">Mort. Machos</label><input id="f-mm" type="number" class="ux-input" min="0" formControlName="mortalidadMachos" /></div>
+              <div><label class="ux-label" for="f-cons">Consumo (kg)</label><input id="f-cons" type="number" class="ux-input" step="0.01" formControlName="consumoKgHembras" /></div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-2">
+              <div><label class="ux-label" for="f-selh">Sel H</label><input id="f-selh" type="number" class="ux-input" min="0" formControlName="selH" /></div>
+              <div><label class="ux-label" for="f-selm">Sel M</label><input id="f-selm" type="number" class="ux-input" min="0" formControlName="selM" /></div>
+              <div><label class="ux-label" for="f-esh">Err sexaje H</label><input id="f-esh" type="number" class="ux-input" min="0" formControlName="errorSexajeHembras" /></div>
+              <div><label class="ux-label" for="f-esm">Err sexaje M</label><input id="f-esm" type="number" class="ux-input" min="0" formControlName="errorSexajeMachos" /></div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+              <div>
+                <label class="ux-label" for="f-alim">Tipo de alimento</label>
+                <input id="f-alim" class="ux-input" formControlName="tipoAlimento" />
+              </div>
+              <div>
+                <label class="ux-label" for="f-ciclo">Ciclo</label>
+                <select id="f-ciclo" class="ux-select" formControlName="ciclo">
+                  <option value="Normal">Normal</option>
+                  <option value="Reforzado">Reforzado</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="mt-2">
+              <label class="ux-label" for="f-obs">Observaciones</label>
+              <textarea id="f-obs" rows="3" class="ux-input" formControlName="observaciones"></textarea>
+            </div>
+
+            <div class="ux-modal__actions">
+              <button type="button" class="btn-ghost" (click)="cancel()">Cancelar</button>
+              <button type="submit" class="btn-primary" [disabled]="loading || form.invalid">
+                {{ editing ? 'Actualizar' : 'Guardar' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
