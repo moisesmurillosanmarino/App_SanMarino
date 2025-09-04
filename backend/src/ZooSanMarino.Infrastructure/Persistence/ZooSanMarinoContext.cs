@@ -1,4 +1,9 @@
 // src/ZooSanMarino.Infrastructure/Persistence/ZooSanMarinoContext.cs
+using System;
+using System.Linq;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using ZooSanMarino.Domain.Entities;
 
@@ -7,8 +12,7 @@ namespace ZooSanMarino.Infrastructure.Persistence
     public class ZooSanMarinoContext : DbContext
     {
         public ZooSanMarinoContext(DbContextOptions<ZooSanMarinoContext> options)
-            : base(options)
-        { }
+            : base(options) { }
 
         public DbSet<User> Users { get; set; } = null!;
         public DbSet<Company> Companies { get; set; } = null!;
@@ -43,7 +47,6 @@ namespace ZooSanMarino.Infrastructure.Persistence
         public DbSet<FarmProductInventory> FarmProductInventory => Set<FarmProductInventory>();
         public DbSet<FarmInventoryMovement> FarmInventoryMovements => Set<FarmInventoryMovement>();
 
-
         protected override void OnModelCreating(ModelBuilder builder)
         {
             // Aplica todas las configuraciones IEntityTypeConfiguration<T> automáticamente
@@ -52,10 +55,11 @@ namespace ZooSanMarino.Infrastructure.Persistence
         }
 
         // ---------------------------
-        // Auditoría de UpdatedAt
+        // SaveChanges con auditoría
         // ---------------------------
         public override int SaveChanges(bool acceptAllChangesOnSuccess)
         {
+            SetDomainDefaults();
             SetAuditFields();
             return base.SaveChanges(acceptAllChangesOnSuccess);
         }
@@ -64,28 +68,91 @@ namespace ZooSanMarino.Infrastructure.Persistence
             bool acceptAllChangesOnSuccess,
             CancellationToken cancellationToken = default)
         {
+            SetDomainDefaults();
             SetAuditFields();
             return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
         }
 
-        private void SetAuditFields()
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
-            var utcNow = DateTime.UtcNow;
+            SetDomainDefaults();
+            SetAuditFields();
+            return base.SaveChangesAsync(cancellationToken);
+        }
 
-            // 1) Setear UpdatedAt en entidades con esa shadow property cuando estén Added/Modified
-            foreach (var entry in ChangeTracker.Entries())
+        /// <summary>
+        /// Defaults de dominio: asegura Unit y Metadata para inventarios/movimientos.
+        /// </summary>
+        private void SetDomainDefaults()
+        {
+            foreach (var e in ChangeTracker.Entries<FarmInventoryMovement>())
             {
-                if (entry.Metadata.FindProperty("UpdatedAt") is not null)
+                if (e.State == EntityState.Added)
                 {
-                    if (entry.State == EntityState.Added || entry.State == EntityState.Modified)
-                    {
-                        entry.Property("UpdatedAt").CurrentValue = utcNow;
-                    }
+                    e.Entity.Unit = string.IsNullOrWhiteSpace(e.Entity.Unit) ? "kg" : e.Entity.Unit.Trim();
+                    e.Entity.Metadata ??= JsonDocument.Parse("{}");
                 }
             }
 
-            // 2) Si solo se modifican relaciones de User, tocar UpdatedAt del User correspondiente
-            //    para que refleje el cambio aunque no se haya modificado un campo simple.
+            foreach (var e in ChangeTracker.Entries<FarmProductInventory>())
+            {
+                if (e.State == EntityState.Added || e.State == EntityState.Modified)
+                {
+                    e.Entity.Unit = string.IsNullOrWhiteSpace(e.Entity.Unit) ? "kg" : e.Entity.Unit.Trim();
+                    e.Entity.Metadata ??= e.Entity.Metadata ?? JsonDocument.Parse("{}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Asigna CreatedAt/UpdatedAt respetando el tipo real (DateTime vs DateTimeOffset)
+        /// y "toca" UpdatedAt del User cuando cambian relaciones.
+        /// </summary>
+        private void SetAuditFields()
+        {
+            var nowDto = DateTimeOffset.UtcNow; // para DateTimeOffset
+            var nowDt  = DateTime.UtcNow;       // para DateTime
+
+            // 1) CreatedAt / UpdatedAt en entidades
+            foreach (var entry in ChangeTracker.Entries())
+            {
+                if (entry.State is EntityState.Detached or EntityState.Unchanged)
+                    continue;
+
+                // CreatedAt solo en Added
+                var createdProp = entry.Metadata.FindProperty("CreatedAt");
+                if (entry.State == EntityState.Added && createdProp is not null)
+                {
+                    var p   = entry.Property("CreatedAt");
+                    var clr = createdProp.ClrType;
+
+                    if (clr == typeof(DateTimeOffset) || clr == typeof(DateTimeOffset?))
+                    {
+                        if (p.CurrentValue is null || (p.CurrentValue is DateTimeOffset dto && dto == default))
+                            p.CurrentValue = nowDto;
+                    }
+                    else if (clr == typeof(DateTime) || clr == typeof(DateTime?))
+                    {
+                        if (p.CurrentValue is null || (p.CurrentValue is DateTime dt && dt == default))
+                            p.CurrentValue = nowDt;
+                    }
+                }
+
+                // UpdatedAt en Added o Modified
+                var updatedProp = entry.Metadata.FindProperty("UpdatedAt");
+                if (updatedProp is not null && (entry.State == EntityState.Added || entry.State == EntityState.Modified))
+                {
+                    var p   = entry.Property("UpdatedAt");
+                    var clr = updatedProp.ClrType;
+
+                    if (clr == typeof(DateTimeOffset) || clr == typeof(DateTimeOffset?))
+                        p.CurrentValue = nowDto;
+                    else if (clr == typeof(DateTime) || clr == typeof(DateTime?))
+                        p.CurrentValue = nowDt;
+                }
+            }
+
+            // 2) Si se modifican relaciones de User, "tocar" UpdatedAt del User
             foreach (var entry in ChangeTracker.Entries())
             {
                 if (entry.State != EntityState.Added &&
@@ -98,67 +165,62 @@ namespace ZooSanMarino.Infrastructure.Persistence
                 switch (entry.Entity)
                 {
                     case UserRole ur:
-                        TouchUserUpdatedAt(ur.UserId, utcNow);
+                        TouchUserUpdatedAt(ur.UserId, nowDto, nowDt);
                         break;
 
                     case UserCompany uc:
-                        TouchUserUpdatedAt(uc.UserId, utcNow);
+                        TouchUserUpdatedAt(uc.UserId, nowDto, nowDt);
                         break;
 
                     case UserLogin ul:
-                        TouchUserUpdatedAt(ul.UserId, utcNow);
+                        TouchUserUpdatedAt(ul.UserId, nowDto, nowDt);
                         break;
                 }
             }
         }
 
-        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-    {
-        var now = DateTimeOffset.UtcNow;
-
-        foreach (var e in ChangeTracker.Entries<FarmInventoryMovement>())
+        private void TouchUserUpdatedAt(Guid userId, DateTimeOffset nowDto, DateTime nowDt)
         {
-            if (e.State == EntityState.Added)
-            {
-                e.Entity.CreatedAt = now;
-                e.Entity.Unit = string.IsNullOrWhiteSpace(e.Entity.Unit) ? "kg" : e.Entity.Unit.Trim();
-                e.Entity.Metadata ??= System.Text.Json.JsonDocument.Parse("{}");
-            }
-        }
-
-        // (se mantiene la lógica que ya tenías para FarmProductInventory)
-        return await base.SaveChangesAsync(cancellationToken);
-    }
-
-        private void TouchUserUpdatedAt(Guid userId, DateTime utcNow)
-        {
-            // Busca si el User ya está trackeado
+            // 1) si el User ya está trackeado
             var trackedUserEntry = ChangeTracker.Entries<User>()
                 .FirstOrDefault(e => e.Entity.Id == userId);
 
             if (trackedUserEntry is not null)
             {
-                if (trackedUserEntry.Metadata.FindProperty("UpdatedAt") is not null)
+                var meta = trackedUserEntry.Metadata.FindProperty("UpdatedAt");
+                if (meta is not null)
                 {
-                    trackedUserEntry.Property("UpdatedAt").CurrentValue = utcNow;
-                    // Marcar solo la propiedad de sombra para no forzar updates innecesarios
-                    trackedUserEntry.Property("UpdatedAt").IsModified = true;
+                    var p   = trackedUserEntry.Property("UpdatedAt");
+                    var clr = meta.ClrType;
+
+                    if (clr == typeof(DateTimeOffset) || clr == typeof(DateTimeOffset?))
+                        p.CurrentValue = nowDto;
+                    else if (clr == typeof(DateTime) || clr == typeof(DateTime?))
+                        p.CurrentValue = nowDt;
+
+                    p.IsModified = true; // marca solo la propiedad
                 }
                 return;
             }
 
-            // Si no está trackeado, adjunta un proxy ligero y marca UpdatedAt como modificado
+            // 2) Adjuntar proxy ligero si no está trackeado
             var proxy = new User { Id = userId };
             Attach(proxy);
 
-            var prop = Entry(proxy).Property("UpdatedAt");
-            if (prop != null)
+            var entry = Entry(proxy);
+            var meta2 = entry.Metadata.FindProperty("UpdatedAt");
+            if (meta2 is not null)
             {
-                prop.CurrentValue = utcNow;
-                prop.IsModified = true;
+                var p   = entry.Property("UpdatedAt");
+                var clr = meta2.ClrType;
+
+                if (clr == typeof(DateTimeOffset) || clr == typeof(DateTimeOffset?))
+                    p.CurrentValue = nowDto;
+                else if (clr == typeof(DateTime) || clr == typeof(DateTime?))
+                    p.CurrentValue = nowDt;
+
+                p.IsModified = true;
             }
         }
     }
-    
-    
 }

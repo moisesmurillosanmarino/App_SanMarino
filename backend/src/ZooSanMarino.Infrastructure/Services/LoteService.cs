@@ -70,7 +70,7 @@ namespace ZooSanMarino.Infrastructure.Services
         public async Task<CommonDtos.PagedResult<LoteDetailDto>> SearchAsync(LoteSearchRequest req)
         {
             // saneo mínimo
-            var page     = req.Page     <= 0 ? 1 : req.Page;
+            var page = req.Page <= 0 ? 1 : req.Page;
             var pageSize = req.PageSize <= 0 ? 50 : req.PageSize;
 
             var q = _ctx.Lotes
@@ -88,16 +88,16 @@ namespace ZooSanMarino.Infrastructure.Services
                     l.LoteNombre.ToLower().Contains(term));
             }
 
-            if (req.GranjaId.HasValue)                     q = q.Where(l => l.GranjaId == req.GranjaId.Value);
-            if (!string.IsNullOrWhiteSpace(req.NucleoId))  q = q.Where(l => l.NucleoId == req.NucleoId);
-            if (!string.IsNullOrWhiteSpace(req.GalponId))  q = q.Where(l => l.GalponId == req.GalponId);
+            if (req.GranjaId.HasValue) q = q.Where(l => l.GranjaId == req.GranjaId.Value);
+            if (!string.IsNullOrWhiteSpace(req.NucleoId)) q = q.Where(l => l.NucleoId == req.NucleoId);
+            if (!string.IsNullOrWhiteSpace(req.GalponId)) q = q.Where(l => l.GalponId == req.GalponId);
 
-            if (req.FechaDesde.HasValue)                   q = q.Where(l => l.FechaEncaset >= req.FechaDesde!.Value);
-            if (req.FechaHasta.HasValue)                   q = q.Where(l => l.FechaEncaset <= req.FechaHasta!.Value);
+            if (req.FechaDesde.HasValue) q = q.Where(l => l.FechaEncaset >= req.FechaDesde!.Value);
+            if (req.FechaHasta.HasValue) q = q.Where(l => l.FechaEncaset <= req.FechaHasta!.Value);
 
             if (!string.IsNullOrWhiteSpace(req.TipoLinea)) q = q.Where(l => l.TipoLinea == req.TipoLinea);
-            if (!string.IsNullOrWhiteSpace(req.Raza))      q = q.Where(l => l.Raza == req.Raza);
-            if (!string.IsNullOrWhiteSpace(req.Tecnico))   q = q.Where(l => l.Tecnico == req.Tecnico);
+            if (!string.IsNullOrWhiteSpace(req.Raza)) q = q.Where(l => l.Raza == req.Raza);
+            if (!string.IsNullOrWhiteSpace(req.Tecnico)) q = q.Where(l => l.Tecnico == req.Tecnico);
 
             q = ApplyOrder(q, req.SortBy, req.SortDesc);
 
@@ -124,7 +124,7 @@ namespace ZooSanMarino.Infrastructure.Services
             var q = _ctx.Lotes
                 .AsNoTracking()
                 .Where(l => l.CompanyId == _current.CompanyId &&
-                            l.LoteId    == loteId &&
+                            l.LoteId == loteId &&
                             l.DeletedAt == null);
 
             return await ProjectToDetail(q).SingleOrDefaultAsync();
@@ -141,7 +141,7 @@ namespace ZooSanMarino.Infrastructure.Services
             // LoteId único por company
             var existsLote = await _ctx.Lotes
                 .AnyAsync(l => l.CompanyId == _current.CompanyId &&
-                               l.LoteId    == dto.LoteId &&
+                               l.LoteId == dto.LoteId &&
                                l.DeletedAt == null);
             if (existsLote)
                 throw new InvalidOperationException($"El Lote '{dto.LoteId}' ya existe.");
@@ -181,7 +181,7 @@ namespace ZooSanMarino.Infrastructure.Services
                     .SingleOrDefaultAsync(x =>
                         x.NucleoId == nucleoId &&
                         x.GranjaId == dto.GranjaId
-                        // Si Nucleo tiene CompanyId, añadir filtro CompanyId == _current.CompanyId
+                    // Si Nucleo tiene CompanyId, añadir filtro CompanyId == _current.CompanyId
                     );
 
                 if (n is null)
@@ -190,43 +190,43 @@ namespace ZooSanMarino.Infrastructure.Services
 
             var ent = new Lote
             {
-                LoteId             = dto.LoteId.Trim(),
-                LoteNombre         = (dto.LoteNombre ?? string.Empty).Trim(),
-                GranjaId           = dto.GranjaId,
-                NucleoId           = nucleoId,
-                GalponId           = galponId,
+                LoteId = dto.LoteId.Trim(),
+                LoteNombre = (dto.LoteNombre ?? string.Empty).Trim(),
+                GranjaId = dto.GranjaId,
+                NucleoId = nucleoId,
+                GalponId = galponId,
 
-                Regional           = dto.Regional,
+                Regional = dto.Regional,
                 // Fechas en UTC para consistencia
-                FechaEncaset       = dto.FechaEncaset?.ToUniversalTime(),
+                FechaEncaset = dto.FechaEncaset?.ToUniversalTime(),
 
-                HembrasL           = dto.HembrasL,
-                MachosL            = dto.MachosL,
+                HembrasL = dto.HembrasL,
+                MachosL = dto.MachosL,
 
                 // ← tipos decimales: asignación directa
-                PesoInicialH       = dto.PesoInicialH,
-                PesoInicialM       = dto.PesoInicialM,
-                UnifH              = dto.UnifH,
-                UnifM              = dto.UnifM,
+                PesoInicialH = dto.PesoInicialH,
+                PesoInicialM = dto.PesoInicialM,
+                UnifH = dto.UnifH,
+                UnifM = dto.UnifM,
 
-                MortCajaH          = dto.MortCajaH,
-                MortCajaM          = dto.MortCajaM,
+                MortCajaH = dto.MortCajaH,
+                MortCajaM = dto.MortCajaM,
 
-                Raza               = dto.Raza,
-                AnoTablaGenetica   = dto.AnoTablaGenetica,
-                Linea              = dto.Linea,
-                TipoLinea          = dto.TipoLinea,
+                Raza = dto.Raza,
+                AnoTablaGenetica = dto.AnoTablaGenetica,
+                Linea = dto.Linea,
+                TipoLinea = dto.TipoLinea,
                 CodigoGuiaGenetica = dto.CodigoGuiaGenetica,
-                Tecnico            = dto.Tecnico,
+                Tecnico = dto.Tecnico,
 
-                Mixtas             = dto.Mixtas,
-                PesoMixto          = dto.PesoMixto,
-                AvesEncasetadas    = dto.AvesEncasetadas,
-                EdadInicial        = dto.EdadInicial,
+                Mixtas = dto.Mixtas,
+                PesoMixto = dto.PesoMixto,
+                AvesEncasetadas = dto.AvesEncasetadas,
+                EdadInicial = dto.EdadInicial,
 
-                CompanyId       = _current.CompanyId,
+                CompanyId = _current.CompanyId,
                 CreatedByUserId = _current.UserId,
-                CreatedAt       = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow
             };
 
             _ctx.Lotes.Add(ent);
@@ -243,7 +243,7 @@ namespace ZooSanMarino.Infrastructure.Services
         {
             var ent = await _ctx.Lotes
                 .SingleOrDefaultAsync(x =>
-                    x.LoteId    == dto.LoteId &&
+                    x.LoteId == dto.LoteId &&
                     x.CompanyId == _current.CompanyId &&
                     x.DeletedAt == null);
 
@@ -280,7 +280,7 @@ namespace ZooSanMarino.Infrastructure.Services
                     .SingleOrDefaultAsync(x =>
                         x.NucleoId == nucleoId &&
                         x.GranjaId == dto.GranjaId
-                        // Si Nucleo tiene CompanyId, añadir filtro CompanyId == _current.CompanyId
+                    // Si Nucleo tiene CompanyId, añadir filtro CompanyId == _current.CompanyId
                     );
 
                 if (n is null)
@@ -288,38 +288,38 @@ namespace ZooSanMarino.Infrastructure.Services
             }
 
             // Mutación (fechas en UTC y decimales directos)
-            ent.LoteNombre         = (dto.LoteNombre ?? string.Empty).Trim();
-            ent.GranjaId           = dto.GranjaId;
-            ent.NucleoId           = nucleoId ?? ent.NucleoId;
-            ent.GalponId           = galponId ?? ent.GalponId;
-            ent.Regional           = dto.Regional;
-            ent.FechaEncaset       = dto.FechaEncaset?.ToUniversalTime();
+            ent.LoteNombre = (dto.LoteNombre ?? string.Empty).Trim();
+            ent.GranjaId = dto.GranjaId;
+            ent.NucleoId = nucleoId ?? ent.NucleoId;
+            ent.GalponId = galponId ?? ent.GalponId;
+            ent.Regional = dto.Regional;
+            ent.FechaEncaset = dto.FechaEncaset?.ToUniversalTime();
 
-            ent.HembrasL           = dto.HembrasL;
-            ent.MachosL            = dto.MachosL;
+            ent.HembrasL = dto.HembrasL;
+            ent.MachosL = dto.MachosL;
 
-            ent.PesoInicialH       = dto.PesoInicialH;
-            ent.PesoInicialM       = dto.PesoInicialM;
-            ent.UnifH              = dto.UnifH;
-            ent.UnifM              = dto.UnifM;
+            ent.PesoInicialH = dto.PesoInicialH;
+            ent.PesoInicialM = dto.PesoInicialM;
+            ent.UnifH = dto.UnifH;
+            ent.UnifM = dto.UnifM;
 
-            ent.MortCajaH          = dto.MortCajaH;
-            ent.MortCajaM          = dto.MortCajaM;
+            ent.MortCajaH = dto.MortCajaH;
+            ent.MortCajaM = dto.MortCajaM;
 
-            ent.Raza               = dto.Raza;
-            ent.AnoTablaGenetica   = dto.AnoTablaGenetica;
-            ent.Linea              = dto.Linea;
-            ent.TipoLinea          = dto.TipoLinea;
+            ent.Raza = dto.Raza;
+            ent.AnoTablaGenetica = dto.AnoTablaGenetica;
+            ent.Linea = dto.Linea;
+            ent.TipoLinea = dto.TipoLinea;
             ent.CodigoGuiaGenetica = dto.CodigoGuiaGenetica;
-            ent.Tecnico            = dto.Tecnico;
+            ent.Tecnico = dto.Tecnico;
 
-            ent.Mixtas             = dto.Mixtas;
-            ent.PesoMixto          = dto.PesoMixto;
-            ent.AvesEncasetadas    = dto.AvesEncasetadas;
-            ent.EdadInicial        = dto.EdadInicial;
+            ent.Mixtas = dto.Mixtas;
+            ent.PesoMixto = dto.PesoMixto;
+            ent.AvesEncasetadas = dto.AvesEncasetadas;
+            ent.EdadInicial = dto.EdadInicial;
 
-            ent.UpdatedByUserId    = _current.UserId;
-            ent.UpdatedAt          = DateTime.UtcNow;
+            ent.UpdatedByUserId = _current.UserId;
+            ent.UpdatedAt = DateTime.UtcNow;
 
             await _ctx.SaveChangesAsync();
             return await GetByIdAsync(ent.LoteId);
@@ -334,9 +334,9 @@ namespace ZooSanMarino.Infrastructure.Services
                 .SingleOrDefaultAsync(x => x.LoteId == loteId && x.CompanyId == _current.CompanyId);
             if (ent is null || ent.DeletedAt != null) return false;
 
-            ent.DeletedAt       = DateTime.UtcNow;
+            ent.DeletedAt = DateTime.UtcNow;
             ent.UpdatedByUserId = _current.UserId;
-            ent.UpdatedAt       = DateTime.UtcNow;
+            ent.UpdatedAt = DateTime.UtcNow;
 
             await _ctx.SaveChangesAsync();
             return true;
@@ -430,12 +430,74 @@ namespace ZooSanMarino.Infrastructure.Services
         {
             Expression<Func<Lote, object>> key = (sortBy ?? string.Empty).ToLower() switch
             {
-                "lote_nombre"   => l => l.LoteNombre,
-                "lote_id"       => l => l.LoteId,
+                "lote_nombre" => l => l.LoteNombre,
+                "lote_id" => l => l.LoteId,
                 "fecha_encaset" => l => l.FechaEncaset ?? DateTime.MinValue,
-                _               => l => l.FechaEncaset ?? DateTime.MinValue
+                _ => l => l.FechaEncaset ?? DateTime.MinValue
             };
             return desc ? q.OrderByDescending(key) : q.OrderBy(key);
         }
+
+
+        /// <summary>
+        /// Resumen de mortalidad + saldos (levante).
+        /// Reglas solicitadas:
+        ///  - Sumas acumuladas = Σ(mortalidad hembra) y Σ(mortalidad macho) de SeguimientoLoteLevante por LoteId.
+        ///  - SaldoHembras = (HembrasL - MortCajaH) - MortalidadAcumHembras
+        ///  - SaldoMachos  = (MachosL  - MortCajaM) - MortalidadAcumMachos
+        ///  - Clampea a cero si queda negativo.
+        ///  - Tenant-safe (CompanyId) y exige que el lote no esté eliminado.
+        /// </summary>
+        public async Task<LoteMortalidadResumenDto?> GetMortalidadResumenAsync(string loteId)
+        {
+            // 1) Carga del lote (tenant-safe)
+            var lote = await _ctx.Lotes
+                .AsNoTracking()
+                .SingleOrDefaultAsync(l =>
+                    l.LoteId == loteId &&
+                    l.CompanyId == _current.CompanyId &&
+                    l.DeletedAt == null);
+
+            if (lote is null) return null;
+
+            // 2) Sumas de mortalidad (una sola consulta agrupada)
+            var mort = await _ctx.SeguimientoLoteLevante
+                .AsNoTracking()
+                .Where(s => s.LoteId == loteId)
+                .GroupBy(_ => 1)
+                .Select(g => new
+                {
+                    H = (int?)g.Sum(x => x.MortalidadHembras) ?? 0,
+                    M = (int?)g.Sum(x => x.MortalidadMachos) ?? 0
+                })
+                .SingleOrDefaultAsync();
+
+            int mortH = mort?.H ?? 0;
+            int mortM = mort?.M ?? 0;
+
+            // 3) Bases y mortandad en caja (si tu entidad las trae)
+            int baseH = lote.HembrasL ?? 0;
+            int baseM = lote.MachosL ?? 0;
+            int mortCajaH = lote.MortCajaH ?? 0;
+            int mortCajaM = lote.MortCajaM ?? 0;
+
+            // 4) Saldos solicitados (solo restando mortalidad)
+            int saldoH = Math.Max(0, baseH - mortCajaH - mortH);
+            int saldoM = Math.Max(0, baseM - mortCajaM - mortM);
+
+            return new LoteMortalidadResumenDto
+            {
+                LoteId = loteId,
+                MortalidadAcumHembras = mortH,
+                MortalidadAcumMachos = mortM,
+                HembrasIniciales = baseH,
+                MachosIniciales = baseM,
+                MortCajaHembras = mortCajaH,
+                MortCajaMachos = mortCajaM,
+                SaldoHembras = saldoH,
+                SaldoMachos = saldoM
+            };
+        }
     }
+
 }

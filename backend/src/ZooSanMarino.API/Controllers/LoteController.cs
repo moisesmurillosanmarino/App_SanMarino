@@ -2,7 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using ZooSanMarino.Application.Interfaces;
 using ZooSanMarino.Application.DTOs;                     // CreateLoteDto, UpdateLoteDto, LoteDto
 using CommonDtos = ZooSanMarino.Application.DTOs.Common; // PagedResult<T>
-using LoteDtos   = ZooSanMarino.Application.DTOs.Lotes;  // LoteDetailDto, LoteSearchRequest
+using LoteDtos   = ZooSanMarino.Application.DTOs.Lotes;
+using ZooSanMarino.Application.DTOs.Lotes;  // LoteDetailDto, LoteSearchRequest
 
 namespace ZooSanMarino.API.Controllers;
 
@@ -131,5 +132,18 @@ public class LoteController : ControllerBase
     {
         var ok = await _svc.HardDeleteAsync(loteId);
         return ok ? NoContent() : NotFound();
+    }
+
+      /// <summary>
+    /// Resumen de mortalidad de un lote de levante (acumulado y saldos).
+    /// </summary>
+    [HttpGet("{loteId}/resumen-mortalidad")]
+    [ProducesResponseType(typeof(LoteMortalidadResumenDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetResumenMortalidad(string loteId)
+    {
+        var dto = await _svc.GetMortalidadResumenAsync(loteId);
+        if (dto is null) return NotFound();
+        return Ok(dto);
     }
 }
