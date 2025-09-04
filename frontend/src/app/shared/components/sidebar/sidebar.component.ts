@@ -75,7 +75,8 @@ export class SidebarComponent {
       expanded: false,
       children: [
         { label: 'Seguimiento Diario de Levante',    icon: this.faBoxesAlt, link: ['/daily-log','seguimiento'] },
-        { label: 'Seguimiento Diario de Producción', icon: this.faBoxesAlt, link: ['/daily-log','produccion'] }
+        { label: 'Seguimiento Diario de Producción', icon: this.faBoxesAlt, link: ['/daily-log','produccion'] },
+       { label: 'Seguimiento Diario Lote Reproductora', icon: this.faBoxesAlt, link: ['/daily-log','seguimiento-diario-lote-reproductora'] } 
       ]
     },
 
