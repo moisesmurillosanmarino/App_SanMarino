@@ -80,6 +80,12 @@ export const appConfig: ApplicationConfig = {
             loadChildren: () =>
               import('./features/lote-reproductora/lote-reproductora.module')
                 .then(m => m.LoteReproductoraModule)
+          },
+            {
+            path: 'seguimiento-diario-lote-reproductora',
+            loadChildren: () =>
+              import('./features/seguimiento-diario-lote-reproductora/seguimiento-diario-lote-reproductora.module')
+                .then(m => m.SeguimientoDiarioLoteReproductoraModule)
           }
         ]
       },
