@@ -1,104 +1,180 @@
-<div class="flex h-screen">
-  <app-sidebar class="w-64"></app-sidebar>
+<!-- src/app/features/lote-reproductora/pages/seguimiento-diario-lote-reproductora-list/seguimiento-diario-lote-reproductora-list.component.html -->
+<div class="ux-page" [attr.aria-busy]="loading ? 'true' : null">
+  <!-- Sidebar -->
+  <app-sidebar class="ux-sidebar"></app-sidebar>
 
-  <div class="main-content" [attr.aria-busy]="loading ? 'true' : null">
+  <!-- Main -->
+  <div class="ux-main">
     <!-- Header -->
-    <div class="header">
-      <div class="header__title">
-        <h1>Seguimiento Diario Lote Reproductora</h1>
-        <span class="summary-chip ml-2" *ngIf="selectedReproId">{{ seguimientos?.length || 0 }} registro(s)</span>
+    <header class="ux-header">
+      <div class="ux-header__title">
+        <h1>Seguimiento Diario – Lote Reproductora</h1>
+        <div class="ux-header__meta">
+          <span class="chip chip--info" *ngIf="selectedCompanyId">
+            <span class="chip__dot" aria-hidden="true"></span>
+            Empresa: {{ selectedCompanyName }}
+          </span>
+
+          <span class="chip chip--info" *ngIf="selectedGranjaId">
+            <span class="chip__dot" aria-hidden="true"></span>
+            Granja: {{ selectedGranjaName }}
+          </span>
+
+          <span class="chip chip--muted" *ngIf="selectedNucleoId">Núcleo: {{ selectedNucleoId }}</span>
+          <span class="chip chip--muted" *ngIf="selectedLoteId">Lote: {{ selectedLoteId }}</span>
+          <span class="chip chip--muted" *ngIf="selectedReproId">Reproductora: {{ selectedReproId }}</span>
+
+          <span class="chip chip--muted" *ngIf="seguimientos?.length">
+            {{ seguimientos.length }} registro(s)
+          </span>
+        </div>
       </div>
 
       <button
-        class="btn-primary"
+        type="button"
+        class="btn btn--primary"
         (click)="create()"
         [disabled]="!selectedReproId"
-        [attr.aria-disabled]="!selectedReproId ? 'true' : null"
-        [title]="!selectedReproId ? 'Primero selecciona la Reproductora' : 'Crear nuevo registro'">
+        [title]="!selectedReproId ? 'Selecciona Empresa → Granja → Núcleo → Lote → Reproductora' : 'Nuevo registro'">
         Nuevo registro
       </button>
-    </div>
+    </header>
 
     <!-- Filtros en cascada -->
-    <div class="ux-card mb-4" role="group" aria-labelledby="filtros-title">
-      <div class="sr-only" id="filtros-title">Filtros en cascada</div>
+    <section class="ux-card" role="group" aria-label="Filtros">
+      <div class="ux-toolbar">
+        <!-- Empresa -->
+        <div class="ux-field">
+          <label class="ux-label" for="sel-company">Empresa</label>
+          <div class="ux-select">
+            <select
+              id="sel-company"
+              [ngModel]="selectedCompanyId"
+              (ngModelChange)="selectedCompanyId = $event; onCompanyChange()">
+              <option [ngValue]="null">— Seleccione —</option>
+              <option *ngFor="let c of companies; trackBy: trackByIdx" [ngValue]="c.id">
+                {{ c.name || c.id }}
+              </option>
+            </select>
+          </div>
+        </div>
 
-      <div class="filters">
         <!-- Granja -->
-        <div class="filter">
+        <div class="ux-field">
           <label class="ux-label" for="sel-granja">Granja</label>
-          <select id="sel-granja" class="ux-select"
-                  [(ngModel)]="selectedGranjaId" (change)="onGranjaChange()">
-            <option [ngValue]="null">— Seleccione —</option>
-            <option *ngFor="let g of granjas; trackBy: trackByIdx" [ngValue]="g.id">{{ g.name }}</option>
-          </select>
+          <div class="ux-select">
+            <select
+              id="sel-granja"
+              [disabled]="!selectedCompanyId || !granjasFiltradas.length"
+              [ngModel]="selectedGranjaId"
+              (ngModelChange)="selectedGranjaId = $event; onGranjaChange()">
+              <option [ngValue]="null">— Seleccione —</option>
+              <option *ngFor="let g of granjasFiltradas; trackBy: trackByIdx" [ngValue]="g.id">
+                {{ g.name }}
+              </option>
+            </select>
+          </div>
         </div>
 
         <!-- Núcleo -->
-        <div class="filter">
+        <div class="ux-field">
           <label class="ux-label" for="sel-nucleo">Núcleo</label>
-          <select id="sel-nucleo" class="ux-select"
-                  [(ngModel)]="selectedNucleoId" (change)="onNucleoChange()"
-                  [disabled]="!selectedGranjaId" [attr.aria-disabled]="!selectedGranjaId ? 'true' : null">
-            <option [ngValue]="null">— Seleccione —</option>
-            <option *ngFor="let n of nucleos; trackBy: trackByIdx" [ngValue]="n.nucleoId">{{ n.nucleoNombre }}</option>
-          </select>
+          <div class="ux-select">
+            <select
+              id="sel-nucleo"
+              [disabled]="!selectedGranjaId || !nucleos.length"
+              [ngModel]="selectedNucleoId"
+              (ngModelChange)="selectedNucleoId = $event; onNucleoChange()">
+              <option [ngValue]="null">— Seleccione —</option>
+              <option *ngFor="let n of nucleos; trackBy: trackByIdx" [ngValue]="n.nucleoId">
+                {{ n.nucleoNombre }}
+              </option>
+            </select>
+          </div>
         </div>
 
         <!-- Lote -->
-        <div class="filter">
+        <div class="ux-field">
           <label class="ux-label" for="sel-lote">Lote</label>
-          <select id="sel-lote" class="ux-select"
-                  [(ngModel)]="selectedLoteId" (change)="onLoteChange()"
-                  [disabled]="!selectedNucleoId" [attr.aria-disabled]="!selectedNucleoId ? 'true' : null">
-            <option [ngValue]="null">— Seleccione —</option>
-            <option *ngFor="let l of lotes; trackBy: trackByIdx" [ngValue]="l.loteId">{{ l.loteNombre || l.loteId }}</option>
-          </select>
+          <div class="ux-select">
+            <select
+              id="sel-lote"
+              [disabled]="!selectedNucleoId || !lotes.length"
+              [ngModel]="selectedLoteId"
+              (ngModelChange)="selectedLoteId = $event; onLoteChange()">
+              <option [ngValue]="null">— Seleccione —</option>
+              <option *ngFor="let l of lotes; trackBy: trackByIdx" [ngValue]="l.loteId">
+                {{ l.loteNombre || l.loteId }}
+              </option>
+            </select>
+          </div>
         </div>
 
-        <!-- Reproductora (Incubadora del lote) -->
-        <div class="filter">
+        <!-- Reproductora -->
+        <div class="ux-field">
           <label class="ux-label" for="sel-repro">Reproductora</label>
-          <select id="sel-repro" class="ux-select"
-                  [(ngModel)]="selectedReproId" (change)="onReproChange()"
-                  [disabled]="!selectedLoteId" [attr.aria-disabled]="!selectedLoteId ? 'true' : null"
-                  aria-describedby="hint-repro">
-            <option [ngValue]="null">— Seleccione —</option>
-            <option *ngFor="let r of repros; trackBy: trackByIdx" [ngValue]="r.reproductoraId">
-              {{ r.nombreLote || r.reproductoraId }}
-            </option>
-          </select>
-          <small id="hint-repro" class="text-[12px] text-warm-gray-700">
-            Selecciona la Reproductora para habilitar “Nuevo”.
-          </small>
+          <div class="ux-select">
+            <select
+              id="sel-repro"
+              [disabled]="!selectedLoteId || !repros.length"
+              [ngModel]="selectedReproId"
+              (ngModelChange)="selectedReproId = $event; onReproChange()">
+              <option [ngValue]="null">— Seleccione —</option>
+              <option *ngFor="let r of repros; trackBy: trackByIdx" [ngValue]="r.reproductoraId">
+                {{ r.nombreLote || r.reproductoraId }}
+              </option>
+            </select>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Aviso cuando no hay Reproductora seleccionada -->
-    <div *ngIf="!selectedReproId" class="ux-card ux-card--soft mb-4" role="status" aria-live="polite">
+    <!-- Resumen del Lote Reproductora seleccionado -->
+    <section *ngIf="selectedLoteId && selectedReproId" class="ux-card mb-4">
+      <h2 class="ux-title text-base mb-2">📋 Resumen del Lote Reproductora</h2>
       <div class="summary-grid">
         <div class="summary-item">
-          <span class="summary-label">Estado</span>
-          <span class="summary-value">Reproductora sin seleccionar</span>
+          <span class="summary-label">Lote</span>
+          <span class="summary-value">{{ selectedLoteId }}</span>
         </div>
         <div class="summary-item">
-          <span class="summary-label">Siguiente paso</span>
-          <span class="summary-value">Elige una Reproductora para registrar seguimiento diario</span>
+          <span class="summary-label">Reproductora</span>
+          <span class="summary-chip">{{ selectedReproId }}</span>
         </div>
-        <div class="summary-item">
-          <span class="summary-label">Acción</span>
-          <span class="summary-chip">“Nuevo” deshabilitado</span>
-        </div>
+        <ng-container *ngIf="repros?.length">
+          <ng-container *ngFor="let r of repros">
+            <ng-container *ngIf="r.reproductoraId === selectedReproId">
+              <div class="summary-item">
+                <span class="summary-label">Nombre Lote</span>
+                <span class="summary-value">{{ r.nombreLote }}</span>
+              </div>
+              <div class="summary-item">
+                <span class="summary-label">Hembras</span>
+                <span class="summary-chip">{{ r.h ?? 0 }}</span>
+              </div>
+              <div class="summary-item">
+                <span class="summary-label">Machos</span>
+                <span class="summary-chip">{{ r.m ?? 0 }}</span>
+              </div>
+              <div class="summary-item">
+                <span class="summary-label">Mixtas</span>
+                <span class="summary-chip">{{ r.mixtas ?? 0 }}</span>
+              </div>
+              <div class="summary-item">
+                <span class="summary-label">Fecha Encaset.</span>
+                <span class="summary-value">{{ r.fechaEncasetamiento | date:'shortDate' }}</span>
+              </div>
+            </ng-container>
+          </ng-container>
+        </ng-container>
       </div>
-    </div>
+    </section>
 
-    <!-- Tabla principal -->
-    <div class="ux-card">
+    <!-- Tabla de seguimiento -->
+    <section class="ux-card">
       <div class="ux-scroll">
-       <table class="ux-table ux-table--brand">
-          <caption class="sr-only">Registros diarios</caption>
-
+        <table class="ux-table">
+          <caption class="sr-only">Registros de seguimiento diario</caption>
           <thead>
             <tr>
               <th>Fecha</th>
@@ -109,28 +185,18 @@
               <th>Err H</th>
               <th>Err M</th>
               <th>Tipo alimento</th>
-              <th>Consumo (kg)</th>
-              <th class="text-center">Acciones</th>
+              <th>Consumo (kg H)</th>
+              <th class="text-right">Acciones</th>
             </tr>
           </thead>
-
           <tbody>
-            <!-- Cargando -->
-            <tr *ngIf="loading" aria-live="polite">
-              <td colspan="10" class="empty-state">
-                <div class="spinner"></div>
-                Cargando datos…
-              </td>
-            </tr>
-
             <!-- Vacío -->
-            <tr *ngIf="!loading && (!seguimientos || !seguimientos.length)">
+            <tr *ngIf="!loading && (!seguimientos || seguimientos.length === 0)">
               <td colspan="10" class="empty-state">
-                <div class="empty-illustration">🫥</div>
-                <p *ngIf="!selectedReproId">Selecciona una Reproductora para comenzar.</p>
-                <p *ngIf="selectedReproId">Sin registros para esta Reproductora.</p>
-
-                <button class="btn-secondary mt-2" (click)="create()" [disabled]="!selectedReproId">
+                <div class="empty-illustration">📄</div>
+                <p *ngIf="!selectedReproId">Selecciona Empresa → Granja → Núcleo → Lote → Reproductora.</p>
+                <p *ngIf="selectedReproId">Sin registros para esta reproductora.</p>
+                <button type="button" class="btn btn--outline" (click)="create()" [disabled]="!selectedReproId">
                   Crear el primero
                 </button>
               </td>
@@ -147,10 +213,10 @@
               <td>{{ s.errorSexajeMachos }}</td>
               <td>{{ s.tipoAlimento }}</td>
               <td>{{ s.consumoKgHembras }}</td>
-              <td class="text-center">
-                <div class="actions">
-                  <button class="icon-btn" title="Editar" aria-label="Editar" (click)="edit(s)">✎</button>
-                  <button class="icon-btn danger" title="Eliminar" aria-label="Eliminar" (click)="delete(s.id)">🗑</button>
+              <td class="text-right">
+                <div class="btn-group">
+                  <button type="button" class="icon-btn" (click)="edit(s)" title="Editar">✎</button>
+                  <button type="button" class="icon-btn icon-btn--danger" (click)="delete(s.id)" title="Eliminar">🗑</button>
                 </div>
               </td>
             </tr>
@@ -158,91 +224,98 @@
         </table>
       </div>
 
-      <!-- Overlay de carga sobre la card -->
-      <div *ngIf="loading" class="loading-overlay" aria-live="polite">
+      <!-- Overlay de carga -->
+      <div *ngIf="loading" class="loading-overlay" aria-live="polite" role="status">
         <div class="spinner"></div>
         Cargando…
       </div>
-    </div>
+    </section>
+  </div>
+</div>
 
-    <!-- Modal Crear/Editar -->
-    <div *ngIf="modalOpen" class="ux-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <div class="ux-modal__panel ux-modal__panel--lg">
-        <div class="ux-modal__header">
-          <h2 id="modal-title">{{ editing ? 'Editar' : 'Nuevo' }} registro</h2>
-          <button class="ux-modal__close" (click)="cancel()" aria-label="Cerrar">×</button>
+<!-- Modal -->
+<div
+  *ngIf="modalOpen"
+  class="ux-modal"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="seguimiento-modal-title">
+  <div class="ux-modal__dialog">
+    <header class="ux-modal__header">
+      <h2 id="seguimiento-modal-title">{{ editing ? 'Editar Registro' : 'Nuevo Registro' }}</h2>
+      <button type="button" class="icon-btn" (click)="cancel()" aria-label="Cerrar">✕</button>
+    </header>
+
+    <form [formGroup]="form" (ngSubmit)="save()" class="ux-form" novalidate>
+      <div class="grid grid-2">
+        <div class="form-field">
+          <label for="f-fecha">Fecha</label>
+          <input id="f-fecha" type="date" formControlName="fechaRegistro" />
+        </div>
+        <div class="form-field">
+          <label for="f-repro">Reproductora</label>
+          <div class="ux-select">
+            <select id="f-repro" formControlName="reproductoraId">
+              <option [ngValue]="''" disabled>— Seleccione —</option>
+              <option *ngFor="let r of repros; trackBy: trackByIdx" [ngValue]="r.reproductoraId">
+                {{ r.nombreLote || r.reproductoraId }}
+              </option>
+            </select>
+          </div>
         </div>
 
-        <div class="ux-modal__body">
-          <form [formGroup]="form" (ngSubmit)="save()" class="ux-form" novalidate>
-            <div class="form-section__title">Datos del registro</div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label class="ux-label" for="f-fecha">Fecha</label>
-                <input id="f-fecha" type="date" class="ux-input" formControlName="fechaRegistro" />
-              </div>
-              <div>
-                <label class="ux-label" for="f-lote">Lote</label>
-                <select id="f-lote" class="ux-select" formControlName="loteId">
-                  <option value="" disabled>— Seleccione —</option>
-                  <option *ngFor="let l of lotes; trackBy: trackByIdx" [ngValue]="l.loteId">
-                    {{ l.loteNombre || l.loteId }}
-                  </option>
-                </select>
-              </div>
-              <div>
-                <label class="ux-label" for="f-repro">Reproductora</label>
-                <select id="f-repro" class="ux-select" formControlName="reproductoraId">
-                  <option value="" disabled>— Seleccione —</option>
-                  <option *ngFor="let r of repros; trackBy: trackByIdx" [ngValue]="r.reproductoraId">
-                    {{ r.nombreLote || r.reproductoraId }}
-                  </option>
-                </select>
-              </div>
-            </div>
+        <div class="form-field">
+          <label for="f-mh">Mortalidad H</label>
+          <input id="f-mh" type="number" min="0" formControlName="mortalidadHembras" />
+        </div>
+        <div class="form-field">
+          <label for="f-mm">Mortalidad M</label>
+          <input id="f-mm" type="number" min="0" formControlName="mortalidadMachos" />
+        </div>
 
-            <div class="form-section__title">Producción diaria</div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div><label class="ux-label" for="f-mh">Mort. Hembras</label><input id="f-mh" type="number" class="ux-input" min="0" formControlName="mortalidadHembras" /></div>
-              <div><label class="ux-label" for="f-mm">Mort. Machos</label><input id="f-mm" type="number" class="ux-input" min="0" formControlName="mortalidadMachos" /></div>
-              <div><label class="ux-label" for="f-cons">Consumo (kg)</label><input id="f-cons" type="number" class="ux-input" step="0.01" formControlName="consumoKgHembras" /></div>
-            </div>
+        <div class="form-field">
+          <label for="f-selh">Selección H</label>
+          <input id="f-selh" type="number" min="0" formControlName="selH" />
+        </div>
+        <div class="form-field">
+          <label for="f-selm">Selección M</label>
+          <input id="f-selm" type="number" min="0" formControlName="selM" />
+        </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-2">
-              <div><label class="ux-label" for="f-selh">Sel H</label><input id="f-selh" type="number" class="ux-input" min="0" formControlName="selH" /></div>
-              <div><label class="ux-label" for="f-selm">Sel M</label><input id="f-selm" type="number" class="ux-input" min="0" formControlName="selM" /></div>
-              <div><label class="ux-label" for="f-esh">Err sexaje H</label><input id="f-esh" type="number" class="ux-input" min="0" formControlName="errorSexajeHembras" /></div>
-              <div><label class="ux-label" for="f-esm">Err sexaje M</label><input id="f-esm" type="number" class="ux-input" min="0" formControlName="errorSexajeMachos" /></div>
-            </div>
+        <div class="form-field">
+          <label for="f-errh">Error Sexaje H</label>
+          <input id="f-errh" type="number" min="0" formControlName="errorSexajeHembras" />
+        </div>
+        <div class="form-field">
+          <label for="f-errm">Error Sexaje M</label>
+          <input id="f-errm" type="number" min="0" formControlName="errorSexajeMachos" />
+        </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-              <div>
-                <label class="ux-label" for="f-alim">Tipo de alimento</label>
-                <input id="f-alim" class="ux-input" formControlName="tipoAlimento" />
-              </div>
-              <div>
-                <label class="ux-label" for="f-ciclo">Ciclo</label>
-                <select id="f-ciclo" class="ux-select" formControlName="ciclo">
-                  <option value="Normal">Normal</option>
-                  <option value="Reforzado">Reforzado</option>
-                </select>
-              </div>
-            </div>
+        <div class="form-field">
+          <label for="f-alim">Tipo de alimento</label>
+          <input id="f-alim" type="text" formControlName="tipoAlimento" />
+        </div>
+        <div class="form-field">
+          <label for="f-cons">Consumo (kg Hembras)</label>
+          <input id="f-cons" type="number" step="0.01" min="0" formControlName="consumoKgHembras" />
+        </div>
 
-            <div class="mt-2">
-              <label class="ux-label" for="f-obs">Observaciones</label>
-              <textarea id="f-obs" rows="3" class="ux-input" formControlName="observaciones"></textarea>
-            </div>
-
-            <div class="ux-modal__actions">
-              <button type="button" class="btn-ghost" (click)="cancel()">Cancelar</button>
-              <button type="submit" class="btn-primary" [disabled]="loading || form.invalid">
-                {{ editing ? 'Actualizar' : 'Guardar' }}
-              </button>
-            </div>
-          </form>
+        <div class="form-field form-field--full">
+          <label for="f-obs">Observaciones</label>
+          <textarea id="f-obs" rows="3" formControlName="observaciones"></textarea>
         </div>
       </div>
+
+      <footer class="ux-modal__footer">
+        <button type="button" class="btn btn--ghost" (click)="cancel()">Cancelar</button>
+        <button type="submit" class="btn btn--primary" [disabled]="loading || form.invalid">
+          {{ loading ? 'Guardando…' : 'Guardar' }}
+        </button>
+      </footer>
+    </form>
+
+    <div *ngIf="loading" class="modal-loading" role="status" aria-live="polite">
+      <div class="spinner"></div> Guardando…
     </div>
   </div>
 </div>

@@ -1,3 +1,4 @@
+<!-- src/app/features/lote-produccion/pages/lote-produccion-list/lote-produccion-list.component.html -->
 <div class="ux-page" [attr.aria-busy]="loading ? 'true' : null">
   <!-- Sidebar -->
   <app-sidebar class="ux-sidebar"></app-sidebar>
@@ -9,23 +10,38 @@
       <div class="ux-header__title">
         <h1>Diario de Producción</h1>
 
-        <div class="ux-header__meta" *ngIf="selectedLoteId; else noLoteMsg">
-          <span class="chip chip--info">
-            <span class="chip__dot" aria-hidden="true"></span>
-            Lote: {{ selectedLoteNombre }}
-          </span>
-          <span class="chip chip--muted">{{ selectedLoteSemanas }} sem</span>
-          <span class="chip chip--muted">{{ registros.length || 0 }} registro(s)</span>
-        </div>
-
-        <ng-template #noLoteMsg>
-          <div class="ux-header__meta">
+        <div class="ux-header__meta">
+          <!-- Granja -->
+          <ng-template #noGranjaChip>
             <span class="chip chip--warning">
               <span class="chip__dot" aria-hidden="true"></span>
-              Selecciona un lote para gestionar registros
+              Selecciona una granja
             </span>
-          </div>
-        </ng-template>
+          </ng-template>
+          <span class="chip chip--info" *ngIf="selectedGranjaId; else noGranjaChip">
+            <span class="chip__dot" aria-hidden="true"></span>
+            Granja: {{ selectedGranjaName || selectedGranjaId }}
+          </span>
+
+          <!-- Galpón -->
+          <span class="chip chip--muted" *ngIf="selectedGalponId">
+            Galpón: {{ selectedGalponId === SIN_GALPON ? '— Sin galpón —' : selectedGalponId }}
+          </span>
+
+          <!-- Lote -->
+          <span class="chip chip--info" *ngIf="selectedLoteId">
+            <span class="chip__dot" aria-hidden="true"></span>
+            Lote: {{ selectedLoteNombreChip }}
+          </span>
+
+          <!-- Edad y # registros -->
+          <span class="chip chip--muted" *ngIf="selectedLoteId">
+            {{ selectedLoteSemanas }} sem
+          </span>
+          <span class="chip chip--muted" *ngIf="selectedLoteId">
+            {{ registros?.length || 0 }} registro(s)
+          </span>
+        </div>
       </div>
 
       <button
@@ -39,29 +55,163 @@
       </button>
     </header>
 
-    <!-- Toolbar / Filtro -->
-    <section class="ux-toolbar">
-      <label for="lote-select" class="ux-label">Selecciona Lote</label>
-      <div class="ux-select">
-        <select
-          id="lote-select"
-          [(ngModel)]="selectedLoteId"
-          (change)="onLoteChange()"
-          aria-label="Selecciona lote">
-          <option [ngValue]="null" disabled>— Selecciona un lote —</option>
-          <option *ngFor="let l of lotes; trackBy: trackByLoteId" [ngValue]="l.loteId">
-            {{ l.loteNombre }} ({{ l.edadSemanas }} sem)
-          </option>
-        </select>
+    <!-- Toolbar / Filtros en cascada -->
+    <section class="ux-card" role="group" aria-label="Filtros">
+      <div class="ux-toolbar">
+        <!-- Granja -->
+        <div class="ux-field">
+          <label class="ux-label" for="f-granja">Granja</label>
+          <div class="ux-select">
+            <select
+              id="f-granja"
+              [ngModel]="selectedGranjaId"
+              (ngModelChange)="selectedGranjaId = $event; onGranjaChange()">
+              <option [ngValue]="null">— Seleccione —</option>
+              <option *ngFor="let g of granjas" [ngValue]="g.id">{{ g.name }}</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Galpón (derivado de lotes para la granja) -->
+        <div class="ux-field">
+          <label class="ux-label" for="f-galpon">Galpón</label>
+          <div class="ux-select">
+            <select
+              id="f-galpon"
+              [disabled]="!selectedGranjaId || galpones.length === 0"
+              [ngModel]="selectedGalponId"
+              (ngModelChange)="selectedGalponId = $event; onGalponChange()">
+              <option [ngValue]="null">— Todos —</option>
+              <option *ngFor="let g of galpones" [ngValue]="g.id">{{ g.label }}</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Lote (filtrado por granja/galpón) -->
+        <div class="ux-field">
+          <label class="ux-label" for="f-lote">Lote</label>
+          <div class="ux-select">
+            <select
+              id="f-lote"
+              [disabled]="!selectedGranjaId || lotes.length === 0"
+              [ngModel]="selectedLoteId"
+              (ngModelChange)="selectedLoteId = $event; onLoteChange()">
+              <option [ngValue]="null" disabled>— Seleccione —</option>
+              <option *ngFor="let l of lotes; trackBy: trackByLoteId" [ngValue]="l.loteId">
+                {{ l.loteNombre || l.loteId }} ({{ calcularEdadSemanas(l.fechaEncaset) }} sem)
+              </option>
+            </select>
+          </div>
+        </div>
       </div>
     </section>
 
-    <!-- Tabla -->
+    <!-- Ficha del Lote + Estados -->
+    <section class="ux-card" *ngIf="selectedLoteId">
+      <div class="grid grid-2">
+        <!-- Ficha del lote (izquierda) -->
+        <div>
+          <h3 class="sr-only">Ficha del Lote</h3>
+          <div class="grid grid-2" style="row-gap:.6rem; column-gap:1rem;">
+            <div class="form-field">
+              <label>📋 Nombre</label>
+              <div><strong>{{ selectedLote?.loteNombre || selectedLoteId }}</strong></div>
+            </div>
+            <div class="form-field">
+              <label>🏠 Granja</label>
+              <div>{{ selectedGranjaName || '—' }}</div>
+            </div>
+            <div class="form-field">
+              <label>🏚️ Galpón</label>
+              <div>{{ selectedLote?.galponId || '—' }}</div>
+            </div>
+            <div class="form-field">
+              <label>📅 Encaset</label>
+              <div>{{ selectedLote?.fechaEncaset | date:'shortDate' }}</div>
+            </div>
+            <div class="form-field">
+              <label>⏳ Edad (sem)</label>
+              <div>{{ selectedLoteSemanas || 0 }}</div>
+            </div>
+            <div class="form-field">
+              <label>📦 Aves encasetadas</label>
+              <div>{{ (selectedLote?.avesEncasetadas || 0) | number:'1.0-0' }}</div>
+            </div>
+            <div class="form-field">
+              <label>🐔 Hembras L (inicial)</label>
+              <div>{{ (selectedLote?.hembrasL || 0) | number:'1.0-0' }}</div>
+            </div>
+            <div class="form-field">
+              <label>🐓 Machos L (inicial)</label>
+              <div>{{ (selectedLote?.machosL || 0) | number:'1.0-0' }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Estados / Resumen (derecha) -->
+        <div>
+          <h3 class="sr-only">Estados del Lote</h3>
+          <div class="grid grid-2" style="row-gap:.8rem; column-gap:1rem;">
+            <!-- Iniciales -->
+            <div class="ux-card" style="padding:.75rem">
+              <div class="form-field"><label>🐔 Hembras iniciales</label>
+                <div><strong>{{ (resumenSelected?.hembrasIniciales || 0) | number:'1.0-0' }}</strong></div>
+              </div>
+              <div class="form-field"><label>🐓 Machos iniciales</label>
+                <div><strong>{{ (resumenSelected?.machosIniciales || 0) | number:'1.0-0' }}</strong></div>
+              </div>
+            </div>
+
+            <!-- Mortalidad caja -->
+            <div class="ux-card" style="padding:.75rem">
+              <div class="form-field"><label>📦 Mort. caja H</label>
+                <div>{{ (resumenSelected?.mortCajaHembras || 0) | number:'1.0-0' }}</div>
+              </div>
+              <div class="form-field"><label>📦 Mort. caja M</label>
+                <div>{{ (resumenSelected?.mortCajaMachos || 0) | number:'1.0-0' }}</div>
+              </div>
+            </div>
+
+            <!-- Mortalidad acumulada -->
+            <div class="ux-card" style="padding:.75rem">
+              <div class="form-field"><label>✖ Mort. acum H</label>
+                <div>{{ (resumenSelected?.mortalidadAcumHembras || 0) | number:'1.0-0' }}</div>
+              </div>
+              <div class="form-field"><label>✖ Mort. acum M</label>
+                <div>{{ (resumenSelected?.mortalidadAcumMachos || 0) | number:'1.0-0' }}</div>
+              </div>
+            </div>
+
+            <!-- Saldos (vivas) -->
+            <div class="ux-card" style="padding:.75rem">
+              <div class="form-field"><label>✅ Vivas H</label>
+                <div><strong>{{ (resumenSelected?.saldoHembras || 0) | number:'1.0-0' }}</strong></div>
+              </div>
+              <div class="form-field"><label>✅ Vivas M</label>
+                <div><strong>{{ (resumenSelected?.saldoMachos || 0) | number:'1.0-0' }}</strong></div>
+              </div>
+              <div class="form-field form-field--full" style="margin-top:.25rem">
+                <label>🔢 Vivas totales</label>
+                <div>
+                  <strong>
+                    {{
+                      ((resumenSelected?.saldoHembras || 0) + (resumenSelected?.saldoMachos || 0))
+                        | number:'1.0-0'
+                    }}
+                  </strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div> <!-- /grid -->
+    </section>
+
+    <!-- Tabla de registros -->
     <section class="ux-card">
       <div class="ux-scroll">
         <table class="ux-table">
           <caption class="sr-only">Tabla de registros diarios de producción</caption>
-
           <thead>
             <tr>
               <th scope="col">Fecha</th>
@@ -77,8 +227,8 @@
               <th scope="col" class="text-right">Acciones</th>
             </tr>
           </thead>
-
           <tbody>
+            <!-- Filas -->
             <tr *ngFor="let r of registros; trackBy: trackByRegistroId" class="ux-row">
               <td>{{ r.fecha | date:'shortDate' }}</td>
               <td>{{ r.mortalidadH }}</td>
@@ -97,17 +247,13 @@
                     (click)="edit(r)"
                     class="icon-btn"
                     title="Editar"
-                    aria-label="Editar registro">
-                    ✎
-                  </button>
+                    aria-label="Editar registro">✎</button>
                   <button
                     type="button"
                     (click)="delete(r.id)"
                     class="icon-btn icon-btn--danger"
                     title="Eliminar"
-                    aria-label="Eliminar registro">
-                    🗑
-                  </button>
+                    aria-label="Eliminar registro">🗑</button>
                 </div>
               </td>
             </tr>
@@ -116,7 +262,8 @@
             <tr *ngIf="!loading && (!registros || registros.length === 0)">
               <td colspan="11" class="empty-state">
                 <div class="empty-illustration" aria-hidden="true">📄</div>
-                <p>No hay registros disponibles.</p>
+                <p *ngIf="!selectedLoteId">Selecciona un lote para ver/crear registros.</p>
+                <p *ngIf="selectedLoteId">Sin registros para este lote.</p>
                 <button
                   type="button"
                   class="btn btn--outline"
@@ -225,7 +372,7 @@
         <ng-container *ngIf="esPrimerRegistroProduccion">
           <div class="form-field form-field--full">
             <label class="sr-only">Separador</label>
-            <div style="height:1px;background:var(--warm-gray-200);margin:.3rem 0;"></div>
+            <div style="height:1px;background:var(--warm-200);margin:.3rem 0;"></div>
           </div>
 
           <div class="form-field">

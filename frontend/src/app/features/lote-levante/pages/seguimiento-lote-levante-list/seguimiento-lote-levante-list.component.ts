@@ -1,15 +1,22 @@
-// src/app/features/lote-levante/pages/seguimiento-lote-levante-list/seguimiento-lote-levante-list.component.ts
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import {
+  FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators
+} from '@angular/forms';
 import { finalize } from 'rxjs/operators';
 
 import { SidebarComponent } from '../../../../shared/components/sidebar/sidebar.component';
 
 // Servicios de dominio
-import { LoteService, LoteDto } from '../../../lote/services/lote.service';
-import { SeguimientoLoteLevanteService, SeguimientoLoteLevanteDto, CreateSeguimientoLoteLevanteDto, UpdateSeguimientoLoteLevanteDto } from '../../services/seguimiento-lote-levante.service';
+import { LoteService, LoteDto, LoteMortalidadResumenDto } from '../../../lote/services/lote.service';
+import {
+  SeguimientoLoteLevanteService,
+  SeguimientoLoteLevanteDto,
+  CreateSeguimientoLoteLevanteDto,
+  UpdateSeguimientoLoteLevanteDto
+} from '../../services/seguimiento-lote-levante.service';
 import { FarmService, FarmDto } from '../../../farm/services/farm.service';
+import { NucleoService, NucleoDto } from '../../services/nucleo.service';
 
 @Component({
   selector: 'app-seguimiento-lote-levante-list',
@@ -25,27 +32,33 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
 
   // ================== datos catálogo ==================
   granjas: FarmDto[] = [];
-  /** galpones derivados de los lotes (únicos) para la granja seleccionada */
+  nucleos: NucleoDto[] = []; // ← NUEVO: catálogo de núcleos por granja
+  /** galpones derivados de los lotes (únicos) para la granja/núcleo seleccionados */
   galpones: Array<{ id: string; label: string }> = [];
 
   // ================== selección / filtro ==================
   selectedGranjaId: number | null = null;
-  selectedGalponId: string | null = null; // usa SIN_GALPON para null
+  selectedNucleoId: string | null = null;   // ← NUEVO
+  selectedGalponId: string | null = null;   // usa SIN_GALPON para null
   selectedLoteId: string | null = null;
 
   // ================== lotes y seguimientos ==================
   /** cache de todos los lotes (último getAll) */
   private allLotes: LoteDto[] = [];
-  /** lotes filtrados por granja/galpón para poblar el <select> de lote */
+  /** lotes filtrados por granja/núcleo/galpón para poblar el <select> de lote */
   lotes: LoteDto[] = [];
   /** registros de seguimiento del lote seleccionado */
   seguimientos: SeguimientoLoteLevanteDto[] = [];
+
+  // ======= detalle/resumen para la tarjeta de resumen =======
+  selectedLote: LoteDto | undefined;
+  resumenSelected: LoteMortalidadResumenDto | null = null;
 
   // ================== UI / estado ==================
   loading = false;
   modalOpen = false;
   editing: SeguimientoLoteLevanteDto | null = null;
-  hasSinGalpon = false; // si hay lotes sin galpón en la granja
+  hasSinGalpon = false; // si hay lotes sin galpón en la granja/núcleo
 
   // ================== formulario modal ==================
   form!: FormGroup;
@@ -53,6 +66,7 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private farmSvc: FarmService,
+    private nucleoSvc: NucleoService,
     private loteSvc: LoteService,
     private segSvc: SeguimientoLoteLevanteService
   ) {}
@@ -85,33 +99,61 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
   // ================== eventos de cascada ==================
   onGranjaChange(): void {
     // reiniciar selección dependiente
+    this.selectedNucleoId = null;
     this.selectedGalponId = null;
     this.selectedLoteId = null;
     this.seguimientos = [];
     this.galpones = [];
     this.hasSinGalpon = false;
     this.lotes = [];
+    this.selectedLote = undefined;
+    this.resumenSelected = null;
+    this.nucleos = [];
 
     if (!this.selectedGranjaId) return;
 
-    // 🚰 carga fresca de lotes y construye filtros
+    // Cargar núcleos por granja
+    this.nucleoSvc.getByGranja(this.selectedGranjaId).subscribe({
+      next: (rows) => (this.nucleos = rows || []),
+      error: () => (this.nucleos = [])
+    });
+
+    // Cargar lotes y construir filtros
     this.reloadLotesThenApplyFilters();
+  }
+
+  onNucleoChange(): void {
+    // reiniciar selección dependiente
+    this.selectedGalponId = null;
+    this.selectedLoteId = null;
+    this.seguimientos = [];
+    this.selectedLote = undefined;
+    this.resumenSelected = null;
+
+    // Recalcula lotes/galpones con el nuevo núcleo
+    this.applyFiltersToLotes();
+    this.buildGalponesFromLotes();
   }
 
   onGalponChange(): void {
     // reiniciar selección dependiente
     this.selectedLoteId = null;
     this.seguimientos = [];
+    this.selectedLote = undefined;
+    this.resumenSelected = null;
 
-    // 🚰 puedes decidir no volver a pedir si ya tienes allLotes.
-    // Por pedido del flujo: recargar siempre.
-    this.reloadLotesThenApplyFilters();
+    // Recalcula lotes visibles
+    this.applyFiltersToLotes();
   }
 
   onLoteChange(): void {
     this.seguimientos = [];
+    this.selectedLote = undefined;
+    this.resumenSelected = null;
+
     if (!this.selectedLoteId) return;
 
+    // 1) Cargar seguimientos del lote
     this.loading = true;
     this.segSvc.getByLoteId(this.selectedLoteId)
       .pipe(finalize(() => (this.loading = false)))
@@ -119,10 +161,22 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
         next: (rows) => (this.seguimientos = rows || []),
         error: () => (this.seguimientos = [])
       });
+
+    // 2) Cargar detalle del lote (para tarjeta resumen)
+    this.loteSvc.getById(this.selectedLoteId).subscribe({
+      next: l => this.selectedLote = l,
+      error: () => this.selectedLote = undefined
+    });
+
+    // 3) Cargar resumen de mortalidad (para tarjeta resumen)
+    this.loteSvc.getResumenMortalidad(this.selectedLoteId).subscribe({
+      next: r => this.resumenSelected = r,
+      error: () => this.resumenSelected = null
+    });
   }
 
   // ================== carga y filtrado ==================
-  /** Trae TODOS los lotes y luego aplica los filtros Granja/Galpón */
+  /** Trae TODOS los lotes y luego aplica los filtros Granja/Núcleo/Galpón */
   private reloadLotesThenApplyFilters(): void {
     if (!this.selectedGranjaId) {
       this.allLotes = [];
@@ -150,48 +204,63 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       });
   }
 
-  /** Aplica los filtros actuales (granja/galpón) a allLotes para poblar `lotes` */
+  /** Aplica los filtros actuales (granja/núcleo/galpón) a allLotes para poblar `lotes` */
   private applyFiltersToLotes(): void {
+    if (!this.selectedGranjaId) { this.lotes = []; return; }
     const gid = String(this.selectedGranjaId);
-    const byFarm = this.allLotes.filter(l => String(l.granjaId) === gid);
+
+    // 1) Por granja
+    let filtered = this.allLotes.filter(l => String(l.granjaId) === gid);
+
+    // 2) Por núcleo (si está seleccionado)
+    if (this.selectedNucleoId) {
+      const nid = String(this.selectedNucleoId);
+      filtered = filtered.filter(l => String(l.nucleoId) === nid);
+    }
 
     // ¿Hay lotes sin galpón?
-    this.hasSinGalpon = byFarm.some(l => !this.hasValue(l.galponId));
+    this.hasSinGalpon = filtered.some(l => !this.hasValue(l.galponId));
 
-    // Sin galpón seleccionado => todos los lotes de la granja
+    // 3) Por galpón (si está seleccionado)
     if (!this.selectedGalponId) {
-      this.lotes = byFarm;
+      this.lotes = filtered;
       return;
     }
 
-    // Opción “Sin galpón” => null/undefined/''/0
     if (this.selectedGalponId === this.SIN_GALPON) {
-      this.lotes = byFarm.filter(l => !this.hasValue(l.galponId));
+      this.lotes = filtered.filter(l => !this.hasValue(l.galponId));
       return;
     }
 
-    // Galpón específico
     const sel = this.normalizeId(this.selectedGalponId);
-    this.lotes = byFarm.filter(l => this.normalizeId(l.galponId) === sel);
+    this.lotes = filtered.filter(l => this.normalizeId(l.galponId) === sel);
   }
 
-  /** Construye la lista de galpones únicos a partir de los lotes de la granja seleccionada */
+  /** Construye la lista de galpones únicos a partir de los lotes filtrados por granja y núcleo */
   private buildGalponesFromLotes(): void {
+    if (!this.selectedGranjaId) { this.galpones = []; this.hasSinGalpon = false; return; }
+
     const gid = String(this.selectedGranjaId);
-    const byFarm = this.allLotes.filter(l => String(l.granjaId) === gid);
+    let base = this.allLotes.filter(l => String(l.granjaId) === gid);
+
+    if (this.selectedNucleoId) {
+      const nid = String(this.selectedNucleoId);
+      base = base.filter(l => String(l.nucleoId) === nid);
+    }
 
     const seen = new Set<string>();
     const result: Array<{ id: string; label: string }> = [];
 
-    for (const l of byFarm) {
+    for (const l of base) {
       const id = this.normalizeId(l.galponId);
       if (!id) continue; // los null/'' no se incluyen aquí (van en “Sin galpón”)
       if (seen.has(id)) continue;
       seen.add(id);
-      result.push({ id, label: id }); // si luego tienes galponNombre, cámbialo aquí
+      result.push({ id, label: id }); // si tienes galponNombre cámbialo aquí
     }
 
     // incluye “Sin galpón” si aplica
+    this.hasSinGalpon = base.some(l => !this.hasValue(l.galponId));
     if (this.hasSinGalpon) {
       result.unshift({ id: this.SIN_GALPON, label: '— Sin galpón —' });
     }
@@ -290,17 +359,24 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
           this.onLoteChange(); // refresca la tabla del lote actual
         },
         error: () => {
-          // opcional: podrías mostrar un toast/error aquí
+          // opcional: toast/error
         }
       });
   }
 
   // ================== helpers ==================
   trackById = (_: number, r: SeguimientoLoteLevanteDto) => r.id;
+  trackByNucleo = (_: number, n: NucleoDto) => n.nucleoId;
 
   get selectedLoteNombre(): string {
     const l = this.lotes.find(x => x.loteId === this.selectedLoteId);
     return l?.loteNombre ?? (this.selectedLoteId || '—');
+  }
+
+  // Nombre de la granja seleccionada
+  get selectedGranjaName(): string {
+    const g = this.granjas.find(x => x.id === this.selectedGranjaId);
+    return g?.name ?? '';
   }
 
   calcularEdadSemanas(fechaEncaset?: string | Date | null): number {
@@ -321,20 +397,4 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     if (v === null || v === undefined) return '';
     return String(v).trim();
   }
-
-
-
-// Nombre de la granja seleccionada
-get selectedGranjaName(): string {
-  const g = this.granjas.find(x => x.id === this.selectedGranjaId);
-  return g?.name ?? '';
-}
-
-// Lote seleccionado (objeto)
-get selectedLote() {
-  return this.lotes.find(l => l.loteId === this.selectedLoteId) || undefined;
-}
-
-
-
 }
