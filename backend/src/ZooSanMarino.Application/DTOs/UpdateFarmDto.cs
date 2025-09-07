@@ -1,10 +1,11 @@
 // src/ZooSanMarino.Application/DTOs/UpdateFarmDto.cs
 namespace ZooSanMarino.Application.DTOs;
 public record UpdateFarmDto(
-    int    Id,
-    int    CompanyId,
+    int Id,
+    int CompanyId,
     string Name,
-    int    RegionalId,
+    int RegionalId,
     string Status,
-    int    ZoneId
+    int DepartamentoId,   // ← reemplaza ZoneId
+    int CiudadId  
 );

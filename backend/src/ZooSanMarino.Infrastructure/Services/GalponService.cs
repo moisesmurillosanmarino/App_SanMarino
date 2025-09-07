@@ -170,7 +170,7 @@ public class GalponService : AppInterfaces.IGalponService
                     ent.GalponId, ent.GalponNombre, ent.NucleoId, ent.GranjaId,
                     ent.Ancho, ent.Largo, ent.TipoGalpon, ent.CompanyId,
                     ent.CreatedByUserId, ent.CreatedAt, ent.UpdatedByUserId, ent.UpdatedAt,
-                    new SharedDtos.FarmLiteDto(ent.Farm?.Id ?? dto.GranjaId, ent.Farm?.Name ?? "", ent.Farm?.RegionalId ?? 0, ent.Farm?.ZoneId ?? 0),
+                    new SharedDtos.FarmLiteDto(ent.Farm?.Id ?? dto.GranjaId, ent.Farm?.Name ?? "", ent.Farm?.RegionalId ?? 0, ent.Farm?.MunicipioId ?? 0,ent.Farm?.DepartamentoId ?? 0),
                     new SharedDtos.NucleoLiteDto(ent.NucleoId, "", ent.GranjaId),
                     new SharedDtos.CompanyLiteDto(ent.CompanyId, ent.Company?.Name ?? "", ent.Company?.Identifier ?? "")
                   );
@@ -266,7 +266,7 @@ public class GalponService : AppInterfaces.IGalponService
                     g.CreatedAt,
                     g.UpdatedByUserId,
                     g.UpdatedAt,
-                    new SharedDtos.FarmLiteDto(g.Farm.Id, g.Farm.Name, g.Farm.RegionalId, g.Farm.ZoneId),
+                    new SharedDtos.FarmLiteDto(g.Farm.Id, g.Farm.Name, g.Farm.RegionalId, g.Farm.DepartamentoId, g.Farm.MunicipioId),
                     new SharedDtos.NucleoLiteDto(g.Nucleo.NucleoId, g.Nucleo.NucleoNombre, g.Nucleo.GranjaId),
                     new SharedDtos.CompanyLiteDto(g.Company.Id, g.Company.Name, g.Company.Identifier)
                 ));

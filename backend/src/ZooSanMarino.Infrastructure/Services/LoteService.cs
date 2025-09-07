@@ -406,7 +406,8 @@ namespace ZooSanMarino.Infrastructure.Services
                         l.Farm.Id,
                         l.Farm.Name,
                         l.Farm.RegionalId,
-                        l.Farm.ZoneId
+                        l.Farm.DepartamentoId,
+                        l.Farm.MunicipioId
                     ),
                     l.Nucleo == null
                         ? null

@@ -24,7 +24,8 @@ public sealed record FarmDetailDto(
     string   Name,
     int      RegionalId,
     string   Status,
-    int      ZoneId,
+    int      DepartamentoId,  // ← antes ZoneId
+    int      CiudadId,        // ← nuevo
     // Auditoría
     int      CreatedByUserId,
     DateTime CreatedAt,

@@ -1,4 +1,4 @@
-// file: src/ZooSanMarino.Infrastructure/Services/FarmService.cs
+// src/ZooSanMarino.Infrastructure/Services/FarmService.cs
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
@@ -6,7 +6,7 @@ using ZooSanMarino.Application.DTOs;                          // FarmDto, Create
 using AppInterfaces = ZooSanMarino.Application.Interfaces;   // IFarmService, ICurrentUser
 using CommonDtos   = ZooSanMarino.Application.DTOs.Common;   // PagedResult<>
 using FarmDtos     = ZooSanMarino.Application.DTOs.Farms;    // Farm* DTOs (Tree, Detail, Search)
-using FarmLiteDto  = ZooSanMarino.Application.DTOs.Shared.FarmLiteDto; // único FarmLiteDto
+using FarmLiteDto  = ZooSanMarino.Application.DTOs.Shared.FarmLiteDto;
 
 using ZooSanMarino.Domain.Entities;
 using ZooSanMarino.Infrastructure.Persistence;
@@ -42,11 +42,12 @@ namespace ZooSanMarino.Infrastructure.Services
                     f.Name.ToLower().Contains(term) ||
                     f.Id.ToString().Contains(req.Search!.Trim())
                 );
-                // Con Npgsql puedes usar EF.Functions.ILike(f.Name, $"%{req.Search}%")
+                // Npgsql tip: EF.Functions.ILike(f.Name, $"%{req.Search}%")
             }
 
-            if (req.RegionalId.HasValue) q = q.Where(f => f.RegionalId == req.RegionalId.Value);
-            if (req.ZoneId.HasValue)     q = q.Where(f => f.ZoneId     == req.ZoneId.Value);
+            if (req.RegionalId.HasValue)      q = q.Where(f => f.RegionalId     == req.RegionalId.Value);
+            if (req.DepartamentoId.HasValue)  q = q.Where(f => f.DepartamentoId == req.DepartamentoId.Value);
+            if (req.CiudadId.HasValue)        q = q.Where(f => f.MunicipioId    == req.CiudadId.Value); // ← mapea filtro ciudad → municipio
             if (!string.IsNullOrWhiteSpace(req.Status)) q = q.Where(f => f.Status == req.Status);
 
             q = ApplyOrder(q, req.SortBy, req.SortDesc);
@@ -88,12 +89,17 @@ namespace ZooSanMarino.Infrastructure.Services
                 .Where(f => f.CompanyId == _current.CompanyId
                          && f.Id == farmId
                          && (!soloActivos || f.DeletedAt == null))
-                .Select(f => new FarmLiteDto(f.Id, f.Name, f.RegionalId, f.ZoneId))
+                .Select(f => new FarmLiteDto(
+                    f.Id,
+                    f.Name,
+                    f.RegionalId,
+                    f.DepartamentoId,
+                    f.MunicipioId // ← expuesto como ciudadId en el DTO de Front si tu FarmLiteDto lo nombra así
+                ))
                 .SingleOrDefaultAsync();
 
             if (farm is null) return null;
 
-            // Filtramos Nucleos por la granja ya validada; Nucleo NO tiene CompanyId en el modelo
             var nucleos = await _ctx.Nucleos
                 .AsNoTracking()
                 .Where(n => n.GranjaId == farmId
@@ -127,7 +133,14 @@ namespace ZooSanMarino.Infrastructure.Services
                 .AsNoTracking()
                 .Where(f => f.CompanyId == _current.CompanyId && f.DeletedAt == null)
                 .Select(f => new FarmDto(
-                    f.Id, f.CompanyId, f.Name, f.RegionalId, f.Status, f.ZoneId))
+                    f.Id,
+                    f.CompanyId,
+                    f.Name,
+                    f.RegionalId,
+                    f.Status,
+                    f.DepartamentoId,
+                    f.MunicipioId // ← mapea a CiudadId del DTO
+                ))
                 .ToListAsync();
 
         public async Task<FarmDto?> GetByIdAsync(int id) =>
@@ -135,7 +148,14 @@ namespace ZooSanMarino.Infrastructure.Services
                 .AsNoTracking()
                 .Where(f => f.CompanyId == _current.CompanyId && f.DeletedAt == null && f.Id == id)
                 .Select(f => new FarmDto(
-                    f.Id, f.CompanyId, f.Name, f.RegionalId, f.Status, f.ZoneId))
+                    f.Id,
+                    f.CompanyId,
+                    f.Name,
+                    f.RegionalId,
+                    f.Status,
+                    f.DepartamentoId,
+                    f.MunicipioId // ← mapea a CiudadId del DTO
+                ))
                 .SingleOrDefaultAsync();
 
         public async Task<FarmDto> CreateAsync(CreateFarmDto dto)
@@ -149,11 +169,12 @@ namespace ZooSanMarino.Infrastructure.Services
 
             var entity = new Farm
             {
-                CompanyId  = _current.CompanyId,
-                Name       = dto.Name.Trim(),
-                RegionalId = dto.RegionalId,
-                Status     = dto.Status,
-                ZoneId     = dto.ZoneId,
+                CompanyId       = _current.CompanyId,
+                Name            = dto.Name.Trim(),
+                RegionalId      = dto.RegionalId,
+                Status          = dto.Status,
+                DepartamentoId  = dto.DepartamentoId,
+                MunicipioId     = dto.CiudadId, // ← DTO llega como ciudadId
                 CreatedByUserId = _current.UserId,
                 CreatedAt       = DateTime.UtcNow
             };
@@ -162,8 +183,14 @@ namespace ZooSanMarino.Infrastructure.Services
             await _ctx.SaveChangesAsync();
 
             return new FarmDto(
-                entity.Id, entity.CompanyId, entity.Name,
-                entity.RegionalId, entity.Status, entity.ZoneId);
+                entity.Id,
+                entity.CompanyId,
+                entity.Name,
+                entity.RegionalId,
+                entity.Status,
+                entity.DepartamentoId,
+                entity.MunicipioId // ← a CiudadId del DTO
+            );
         }
 
         public async Task<FarmDto?> UpdateAsync(UpdateFarmDto dto)
@@ -184,18 +211,25 @@ namespace ZooSanMarino.Infrastructure.Services
                 if (dup) throw new InvalidOperationException("Ya existe otra granja con ese nombre en la compañía.");
             }
 
-            entity.Name       = dto.Name.Trim();
-            entity.RegionalId = dto.RegionalId;
-            entity.Status     = dto.Status;
-            entity.ZoneId     = dto.ZoneId;
-            entity.UpdatedByUserId = _current.UserId;
-            entity.UpdatedAt       = DateTime.UtcNow;
+            entity.Name           = dto.Name.Trim();
+            entity.RegionalId     = dto.RegionalId;
+            entity.Status         = dto.Status;
+            entity.DepartamentoId = dto.DepartamentoId;
+            entity.MunicipioId    = dto.CiudadId; // ← DTO ciudadId → entidad MunicipioId
+            entity.UpdatedByUserId= _current.UserId;
+            entity.UpdatedAt      = DateTime.UtcNow;
 
             await _ctx.SaveChangesAsync();
 
             return new FarmDto(
-                entity.Id, entity.CompanyId, entity.Name,
-                entity.RegionalId, entity.Status, entity.ZoneId);
+                entity.Id,
+                entity.CompanyId,
+                entity.Name,
+                entity.RegionalId,
+                entity.Status,
+                entity.DepartamentoId,
+                entity.MunicipioId // ← a CiudadId del DTO
+            );
         }
 
         public async Task<bool> DeleteAsync(int id)
@@ -228,20 +262,18 @@ namespace ZooSanMarino.Infrastructure.Services
         // ======================================================
         private static IQueryable<FarmDtos.FarmDetailDto> ProjectToDetail(IQueryable<Farm> q)
         {
-            // Farm no tiene Galpones directos → contamos por Nucleos.SelectMany(...)
             return q.Select(f => new FarmDtos.FarmDetailDto(
                 f.Id,
                 f.CompanyId,
                 f.Name,
                 f.RegionalId,
                 f.Status,
-                f.ZoneId,
+                f.DepartamentoId,
+                f.MunicipioId, // ← a CiudadId del DTO de detalle
                 f.CreatedByUserId,
                 f.CreatedAt,
                 f.UpdatedByUserId,
                 f.UpdatedAt,
-                // Orden posicional según el record:
-                // (NucleosCount, GalponesCount, LotesCount)
                 f.Nucleos.Count(),
                 f.Nucleos.SelectMany(n => n.Galpones).Count(),
                 f.Lotes.Count()
@@ -252,11 +284,12 @@ namespace ZooSanMarino.Infrastructure.Services
         {
             Expression<Func<Farm, object>> key = (sortBy ?? "").ToLower() switch
             {
-                "name"        => f => f.Name,
-                "regional_id" => f => f.RegionalId,
-                "zone_id"     => f => f.ZoneId,
-                "created_at"  => f => f.CreatedAt,
-                _             => f => f.Name
+                "name"             => f => f.Name,
+                "regional_id"      => f => f.RegionalId,
+                "departamento_id"  => f => f.DepartamentoId,
+                "ciudad_id"        => f => f.MunicipioId, // ← orden por ciudad = municipio
+                "created_at"       => f => f.CreatedAt,
+                _                  => f => f.Name
             };
             return desc ? q.OrderByDescending(key) : q.OrderBy(key);
         }

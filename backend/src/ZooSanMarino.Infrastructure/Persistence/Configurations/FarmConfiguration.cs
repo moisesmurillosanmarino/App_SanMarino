@@ -1,4 +1,3 @@
-// file: src/ZooSanMarino.Infrastructure/Persistence/Configurations/FarmConfiguration.cs
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using ZooSanMarino.Domain.Entities;
@@ -7,39 +6,49 @@ namespace ZooSanMarino.Infrastructure.Persistence.Configurations;
 
 public class FarmConfiguration : IEntityTypeConfiguration<Farm>
 {
-    public void Configure(EntityTypeBuilder<Farm> builder)
-    {
-        builder.HasKey(x => x.Id);
-        builder.Property(x => x.Id).UseIdentityAlwaysColumn(); // Npgsql identidad
+       public void Configure(EntityTypeBuilder<Farm> e)
+       {
+              e.ToTable("farms");
 
-        builder.Property(x => x.Name).HasMaxLength(150).IsRequired();
+              e.HasKey(x => x.Id);
+              e.Property(x => x.Id).HasColumnName("id");
 
-        // Mantengo 1 carácter ("A"/"I") para evitar migraciones grandes.
-        builder.Property(x => x.Status).HasMaxLength(1).HasDefaultValue("A").IsRequired();
+              e.Property(x => x.CompanyId).HasColumnName("company_id").IsRequired();
+              e.Property(x => x.Name).HasColumnName("name").HasMaxLength(200).IsRequired();
+              e.Property(x => x.RegionalId).HasColumnName("regional_id").IsRequired();
+              e.Property(x => x.Status).HasColumnName("status").HasMaxLength(20).IsRequired();
 
-        builder.Property(x => x.RegionalId).IsRequired();
-        builder.Property(x => x.ZoneId).IsRequired();
+              // nuevos campos
+              e.Property(x => x.DepartamentoId).HasColumnName("departamento_id").IsRequired();
+              e.Property(x => x.MunicipioId).HasColumnName("municipio_id").IsRequired(); // ← MunicipioId
 
-        builder.HasIndex(x => x.CompanyId);
+              // Auditoría
+              e.Property(x => x.CreatedByUserId).HasColumnName("created_by_user_id");
+              e.Property(x => x.CreatedAt).HasColumnName("created_at");
+              e.Property(x => x.UpdatedByUserId).HasColumnName("updated_by_user_id");
+              e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+              e.Property(x => x.DeletedAt).HasColumnName("deleted_at");
 
-        builder.HasOne(x => x.Company)
-               .WithMany(c => c.Farms)
-               .HasForeignKey(x => x.CompanyId)
-               .OnDelete(DeleteBehavior.Restrict);
+              // FKs
+              e.HasOne<Departamento>()
+                  .WithMany()
+                  .HasForeignKey(x => x.DepartamentoId)
+                  .HasConstraintName("fk_farms_departamento")
+                  .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasMany(x => x.Nucleos)
-               .WithOne(n => n.Farm)
-               .HasForeignKey(n => n.GranjaId)
-               .OnDelete(DeleteBehavior.Restrict);
+              e.HasOne<Municipio>()
+                  .WithMany()
+                  .HasForeignKey(x => x.MunicipioId)
+                  .HasConstraintName("fk_farms_municipio")
+                  .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasMany(x => x.Galpones)
-               .WithOne(g => g.Farm)
-               .HasForeignKey(g => g.GranjaId)
-               .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasMany(x => x.Lotes)
-               .WithOne(l => l.Farm)
-               .HasForeignKey(l => l.GranjaId)
-               .OnDelete(DeleteBehavior.Restrict);
+              e.HasIndex(x => new { x.CompanyId, x.Name })
+                  .HasDatabaseName("ix_farms_company_name")
+                  .IsUnique(false);
+            
+              e.HasMany(f => f.Galpones)
+                  .WithOne(g => g.Farm)
+                  .HasForeignKey(g => g.GranjaId)
+                  .OnDelete(DeleteBehavior.Restrict);
     }
 }
