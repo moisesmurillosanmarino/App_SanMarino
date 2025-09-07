@@ -1,3 +1,4 @@
+<!-- src/app/features/lote/pages/lote-list/lote-list.component.html -->
 <div class="flex h-screen" [attr.aria-busy]="loading ? 'true' : null">
   <app-sidebar class="w-64"></app-sidebar>
 
@@ -14,19 +15,74 @@
       </button>
     </div>
 
-    <!-- Filtro -->
-    <div class="ux-filter">
-      <label for="lote-filter" class="sr-only">Buscar lote</label>
-      <div class="ux-search">
-        <fa-icon [icon]="['fas','magnifying-glass']" class="ux-search__icon" aria-hidden="true"></fa-icon>
-        <input
-          id="lote-filter"
-          type="text"
-          [(ngModel)]="filtro"
-          placeholder="Buscar por lote, núcleo, granja o empresa…"
-          class="ux-input"
-          aria-label="Buscar lote"
-        />
+    <!-- Filtros en cascada + búsqueda -->
+    <div class="ux-card p-4 mb-4">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
+        <!-- Compañía -->
+        <div class="lg:col-span-3">
+          <label for="l-company" class="ux-label">Compañía</label>
+          <select id="l-company" class="ux-select"
+                  [(ngModel)]="selectedCompanyId"
+                  (ngModelChange)="onCompanyChangeList($event)">
+            <option [ngValue]="null">Todas</option>
+            <option *ngFor="let c of companies" [ngValue]="c.id">{{ c.name }}</option>
+          </select>
+        </div>
+
+        <!-- Granja -->
+        <div class="lg:col-span-3">
+          <label for="l-farm" class="ux-label">Granja</label>
+          <select id="l-farm" class="ux-select"
+                  [(ngModel)]="selectedFarmId"
+                  (ngModelChange)="onFarmChangeList($event)">
+            <option [ngValue]="null">Todas</option>
+            <option *ngFor="let f of farmsFilteredL" [ngValue]="f.id">{{ f.name }}</option>
+          </select>
+        </div>
+
+        <!-- Núcleo -->
+        <div class="lg:col-span-3">
+          <label for="l-nucleo" class="ux-label">Núcleo</label>
+          <select id="l-nucleo" class="ux-select"
+                  [(ngModel)]="selectedNucleoId"
+                  (ngModelChange)="onNucleoChangeList($event)">
+            <option [ngValue]="null">Todos</option>
+            <option *ngFor="let n of nucleosFilteredL" [ngValue]="n.nucleoId">{{ n.nucleoNombre }}</option>
+          </select>
+        </div>
+
+        <!-- Galpón -->
+        <div class="lg:col-span-3">
+          <label for="l-galpon" class="ux-label">Galpón</label>
+          <select id="l-galpon" class="ux-select"
+                  [(ngModel)]="selectedGalponId"
+                  (ngModelChange)="recomputeList()">
+            <option [ngValue]="null">Todos</option>
+            <option *ngFor="let g of galponesFilteredL" [ngValue]="g.galponId">{{ g.galponNombre }}</option>
+          </select>
+        </div>
+
+        <!-- Búsqueda -->
+        <div class="lg:col-span-2">
+          <label for="lote-filter" class="ux-label">Buscar</label>
+          <div class="ux-search">
+            <fa-icon [icon]="['fas','magnifying-glass']" class="ux-search__icon" aria-hidden="true"></fa-icon>
+            <input
+              id="lote-filter"
+              type="text"
+              [(ngModel)]="filtro"
+              (ngModelChange)="recomputeList()"
+              placeholder="Buscar por lote, núcleo, granja o empresa…"
+              class="ux-input"
+              aria-label="Buscar lote"
+            />
+          </div>
+        </div>
+
+        <!-- Limpiar -->
+        <div class="lg:col-span-1">
+          <button class="btn-ghost w-full" (click)="resetListFilters()">Limpiar</button>
+        </div>
       </div>
     </div>
 
@@ -52,16 +108,12 @@
           </thead>
 
           <tbody>
-            <tr
-              *ngFor="let l of lotes | loteFilter: filtro : farmMap : nucleoMap : galponMap; trackBy: trackByLote"
-              class="ux-row"
-            >
+            <tr *ngFor="let l of viewLotes; trackBy: trackByLote" class="ux-row">
               <td>{{ l.loteId }}</td>
               <td>{{ l.loteNombre }}</td>
               <td><span class="ux-badge">{{ calcularFase(l.fechaEncaset) }}</span></td>
               <td>{{ l.fechaEncaset ? calcularEdadSemanas(l.fechaEncaset) : '—' }}</td>
 
-              <!-- Resumen de mortalidad en grilla -->
               <td>{{ formatOrDash(vivasH(l)) }}</td>
               <td>{{ formatOrDash(vivasM(l)) }}</td>
               <td>{{ formatOrDash(vivasTotales(l)) }}</td>
@@ -83,10 +135,10 @@
               </td>
             </tr>
 
-            <tr *ngIf="(lotes | loteFilter: filtro : farmMap : nucleoMap : galponMap)?.length === 0">
+            <tr *ngIf="!loading && viewLotes.length === 0">
               <td colspan="10" class="empty-state">
                 <div class="empty-illustration">📦</div>
-                <p>No hay lotes que coincidan con el filtro.</p>
+                <p>No hay lotes que coincidan con los filtros.</p>
                 <button (click)="openModal()" class="btn-secondary mt-2">
                   <fa-icon [icon]="faPlus" aria-hidden="true"></fa-icon>
                   Crear el primero

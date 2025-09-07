@@ -68,7 +68,8 @@ export class SidebarComponent {
     { label: 'Galpones',  icon: this.faWarehouse, link: ['/config','galpones'] },
     { label: 'Lotes',     icon: this.faBoxesAlt,  link: ['/config','lotes'] },
     { label: 'Crear lote Reproductora', icon: this.faBoxesAlt, link: ['/daily-log','reproductora'] },
-
+      // 👇 Nuevo: Inventario
+    { label: 'Inventario',             icon: this.faWarehouse, link: ['/config','inventario'] },
     {
       label: 'Registros Diarios',
       icon: this.faCalendarDay,
@@ -89,10 +90,9 @@ export class SidebarComponent {
         { label: 'Roles y permisos',       icon: this.faUsers,    link: ['/config','role-management'] },
         { label: 'Geografía',              icon: this.faGlobe,    link: ['/config','countries'] },
         { label: 'Empresas',               icon: this.faBuilding, link: ['/config','companies'] },
-        { label: 'Catálogo de alimentos',  icon: this.faList,     link: ['/config','catalogo-alimentos'] },
+        { label: 'Catálogo de alimentos',  icon: this.faList,     link: ['/config','catalogo-alimentos'] }
 
-        // 👇 Nuevo: Inventario
-        { label: 'Inventario',             icon: this.faWarehouse, link: ['/config','inventario'] }
+      
       ]
     }
   ];

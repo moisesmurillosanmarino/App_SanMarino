@@ -15,19 +15,65 @@
       </button>
     </div>
 
-    <!-- Filtro -->
-    <div class="ux-filter">
-      <label for="galpon-filter" class="sr-only">Buscar galpón</label>
-      <div class="ux-search">
-        <fa-icon [icon]="['fas','magnifying-glass']" class="ux-search__icon" aria-hidden="true"></fa-icon>
-        <input
-          id="galpon-filter"
-          type="text"
-          [(ngModel)]="filtro"
-          placeholder="Buscar por galpón, núcleo, granja o empresa…"
-          class="ux-input"
-          aria-label="Buscar galpón"
-        />
+    <!-- Filtros en cascada + búsqueda -->
+    <div class="ux-card p-4 mb-4">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
+        <!-- Compañía -->
+        <div class="lg:col-span-3">
+          <label for="g-company" class="ux-label">Compañía</label>
+          <select id="g-company" class="ux-select"
+                  [(ngModel)]="selectedCompanyId"
+                  (ngModelChange)="onCompanyChangeList($event)">
+            <option [ngValue]="null">Todas</option>
+            <option *ngFor="let c of companies" [ngValue]="c.id">{{ c.name }}</option>
+          </select>
+        </div>
+
+        <!-- Granja (depende de compañía) -->
+        <div class="lg:col-span-3">
+          <label for="g-farm" class="ux-label">Granja</label>
+          <select id="g-farm" class="ux-select"
+                  [(ngModel)]="selectedFarmId"
+                  (ngModelChange)="onFarmChangeList($event)">
+            <option [ngValue]="null">Todas</option>
+            <option *ngFor="let f of farmsFilteredG" [ngValue]="f.id">{{ f.name }}</option>
+          </select>
+        </div>
+
+        <!-- Núcleo (depende de granja/compañía) -->
+        <div class="lg:col-span-3">
+          <label for="g-nucleo" class="ux-label">Núcleo</label>
+          <select id="g-nucleo" class="ux-select"
+                  [(ngModel)]="selectedNucleoId"
+                  (ngModelChange)="onNucleoChangeList($event)">
+            <option [ngValue]="null">Todos</option>
+            <option *ngFor="let n of nucleosFilteredG" [ngValue]="n.nucleoId">
+              {{ n.nucleoNombre }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Búsqueda -->
+        <div class="lg:col-span-2">
+          <label for="galpon-filter" class="ux-label">Buscar</label>
+          <div class="ux-search">
+            <fa-icon [icon]="['fas','magnifying-glass']" class="ux-search__icon" aria-hidden="true"></fa-icon>
+            <input
+              id="galpon-filter"
+              type="text"
+              [(ngModel)]="filtro"
+              (ngModelChange)="recomputeList()"
+              placeholder="Buscar por galpón, núcleo o granja…"
+              class="ux-input"
+              aria-label="Buscar galpón"
+            />
+          </div>
+        </div>
+
+        <!-- Limpiar -->
+        <div class="lg:col-span-1">
+          <button class="btn-ghost w-full" (click)="resetListFilters()">Limpiar</button>
+        </div>
       </div>
     </div>
 
@@ -51,7 +97,7 @@
           </thead>
 
           <tbody>
-            <tr *ngFor="let g of galpones | galponFilter:filtro" class="ux-row">
+            <tr *ngFor="let g of viewGalpones" class="ux-row">
               <td>{{ g.company?.name }}</td>
               <td>{{ g.farm?.name }}</td>
               <td>{{ g.nucleo?.nucleoNombre }}</td>
@@ -75,10 +121,10 @@
               </td>
             </tr>
 
-            <tr *ngIf="(galpones | galponFilter:filtro)?.length === 0">
+            <tr *ngIf="(viewGalpones)?.length === 0 && !loading">
               <td colspan="9" class="empty-state">
                 <div class="empty-illustration">🏠</div>
-                <p>No hay galpones que coincidan con el filtro.</p>
+                <p>No hay galpones que coincidan con los filtros.</p>
                 <button (click)="openModal()" class="btn-secondary mt-2">
                   <fa-icon [icon]="faPlus" aria-hidden="true"></fa-icon>
                   Crear el primero

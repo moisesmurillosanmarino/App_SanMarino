@@ -9,6 +9,7 @@ import {
   FormsModule
 } from '@angular/forms';
 import { finalize, forkJoin } from 'rxjs';
+
 import { SidebarComponent } from '../../../../shared/components/sidebar/sidebar.component';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { faPlus, faPen, faTrash } from '@fortawesome/free-solid-svg-icons';
@@ -16,8 +17,9 @@ import { faPlus, faPen, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { FarmService, FarmDto } from '../../services/farm.service';
 import { Company, CompanyService } from '../../../../core/services/company/company.service';
 import { MasterListService } from '../../../../core/services/master-list/master-list.service';
-import { FarmFilterPipe } from '../../pipes/farm-filter.pipe';
 
+import { DepartamentoService, DepartamentoDto } from '../../services/departamento.service';
+import { CiudadService, CiudadDto } from '../../services/ciudad.service';
 
 interface Option {
   id: number;
@@ -32,8 +34,7 @@ interface Option {
     ReactiveFormsModule,
     SidebarComponent,
     FormsModule,
-    FontAwesomeModule,
-    FarmFilterPipe
+    FontAwesomeModule
   ],
   templateUrl: './farm-list.component.html',
   styleUrls: ['./farm-list.component.scss']
@@ -42,9 +43,13 @@ export class FarmListComponent implements OnInit {
   faPlus  = faPlus;
   faPen   = faPen;
   faTrash = faTrash;
-  clienteFiltro: string = '';
 
+  // Filtros
+  filtroRegionalId: number | null = null;
+  filtroNombre: string = '';
+  filtroEstado: string = '';
 
+  // Datos
   farms: FarmDto[] = [];
   loading = false;
 
@@ -52,11 +57,11 @@ export class FarmListComponent implements OnInit {
   form!: FormGroup;
   editing: FarmDto | null = null;
 
-  // **Opciones dinámicas**
-  companyOptions: Company[]     = [];
-  statusOptions: string[]       = [];
+  // Opciones dinámicas
+  companyOptions: Company[] = [];
+  statusOptions: string[]   = [];
 
-  // **Datos “quemados”** (puedes reemplazarlos por llamadas a API si los tienes)
+  // Opciones “quemadas” de regional (ajusta si ya vienen de API)
   regionOptions: Option[] = [
     { id: 1, label: 'Centro' },
     { id: 2, label: 'Costa' },
@@ -66,55 +71,73 @@ export class FarmListComponent implements OnInit {
     { id: 6, label: 'Occidente' }
   ];
 
-  zoneOptions: Option[] = [
-    { id: 1, label: 'Cundinamarca' },
-    { id: 2, label: 'Boyacá' },
-    { id: 3, label: 'Tolima-Huila' },
-    { id: 4, label: 'Córdoba-Sucre-Magdalena' },
-    { id: 5, label: 'Eje Cafetero' },
-    { id: 6, label: 'Norte de Santander' },
-    { id: 7, label: 'Ecuador' }
-  ];
+  // Departamento / Ciudad
+  departamentos: DepartamentoDto[] = [];
+  ciudades: CiudadDto[] = [];
 
   constructor(
     private fb: FormBuilder,
     private svc: FarmService,
     private companySvc: CompanyService,
-    private mlSvc: MasterListService
+    private mlSvc: MasterListService,
+    private dptoSvc: DepartamentoService,
+    private ciudadSvc: CiudadService
   ) {}
 
   ngOnInit() {
     this.form = this.fb.group({
-      id:          [null],
-      companyId:   [null, Validators.required],
-      name:        ['', Validators.required],
-      regionalId:  [null, Validators.required],
-      status:      ['', Validators.required],
-      zoneId:      [null, Validators.required]
+      id:             [null],
+      companyId:      [null, Validators.required],
+      name:           ['', Validators.required],
+      regionalId:     [null, Validators.required],
+      status:         ['', Validators.required],
+      departamentoId: [null, Validators.required],
+      ciudadId:       [null, Validators.required]
     });
+
     this.loadAll();
   }
 
   private loadAll() {
     this.loading = true;
-
     forkJoin({
-      farms:    this.svc.getAll(),
-      companies:this.companySvc.getAll(),
-      master:   this.mlSvc.getByKey('status')
+      farms:     this.svc.getAll(),
+      companies: this.companySvc.getAll(),
+      master:    this.mlSvc.getByKey('status'),
+      dptos:     this.dptoSvc.getAll()
     })
     .pipe(finalize(() => this.loading = false))
-    .subscribe(({ farms, companies, master }) => {
+    .subscribe(({ farms, companies, master, dptos }) => {
       this.farms          = farms;
       this.companyOptions = companies;
       this.statusOptions  = master.options;
+      this.departamentos  = dptos;
+    });
+  }
+
+  get farmsFiltradas(): FarmDto[] {
+    return this.farms.filter(f => {
+      const okRegional = this.filtroRegionalId ? f.regionalId === this.filtroRegionalId : true;
+      const okNombre   = this.filtroNombre
+        ? (f.name?.toLowerCase().includes(this.filtroNombre.toLowerCase()))
+        : true;
+      const okEstado   = this.filtroEstado ? f.status === this.filtroEstado : true;
+      return okRegional && okNombre && okEstado;
     });
   }
 
   openModal(farm?: FarmDto) {
     this.editing = farm ?? null;
+
     if (farm) {
       this.form.patchValue(farm);
+      // cargar ciudades del departamento actual
+      if (farm.departamentoId) {
+        this.dptoSvc.getById(farm.departamentoId).subscribe(() => {
+          this.ciudadSvc.getByDepartamentoId(farm.departamentoId!)
+            .subscribe(cs => this.ciudades = cs);
+        });
+      }
     } else {
       this.form.reset({
         id: null,
@@ -122,19 +145,30 @@ export class FarmListComponent implements OnInit {
         name: '',
         regionalId: null,
         status: '',
-        zoneId: null
+        departamentoId: null,
+        ciudadId: null
       });
+      this.ciudades = [];
     }
+
     this.modalOpen = true;
+  }
+
+  onDepartamentoChange() {
+    const dptoId = this.form.get('departamentoId')?.value;
+    this.form.patchValue({ ciudadId: null });
+    this.ciudades = [];
+    if (dptoId) {
+      this.ciudadSvc.getByDepartamentoId(dptoId).subscribe(cs => this.ciudades = cs);
+    }
   }
 
   save() {
     if (this.form.invalid) return;
     const v = this.form.value as FarmDto;
+
     this.loading = true;
-    const op = this.editing
-      ? this.svc.update(v)
-      : this.svc.create(v);
+    const op = this.editing ? this.svc.update(v) : this.svc.create(v);
     op.pipe(finalize(() => {
         this.loading = false;
         this.modalOpen = false;
@@ -154,7 +188,7 @@ export class FarmListComponent implements OnInit {
       .subscribe();
   }
 
-  // **Helpers para la vista**
+  // Helpers
   companyName(id: number|null): string {
     const c = this.companyOptions.find(x => x.id === id);
     return c ? c.name : '';
@@ -163,8 +197,14 @@ export class FarmListComponent implements OnInit {
     const o = this.regionOptions.find(x => x.id === id);
     return o ? o.label : '';
   }
-  zoneLabel(id: number|null): string {
-    const o = this.zoneOptions.find(x => x.id === id);
-    return o ? o.label : '';
+  departamentoNombre(id: number|null): string {
+    const d = this.departamentos.find(x => x.id === id);
+    return d ? d.nombre : '';
+  }
+  ciudadNombre(id: number|null): string {
+    const c = this.ciudades.find(x => x.id === id);
+    // si la lista de ciudades visible no corresponde (p.e. otra granja), intenta buscar rápido
+    if (c) return c.nombre;
+    return ''; // opcional: puedes mantener un cache global si lo necesitas
   }
 }

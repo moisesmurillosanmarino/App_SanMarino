@@ -15,41 +15,55 @@ import { GalponDetailDto, CreateGalponDto, UpdateGalponDto } from '../../models/
 
 import { NucleoService, NucleoDto } from '../../../nucleo/services/nucleo.service';
 import { FarmService, FarmDto } from '../../../farm/services/farm.service';
-import { GalponFilterPipe } from '../../pipe/galpon-filter.pipe';
-import { Company } from '../../../../core/services/company/company.service';
 import { MasterListService } from '../../../../core/services/master-list/master-list.service';
+import { Company, CompanyService } from '../../../../core/services/company/company.service';
 
 interface NucleoOption { id: string; label: string; granjaId: number; }
 
 @Component({
   selector: 'app-galpon-list',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, SidebarComponent, FontAwesomeModule, FormsModule, GalponFilterPipe],
+  imports: [CommonModule, ReactiveFormsModule, SidebarComponent, FontAwesomeModule, FormsModule],
   templateUrl: './galpon-list.component.html',
   styleUrls: ['./galpon-list.component.scss']
 })
 export class GalponListComponent implements OnInit {
+  // Iconos
   faPlus = faPlus; faPen = faPen; faTrash = faTrash; faEye = faEye;
 
-  galpones: GalponDetailDto[] = [];
-  allNucleos: NucleoDto[] = [];
-  farms: FarmDto[] = [];
-  companies: Company[] = []; // si tu service de company ya existe
-
-  nucleoOptions: NucleoOption[] = [];
+  // Estado
   loading = false;
   filtro = '';
 
-  // modal & form
+  // Datos base
+  companies: Company[] = [];
+  farms: FarmDto[] = [];
+  allNucleos: NucleoDto[] = [];
+  allGalpones: GalponDetailDto[] = [];
+
+  // Vistas filtradas (para combos de la cabecera)
+  farmsFilteredG: FarmDto[] = [];
+  nucleosFilteredG: NucleoDto[] = [];
+
+  // Resultado de tabla
+  viewGalpones: GalponDetailDto[] = [];
+
+  // Selecciones de filtros (cabecera)
+  selectedCompanyId: number | null = null;
+  selectedFarmId: number | null = null;
+  selectedNucleoId: string | null = null;
+
+  // Modal Crear/Editar
   modalOpen = false;
   form!: FormGroup;
   editing: GalponDetailDto | null = null;
 
-  // modal detalle
+  // Modal Detalle
   detailOpen = false;
   selectedDetail: GalponDetailDto | null = null;
 
-  // combos
+  // Combos del modal
+  nucleoOptions: NucleoOption[] = [];
   typegarponOptions: string[] = [];
 
   constructor(
@@ -57,58 +71,180 @@ export class GalponListComponent implements OnInit {
     private svc: GalponService,
     private nucleoSvc: NucleoService,
     private farmSvc: FarmService,
+    private companySvc: CompanyService,
     private mlSvc: MasterListService
   ) {}
 
+  // ======================
+  // Init
+  // ======================
   ngOnInit(): void {
-    // Form alineado con Create/Update del backend
     this.form = this.fb.group({
-      galponId:    ['', Validators.required],
-      galponNombre:['', Validators.required],
-      nucleoId:    ['', Validators.required],
-      granjaId:    [null, Validators.required],
-      ancho:       [''],
-      largo:       [''],
-      tipoGalpon:  ['']
+      galponId:     ['', Validators.required],
+      galponNombre: ['', Validators.required],
+      nucleoId:     ['', Validators.required],
+      granjaId:     [null, Validators.required],
+      ancho:        [''],
+      largo:        [''],
+      tipoGalpon:   ['']
     });
 
+    // Carga maestros y datos
+    this.loading = true;
     forkJoin({
-      farms:   this.farmSvc.getAll(),
-      nucleos: this.nucleoSvc.getAll()
-    }).subscribe(({ farms, nucleos }) => {
-      this.farms = farms;
-      this.allNucleos = nucleos;
+      companies: this.companySvc.getAll(),
+      farms:     this.farmSvc.getAll(),
+      nucleos:   this.nucleoSvc.getAll(),
+      galpones:  this.svc.getAll()
+    })
+    .pipe(finalize(() => this.loading = false))
+    .subscribe(({ companies, farms, nucleos, galpones }) => {
+      this.companies = companies ?? [];
+      this.farms = farms ?? [];
+      this.allNucleos = nucleos ?? [];
+      this.allGalpones = galpones ?? [];
 
-      // opciones de select núcleo
-      this.nucleoOptions = nucleos.map(n => ({
+      // Opciones para el select de Núcleo en el modal
+      const farmNameById = new Map(this.farms.map(f => [f.id, f.name]));
+      this.nucleoOptions = this.allNucleos.map(n => ({
         id: n.nucleoId,
         granjaId: n.granjaId,
-        label: `${n.nucleoNombre} (Granja #${n.granjaId})`
+        label: `${n.nucleoNombre} (Granja ${farmNameById.get(n.granjaId) ?? '#' + n.granjaId})`
       }));
 
-      // sincronizar granjaId desde núcleo seleccionado
-      this.form.get('nucleoId')!.valueChanges.subscribe(id => {
-        const sel = this.allNucleos.find(x => x.nucleoId === id);
-        this.form.patchValue({ granjaId: sel?.granjaId ?? null }, { emitEvent: false });
-      });
+      // Filtros de cabecera (cascada)
+      this.farmsFilteredG = [...this.farms];
+      this.nucleosFilteredG = [...this.allNucleos];
 
-      this.loadGalpones();
+      // Resultado inicial
+      this.recomputeList();
     });
 
-    // master-list para tipo de galpón
+    // Master list (tipo de galpón)
     this.mlSvc.getByKey('type_galpon').subscribe({
-      next: ml => this.typegarponOptions = ml.options,
-      error: err => console.error('No pude cargar tipos de galpón', err)
+      next: ml => this.typegarponOptions = ml?.options ?? [],
+      error: () => this.typegarponOptions = []
+    });
+
+    // Autollenado de granjaId cuando cambia el núcleo en el modal
+    this.form.get('nucleoId')!.valueChanges.subscribe((id: string) => {
+      const sel = this.allNucleos.find(x => x.nucleoId === id);
+      this.form.patchValue({ granjaId: sel?.granjaId ?? null }, { emitEvent: false });
     });
   }
 
-  private loadGalpones(): void {
-    this.loading = true;
+  // ======================
+  // Filtros de cabecera
+  // ======================
+  onCompanyChangeList(companyId: number | null): void {
+    this.selectedCompanyId = companyId;
+    // filtrar granjas por compañía
+    this.farmsFilteredG = companyId == null
+      ? [...this.farms]
+      : this.farms.filter(f => f.companyId === companyId);
+
+    // filtrar núcleos por granjas resultantes
+    const farmIds = new Set(this.farmsFilteredG.map(f => f.id));
+    this.nucleosFilteredG = [...this.allNucleos].filter(n => farmIds.has(n.granjaId));
+
+    // reset cascada
+    this.selectedFarmId = null;
+    this.selectedNucleoId = null;
+
+    this.recomputeList();
+  }
+
+  onFarmChangeList(farmId: number | null): void {
+    this.selectedFarmId = farmId;
+
+    // Si no hay granja seleccionada, tomar núcleos de todas las granjas filtradas por compañía
+    if (farmId == null) {
+      const farmIds = new Set(this.farmsFilteredG.map(f => f.id));
+      this.nucleosFilteredG = this.allNucleos.filter(n => farmIds.has(n.granjaId));
+    } else {
+      this.nucleosFilteredG = this.allNucleos.filter(n => n.granjaId === farmId);
+    }
+
+    // reset núcleo
+    this.selectedNucleoId = null;
+
+    this.recomputeList();
+  }
+
+  onNucleoChangeList(nucleoId: string | null): void {
+    this.selectedNucleoId = nucleoId;
+    this.recomputeList();
+  }
+
+  resetListFilters(): void {
+    this.selectedCompanyId = null;
+    this.selectedFarmId = null;
+    this.selectedNucleoId = null;
+    this.filtro = '';
+
+    this.farmsFilteredG = [...this.farms];
+    this.nucleosFilteredG = [...this.allNucleos];
+
+    this.recomputeList();
+  }
+
+  // Recalcular la tabla (viewGalpones)
+  recomputeList(): void {
+    const q = (this.filtro || '').toLowerCase().trim();
+
+    this.viewGalpones = this.allGalpones.filter(g => {
+      // Filtros de ids
+      if (this.selectedCompanyId != null && g.company?.id !== this.selectedCompanyId) return false;
+      if (this.selectedFarmId != null    && g.farm?.id    !== this.selectedFarmId)    return false;
+      if (this.selectedNucleoId != null  && g.nucleoId    !== this.selectedNucleoId)  return false;
+
+      // Búsqueda de texto
+      if (!q) return true;
+      const hay = [
+        g.galponId ?? '',
+        g.galponNombre ?? '',
+        g.nucleo?.nucleoNombre ?? '',
+        g.farm?.name ?? '',
+        g.company?.name ?? '',
+        g.tipoGalpon ?? ''
+      ].join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  // ======================
+  // Acciones Tabla
+  // ======================
+  showDetail(g: GalponDetailDto): void {
+    this.selectedDetail = g;
+    this.detailOpen = true;
+  }
+
+ delete(id: string): void {
+  if (!confirm('¿Eliminar este galpón?')) return;
+  this.loading = true;
+
+  this.svc.delete(id)
+    .pipe(finalize(() => this.loading = false))
+    .subscribe({
+      next: () => this.loadGalponesAgain(),
+      error: (err) => console.error('No se pudo eliminar el galpón', err)
+    });
+}
+
+
+  private loadGalponesAgain(): void {
     this.svc.getAll()
       .pipe(finalize(() => this.loading = false))
-      .subscribe(list => this.galpones = list);
+      .subscribe(list => {
+        this.allGalpones = list ?? [];
+        this.recomputeList();
+      });
   }
 
+  // ======================
+  // Modal Crear/Editar
+  // ======================
   openModal(g?: GalponDetailDto): void {
     this.editing = g ?? null;
 
@@ -123,14 +259,14 @@ export class GalponListComponent implements OnInit {
         largo:        g.largo ?? '',
         tipoGalpon:   g.tipoGalpon ?? ''
       });
-      this.form.get('galponId')?.disable(); // ID no editable si ya existe
+      this.form.get('galponId')?.disable();
     } else {
-      // Modo creación: sugerir nuevo ID incremental
-      const last = this.galpones
-        .map(x => parseInt((x.galponId || '').replace(/\D/g, '')))
+      // Modo creación: sugerir nuevo ID incremental simple
+      const lastNum = this.allGalpones
+        .map(x => parseInt(String(x.galponId || '').replace(/\D/g, ''), 10))
         .filter(n => !isNaN(n))
-        .reduce((max, cur) => cur > max ? cur : max, 0);
-      const newId = `G${(last + 1).toString().padStart(4, '0')}`;
+        .reduce((m, c) => Math.max(m, c), 0);
+      const newId = `G${(lastNum + 1).toString().padStart(4, '0')}`;
 
       this.form.reset({
         galponId:     newId,
@@ -145,13 +281,6 @@ export class GalponListComponent implements OnInit {
     }
 
     this.modalOpen = true;
-  }
-
-  showDetail(g: GalponDetailDto): void {
-    // Si quisieras re-consultar del backend:
-    // this.svc.getById(g.galponId).subscribe(d => { this.selectedDetail = d; this.detailOpen = true; });
-    this.selectedDetail = g;
-    this.detailOpen = true;
   }
 
   save(): void {
@@ -169,7 +298,6 @@ export class GalponListComponent implements OnInit {
     };
 
     this.loading = true;
-
     const call$ = this.editing
       ? this.svc.update(payload as UpdateGalponDto)
       : this.svc.create(payload as CreateGalponDto);
@@ -178,30 +306,26 @@ export class GalponListComponent implements OnInit {
       .pipe(finalize(() => {
         this.loading = false;
         this.modalOpen = false;
-        this.loadGalpones();
+        this.loadGalponesAgain();
       }))
       .subscribe();
   }
 
-  delete(id: string): void {
-    if (!confirm('¿Eliminar este galpón?')) return;
-    this.loading = true;
-    this.svc.delete(id)
-      .pipe(finalize(() => this.loadGalpones()))
-      .subscribe();
-  }
-
-  // Auxiliares de vista
+  // ======================
+  // Helpers de vista
+  // ======================
   getArea(g: GalponDetailDto | null): string {
     if (!g?.ancho || !g?.largo) return '–';
-    const a = parseFloat(String(g.ancho)); const l = parseFloat(String(g.largo));
+    const a = parseFloat(String(g.ancho));
+    const l = parseFloat(String(g.largo));
     if (isNaN(a) || isNaN(l)) return '–';
     return (a * l).toFixed(2);
   }
 
-  getGranjaNombreByNucleoId(nucleoId: string): string {
-    const nucleo = this.allNucleos.find(n => n.nucleoId === nucleoId);
-    const granja = this.farms.find(f => f.id === nucleo?.granjaId);
-    return granja?.name || '–';
+  getGranjaNombreByNucleoId(nucleoId: string | null | undefined): string {
+    if (!nucleoId) return '–';
+    const n = this.allNucleos.find(x => x.nucleoId === nucleoId);
+    const f = this.farms.find(y => y.id === n?.granjaId);
+    return f?.name ?? '–';
   }
 }

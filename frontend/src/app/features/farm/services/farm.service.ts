@@ -9,7 +9,8 @@ export interface FarmDto {
   name: string;
   companyId: number;
   regionalId: number;
-  zoneId: number;
+  departamentoId: number;   // ← nuevo
+  ciudadId: number;         // ← nuevo
   status: string;
 }
 
@@ -17,7 +18,8 @@ export interface CreateFarmDto {
   name: string;
   companyId: number;
   regionalId: number;
-  zoneId: number;
+  departamentoId: number;   // ← nuevo
+  ciudadId: number;         // ← nuevo
   status: string;
 }
 

@@ -13,20 +13,59 @@
       </button>
     </div>
 
-    <!-- Filtro -->
-    <div class="filter">
-      <label for="filtro" class="filter__label">Buscar núcleo</label>
-      <div class="filter__inputwrap">
-        <input
-          id="filtro"
-          type="text"
-          [(ngModel)]="filtro"
-          placeholder="Buscar por nombre, ID o granja…"
-          class="filter__input"
-        />
-        <span class="filter__icon" aria-hidden="true">
-          <fa-icon [icon]="['fas','search']"></fa-icon>
-        </span>
+    <!-- Filtros (Compañía / Granja / Texto) -->
+    <div class="ux-card p-4 mb-4">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
+        <!-- Compañía -->
+        <div class="lg:col-span-4">
+          <label for="f-company" class="ux-label">Compañía</label>
+          <select
+            id="f-company"
+            class="ux-select"
+            [(ngModel)]="selectedCompanyId"
+            (ngModelChange)="onCompanyChange($event)"
+          >
+            <option [ngValue]="null">Todas las compañías</option>
+            <option *ngFor="let c of companies" [ngValue]="c.id">{{ c.name }}</option>
+          </select>
+        </div>
+
+        <!-- Granja (dependiente de compañía) -->
+        <div class="lg:col-span-4">
+          <label for="f-farm" class="ux-label">Granja</label>
+          <select
+            id="f-farm"
+            class="ux-select"
+            [(ngModel)]="selectedFarmId"
+            (ngModelChange)="recompute()"
+          >
+            <option [ngValue]="null">Todas las granjas</option>
+            <option *ngFor="let f of farmsFiltered" [ngValue]="f.id">{{ f.name }}</option>
+          </select>
+        </div>
+
+        <!-- Búsqueda de texto -->
+        <div class="lg:col-span-3">
+          <label for="filtro" class="ux-label">Buscar núcleo</label>
+          <div class="filter__inputwrap">
+            <input
+              id="filtro"
+              type="text"
+              [(ngModel)]="filtro"
+              (ngModelChange)="recompute()"
+              placeholder="Buscar por nombre, ID o granja…"
+              class="ux-input"
+            />
+            <span class="filter__icon" aria-hidden="true">
+              <fa-icon [icon]="['fas','search']"></fa-icon>
+            </span>
+          </div>
+        </div>
+
+        <!-- Limpiar -->
+        <div class="lg:col-span-1">
+          <button class="btn-ghost w-full" (click)="resetFilters()">Limpiar</button>
+        </div>
       </div>
     </div>
 
@@ -46,58 +85,56 @@
             </tr>
           </thead>
 
-          <ng-container *ngIf="(nucleos | nucleoFilter:filtro:farms:companies) as filteredNucleos">
-            <tbody>
-              <!-- Estado: cargando -->
-              <tr *ngIf="loading" aria-live="polite">
-                <td colspan="5" class="empty-state">
-                  <div class="spinner"></div>
-                  Cargando núcleos…
-                </td>
-              </tr>
+          <tbody>
+            <!-- Estado: cargando -->
+            <tr *ngIf="loading" aria-live="polite">
+              <td colspan="5" class="empty-state">
+                <div class="spinner"></div>
+                Cargando núcleos…
+              </td>
+            </tr>
 
-              <!-- Estado: vacío -->
-              <tr *ngIf="!loading && filteredNucleos.length === 0">
-                <td colspan="5" class="empty-state">
-                  <div class="empty-illustration">🗂️</div>
-                  <p>No hay núcleos para mostrar.</p>
-                  <button class="btn-secondary mt-2" (click)="openModal()">
-                    <fa-icon [icon]="faPlus" class="mr-2" aria-hidden="true"></fa-icon>
-                    Crear el primero
+            <!-- Estado: vacío -->
+            <tr *ngIf="!loading && viewNucleos.length === 0">
+              <td colspan="5" class="empty-state">
+                <div class="empty-illustration">🗂️</div>
+                <p>No hay núcleos para mostrar.</p>
+                <button class="btn-secondary mt-2" (click)="openModal()">
+                  <fa-icon [icon]="faPlus" class="mr-2" aria-hidden="true"></fa-icon>
+                  Crear el primero
+                </button>
+              </td>
+            </tr>
+
+            <!-- Filas -->
+            <tr *ngFor="let n of viewNucleos" class="ux-row">
+              <td>{{ n.nucleoId }}</td>
+              <td>{{ n.nucleoNombre }}</td>
+              <td>{{ getFarmName(n.granjaId) }}</td>
+              <td>{{ getCompanyName(n.granjaId) }}</td>
+              <td class="text-center">
+                <div class="actions">
+                  <button
+                    class="icon-btn"
+                    title="Editar"
+                    aria-label="Editar núcleo"
+                    (click)="openModal(n)"
+                  >
+                    <fa-icon [icon]="faPen" aria-hidden="true"></fa-icon>
                   </button>
-                </td>
-              </tr>
 
-              <!-- Filas -->
-              <tr *ngFor="let n of filteredNucleos" class="ux-row">
-                <td>{{ n.nucleoId }}</td>
-                <td>{{ n.nucleoNombre }}</td>
-                <td>{{ getFarmName(n.granjaId) }}</td>
-                <td>{{ getCompanyName(n.granjaId) }}</td>
-                <td class="text-center">
-                  <div class="actions">
-                    <button
-                      class="icon-btn"
-                      title="Editar"
-                      aria-label="Editar núcleo"
-                      (click)="openModal(n)"
-                    >
-                      <fa-icon [icon]="faPen" aria-hidden="true"></fa-icon>
-                    </button>
-
-                    <button
-                      class="icon-btn danger"
-                      title="Eliminar"
-                      aria-label="Eliminar núcleo"
-                      (click)="delete(n)"
-                    >
-                      <fa-icon [icon]="faTrash" aria-hidden="true"></fa-icon>
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </ng-container>
+                  <button
+                    class="icon-btn danger"
+                    title="Eliminar"
+                    aria-label="Eliminar núcleo"
+                    (click)="delete(n)"
+                  >
+                    <fa-icon [icon]="faTrash" aria-hidden="true"></fa-icon>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
         </table>
       </div>
 
@@ -113,9 +150,7 @@
       <div class="ux-modal__panel">
         <div class="ux-modal__header">
           <h2 id="nucleo-title">{{ editing ? 'Editar Núcleo' : 'Nuevo Núcleo' }}</h2>
-          <button class="ux-modal__close" (click)="modalOpen = false" aria-label="Cerrar">
-            ×
-          </button>
+          <button class="ux-modal__close" (click)="modalOpen = false" aria-label="Cerrar">×</button>
         </div>
 
         <form [formGroup]="form" (ngSubmit)="save()" class="ux-form" novalidate>

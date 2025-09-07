@@ -20,7 +20,6 @@ import {
 } from '../../services/nucleo.service';
 import { FarmService, FarmDto } from '../../../farm/services/farm.service';
 import { Company, CompanyService } from '../../../../core/services/company/company.service';
-import { NucleoFilterPipe } from '../../pipe/nucleo-filter.pipe';
 
 @Component({
   selector: 'app-nucleo-list',
@@ -30,8 +29,7 @@ import { NucleoFilterPipe } from '../../pipe/nucleo-filter.pipe';
     FormsModule,
     ReactiveFormsModule,
     SidebarComponent,
-    FontAwesomeModule,
-    NucleoFilterPipe
+    FontAwesomeModule
   ],
   templateUrl: './nucleo-list.component.html',
   styleUrls: ['./nucleo-list.component.scss']
@@ -40,13 +38,19 @@ export class NucleoListComponent implements OnInit {
   faPlus  = faPlus;
   faPen   = faPen;
   faTrash = faTrash;
+
+  // Filtros
   filtro: string = '';
+  selectedCompanyId: number | null = null;
+  selectedFarmId: number | null = null;
 
+  // Datos
+  nucleos:   NucleoDto[] = [];
+  viewNucleos: NucleoDto[] = []; // resultado filtrado
+  farms:     FarmDto[]   = [];
+  companies: Company[]   = [];
 
-  nucleos:    NucleoDto[] = [];
-  farms:      FarmDto[]   = [];
-  companies:  Company[]   = [];
-
+  // Mapas auxiliares
   farmMap:    Record<number,string> = {};
   companyMap: Record<number,string> = {};
 
@@ -65,16 +69,17 @@ export class NucleoListComponent implements OnInit {
   ngOnInit() {
     // Formulario
     this.form = this.fb.group({
-      nucleoId:     ['', Validators.required],
-      granjaId:     [null, Validators.required],
-      nucleoNombre:['', Validators.required]
+      nucleoId:      ['', Validators.required],
+      granjaId:      [null, Validators.required],
+      nucleoNombre:  ['', Validators.required]
     });
 
-    // Carga granjas y construye mapa
+    // Cargar granjas y companies
     this.farmSvc.getAll().subscribe(list => {
       this.farms = list;
       list.forEach(f => this.farmMap[f.id] = f.name);
-      // tras tener granjas, cargar compañías
+      this.recompute();
+
       this.companySvc.getAll().subscribe(clist => {
         this.companies = clist;
         clist.forEach(c => {
@@ -82,6 +87,7 @@ export class NucleoListComponent implements OnInit {
             this.companyMap[c.id] = c.name;
           }
         });
+        this.recompute();
       });
     });
 
@@ -89,11 +95,73 @@ export class NucleoListComponent implements OnInit {
     this.loadNucleos();
   }
 
+  // Granja filtrada por compañía (para el combo)
+  get farmsFiltered(): FarmDto[] {
+    if (this.selectedCompanyId == null) return this.farms;
+    return this.farms.filter(f => f.companyId === this.selectedCompanyId);
+  }
+
   private loadNucleos() {
     this.loading = true;
     this.nucleoSvc.getAll()
       .pipe(finalize(() => this.loading = false))
-      .subscribe(list => this.nucleos = list);
+      .subscribe(list => {
+        this.nucleos = list;
+        this.recompute();
+      });
+  }
+
+  // Recalcular la vista en base a filtros
+  recompute() {
+    const term = this.normalize(this.filtro);
+    let res = [...this.nucleos];
+
+    // Filtro por compañía
+    if (this.selectedCompanyId != null) {
+      res = res.filter(n => {
+        const farm = this.farms.find(f => f.id === n.granjaId);
+        return farm ? farm.companyId === this.selectedCompanyId : false;
+      });
+    }
+
+    // Filtro por granja
+    if (this.selectedFarmId != null) {
+      res = res.filter(n => n.granjaId === this.selectedFarmId);
+    }
+
+    // Filtro por texto
+    if (term) {
+      res = res.filter(n => {
+        const haystack = [
+          String(n.nucleoId ?? ''),
+          this.safe(n.nucleoNombre),
+          this.safe(this.getFarmName(n.granjaId))
+        ].map(this.normalize).join(' ');
+        return haystack.includes(term);
+      });
+    }
+
+    this.viewNucleos = res;
+  }
+
+  onCompanyChange(val: number | null) {
+    this.selectedCompanyId = val;
+
+    // Si la granja seleccionada no pertenece a la compañía actual, limpiar
+    if (
+      this.selectedFarmId != null &&
+      !this.farmsFiltered.some(f => f.id === this.selectedFarmId)
+    ) {
+      this.selectedFarmId = null;
+    }
+    this.recompute();
+  }
+
+  resetFilters() {
+    this.filtro = '';
+    this.selectedCompanyId = null;
+    this.selectedFarmId = null;
+    this.recompute();
   }
 
   openModal(n?: NucleoDto) {
@@ -137,12 +205,24 @@ export class NucleoListComponent implements OnInit {
       .subscribe();
   }
 
-  // Métodos auxiliares para la plantilla
+  // Aux
   getFarmName(granjaId: number): string {
     return this.farmMap[granjaId] || '–';
   }
+
   getCompanyName(granjaId: number): string {
     const farm = this.farms.find(f => f.id === granjaId);
     return farm ? (this.companyMap[farm.companyId] || '–') : '–';
+  }
+
+  private normalize(s: string): string {
+    return (s || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  }
+
+  private safe(s: any): string {
+    return s == null ? '' : String(s);
   }
 }

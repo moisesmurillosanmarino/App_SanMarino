@@ -1,38 +1,57 @@
-<div class="flex h-screen bg-warm-gray-100">
+<!-- src/app/features/farm/components/farm-list/farm-list.component.html -->
+<div class="flex h-screen">
   <app-sidebar class="w-64"></app-sidebar>
 
-  <div class="flex-1 p-6 overflow-auto">
+  <!-- Contenedor con scroll SOLO para el contenido; el modal va FUERA de este div -->
+  <div class="flex-1 p-6 overflow-auto ux-page" [attr.aria-busy]="loading ? 'true' : null">
     <!-- Tabs -->
     <div class="ux-tabs mb-4">
-      <button class="ux-tab active" type="button">
-        Listado de Granjas
-      </button>
+      <button class="ux-tab active" type="button">Listado de Granjas</button>
     </div>
 
-    <!-- Barra de acciones -->
-    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
-      <!-- Filtro -->
-      <div class="w-full md:w-1/3">
-        <label for="farm-filter" class="ux-label">Buscar por Compañía</label>
-        <div class="ux-input-icon">
-          <fa-icon [icon]="['fas','users']" aria-hidden="true"></fa-icon>
-          <input
-            id="farm-filter"
-            type="text"
-            [(ngModel)]="clienteFiltro"
-            placeholder="Buscar Compañía…"
-            class="ux-input"
-            aria-label="Buscar por compañía"
-          />
+    <!-- Barra de acciones / Filtros -->
+    <div class="ux-card mb-4">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-3 p-4">
+        <!-- Filtro por Regional -->
+        <div>
+          <label for="filtro-regional" class="ux-label">Regional</label>
+          <select id="filtro-regional" class="ux-input" [(ngModel)]="filtroRegionalId">
+            <option [ngValue]="null">Todas</option>
+            <option *ngFor="let r of regionOptions" [ngValue]="r.id">{{ r.label }}</option>
+          </select>
         </div>
-      </div>
 
-      <!-- CTA -->
-      <div class="flex justify-end">
-        <button (click)="openModal()" class="btn-primary">
-          <fa-icon [icon]="faPlus" class="mr-2" aria-hidden="true"></fa-icon>
-          Nueva Granja
-        </button>
+        <!-- Filtro por Nombre de Granja -->
+        <div>
+          <label for="filtro-nombre" class="ux-label">Nombre de la granja</label>
+          <div class="ux-input-icon">
+            <fa-icon [icon]="['fas','magnifying-glass']" aria-hidden="true"></fa-icon>
+            <input
+              id="filtro-nombre"
+              class="ux-input"
+              type="text"
+              [(ngModel)]="filtroNombre"
+              placeholder="Ej: Granja San Pedro"
+            />
+          </div>
+        </div>
+
+        <!-- Filtro por Estado -->
+        <div>
+          <label for="filtro-estado" class="ux-label">Estado</label>
+          <select id="filtro-estado" class="ux-input" [(ngModel)]="filtroEstado">
+            <option [ngValue]="''">Todos</option>
+            <option *ngFor="let s of statusOptions" [ngValue]="s">{{ s }}</option>
+          </select>
+        </div>
+
+        <!-- CTA -->
+        <div class="flex items-end justify-end">
+          <button (click)="openModal()" class="btn-primary w-full md:w-auto">
+            <fa-icon [icon]="faPlus" class="mr-2" aria-hidden="true"></fa-icon>
+            Nueva Granja
+          </button>
+        </div>
       </div>
     </div>
 
@@ -41,6 +60,7 @@
       <div class="ux-scroll">
         <table class="ux-table">
           <caption class="sr-only">Listado de granjas</caption>
+
           <thead>
             <tr>
               <th>ID</th>
@@ -48,19 +68,21 @@
               <th>Nombre</th>
               <th>Regional</th>
               <th>Estado</th>
-              <th>Zona</th>
+              <th>Departamento</th>
+              <th>Ciudad</th>
               <th class="text-center">Acciones</th>
             </tr>
           </thead>
 
           <tbody>
-            <tr *ngFor="let f of farms | farmFilter:clienteFiltro" class="ux-row">
+            <tr *ngFor="let f of farmsFiltradas" class="ux-row">
               <td>{{ f.id }}</td>
               <td>{{ companyName(f.companyId) }}</td>
               <td class="font-medium text-slate-800">{{ f.name }}</td>
               <td>{{ regionLabel(f.regionalId) }}</td>
               <td>{{ f.status }}</td>
-              <td>{{ zoneLabel(f.zoneId) }}</td>
+              <td>{{ departamentoNombre(f.departamentoId) }}</td>
+              <td>{{ ciudadNombre(f.ciudadId) }}</td>
               <td class="text-center">
                 <div class="inline-flex items-center gap-2">
                   <button type="button" (click)="openModal(f)" class="icon-btn" title="Editar">
@@ -74,11 +96,11 @@
             </tr>
 
             <!-- vacío -->
-            <tr *ngIf="(farms | farmFilter:clienteFiltro)?.length === 0">
-              <td colspan="7" class="empty-state">
+            <tr *ngIf="farmsFiltradas.length === 0">
+              <td colspan="8" class="empty-state">
                 <div class="empty-illustration">🫥</div>
                 <p>No hay granjas para mostrar.</p>
-                <button (click)="openModal()" class="btn-accent mt-2">
+                <button (click)="openModal()" class="btn-secondary mt-2">
                   <fa-icon [icon]="faPlus" class="mr-2" aria-hidden="true"></fa-icon>
                   Crear la primera
                 </button>
@@ -87,72 +109,92 @@
           </tbody>
         </table>
       </div>
-    </div>
 
-    <!-- Modal -->
-    <div *ngIf="modalOpen" class="ux-overlay" role="dialog" aria-modal="true" aria-labelledby="farm-title">
-      <div class="ux-dialog">
-        <div class="ux-dialog__header">
-          <h2 id="farm-title" class="ux-dialog__title">
-            {{ editing ? 'Editar Granja' : 'Nueva Granja' }}
-          </h2>
-          <button type="button" (click)="modalOpen = false" class="btn-muted">Cerrar</button>
-        </div>
-
-        <form [formGroup]="form" (ngSubmit)="save()" class="space-y-4">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <!-- Nombre -->
-            <div>
-              <label class="ux-label">Nombre <span class="req">*</span></label>
-              <input formControlName="name" class="ux-input" />
-            </div>
-
-            <!-- Compañía -->
-            <div>
-              <label class="ux-label">Compañía <span class="req">*</span></label>
-              <select formControlName="companyId" class="ux-input">
-                <option value="">Seleccione…</option>
-                <option *ngFor="let c of companyOptions" [value]="c.id">{{ c.name }}</option>
-              </select>
-            </div>
-
-            <!-- Regional -->
-            <div>
-              <label class="ux-label">Regional <span class="req">*</span></label>
-              <select formControlName="regionalId" class="ux-input">
-                <option value="">Seleccione…</option>
-                <option *ngFor="let r of regionOptions" [value]="r.id">{{ r.label }}</option>
-              </select>
-            </div>
-
-            <!-- Estado -->
-            <div>
-              <label class="ux-label">Estado <span class="req">*</span></label>
-              <select formControlName="status" class="ux-input">
-                <option value="">Seleccione…</option>
-                <option *ngFor="let s of statusOptions" [value]="s">{{ s }}</option>
-              </select>
-            </div>
-
-            <!-- Zona -->
-            <div>
-              <label class="ux-label">Zona <span class="req">*</span></label>
-              <select formControlName="zoneId" class="ux-input">
-                <option value="">Seleccione…</option>
-                <option *ngFor="let z of zoneOptions" [value]="z.id">{{ z.label }}</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="ux-dialog__footer">
-            <button type="button" (click)="modalOpen = false" class="btn-muted">Cancelar</button>
-            <button type="submit" [disabled]="form.invalid" class="btn-primary">
-              {{ editing ? 'Actualizar' : 'Guardar' }}
-            </button>
-          </div>
-        </form>
+      <!-- Overlay de carga (opcional) -->
+      <div *ngIf="loading" class="loading-overlay" aria-live="polite">
+        <div class="spinner"></div>
+        Cargando…
       </div>
     </div>
+  </div>
+</div>
 
+<!-- Modal SIEMPRE fuera del contenedor con overflow -->
+<div
+  *ngIf="modalOpen"
+  class="ux-modal"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="farm-title"
+>
+  <div class="ux-modal__panel" style="max-width: 820px;">
+    <div class="ux-modal__header">
+      <h2 id="farm-title" class="ux-title">
+        {{ editing ? 'Editar Granja' : 'Nueva Granja' }}
+      </h2>
+      <button type="button" (click)="modalOpen = false" class="btn-muted" aria-label="Cerrar">Cerrar</button>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="save()" class="grid grid-cols-1 gap-4" novalidate>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Nombre -->
+        <div>
+          <label class="ux-label">Nombre <span class="req">*</span></label>
+          <input formControlName="name" class="ux-input" />
+        </div>
+
+        <!-- Compañía -->
+        <div>
+          <label class="ux-label">Compañía <span class="req">*</span></label>
+          <select formControlName="companyId" class="ux-input">
+            <option value="">Seleccione…</option>
+            <option *ngFor="let c of companyOptions" [value]="c.id">{{ c.name }}</option>
+          </select>
+        </div>
+
+        <!-- Regional -->
+        <div>
+          <label class="ux-label">Regional <span class="req">*</span></label>
+          <select formControlName="regionalId" class="ux-input">
+            <option value="">Seleccione…</option>
+            <option *ngFor="let r of regionOptions" [value]="r.id">{{ r.label }}</option>
+          </select>
+        </div>
+
+        <!-- Estado -->
+        <div>
+          <label class="ux-label">Estado <span class="req">*</span></label>
+          <select formControlName="status" class="ux-input">
+            <option value="">Seleccione…</option>
+            <option *ngFor="let s of statusOptions" [value]="s">{{ s }}</option>
+          </select>
+        </div>
+
+        <!-- Departamento -->
+        <div>
+          <label class="ux-label">Departamento <span class="req">*</span></label>
+          <select formControlName="departamentoId" class="ux-input" (change)="onDepartamentoChange()">
+            <option value="">Seleccione…</option>
+            <option *ngFor="let d of departamentos" [value]="d.id">{{ d.nombre }}</option>
+          </select>
+        </div>
+
+        <!-- Ciudad -->
+        <div>
+          <label class="ux-label">Ciudad <span class="req">*</span></label>
+          <select formControlName="ciudadId" class="ux-input">
+            <option value="">Seleccione…</option>
+            <option *ngFor="let c of ciudades" [value]="c.id">{{ c.nombre }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="ux-actions">
+        <button type="button" (click)="modalOpen = false" class="btn-muted">Cancelar</button>
+        <button type="submit" [disabled]="form.invalid || loading" class="btn-primary">
+          {{ editing ? 'Actualizar' : 'Guardar' }}
+        </button>
+      </div>
+    </form>
   </div>
 </div>
