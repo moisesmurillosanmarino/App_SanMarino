@@ -1,29 +1,50 @@
 version: "3.9"
 
 services:
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "5001:5000"
-    env_file:
-      - .env
-    depends_on:
-      - postgres
-    networks:
-      - app-network
-
   postgres:
     image: postgres:16
+    container_name: sanmarino-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 123456789
       POSTGRES_DB: sanmarinoapp
     ports:
-      - "5433:5433"
+      # Host:Contenedor → expone 5433 en tu máquina, mapea al 5432 interno
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sanmarinoapp || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    networks:
+      - app-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sanmarino-backend
+    # La API escucha dentro del contenedor en 5002; publicamos 5002 afuera
+    ports:
+      - "5002:5002"
+    env_file:
+      - .env
+    environment:
+      # Valores de respaldo/forzados (puedes omitir si todo está en .env)
+      ASPNETCORE_ENVIRONMENT: "Production"
+      PORT: "5002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5002/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
     networks:
       - app-network
 
@@ -32,3 +53,4 @@ volumes:
 
 networks:
   app-network:
+    driver: bridge

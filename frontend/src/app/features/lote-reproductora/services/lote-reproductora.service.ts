@@ -5,98 +5,105 @@ import { Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 
-// ------------ Tipos base ------------
+/* ===========================
+   Tipos base
+   =========================== */
 export interface FarmDto {
-  id: number;
-  name: string;
-  companyId: number;
-  regionalId: number;
-  status: boolean;
-  zoneId: number;
+  readonly id: number;
+  readonly name: string;
+  readonly companyId: number;
+  readonly regionalId: number;
+  readonly granjaId: number;
+  readonly status: boolean;
+  readonly zoneId: number;
 }
 
 export interface NucleoDto {
-  nucleoId: string;
-  granjaId: number;
-  nucleoNombre: string;
+  readonly nucleoId: string;
+  readonly granjaId: number;
+  readonly nucleoNombre: string;
 }
 
 export interface LoteDto {
-  loteId: string;
-  loteNombre: string;
-  granjaId: number;
-  nucleoId: string;
-  galponId: string;
-  fechaEncaset: string;
+  readonly loteId: string;
+  readonly loteNombre: string;
+  readonly granjaId: number;
+  readonly nucleoId: string;
+  readonly galponId: string;
+  readonly fechaEncaset: string; // ISO
 }
 
 export interface LoteDtoExtendido {
-  loteId: string;
-  loteNombre: string;
-  granjaId: number;
-  nucleoId?: number;
-  galponId?: number;
-  regional?: string;
-  fechaEncaset?: string;
-  hembrasL?: number;
-  machosL?: number;
-  mixtas?: number;
-  avesEncasetadas?: number;
-  pesoInicialM?: number;
-  pesoInicialH?: number;
-  pesoMixto?: number | null;
+  readonly loteId: string;
+  readonly loteNombre: string;
+  readonly granjaId: number;
+  readonly nucleoId?: number;
+  readonly galponId?: number;
+  readonly regional?: string;
+  readonly fechaEncaset?: string;
+  readonly hembrasL?: number;
+  readonly machosL?: number;
+  readonly mixtas?: number;
+  readonly avesEncasetadas?: number;
+  readonly pesoInicialM?: number;
+  readonly pesoInicialH?: number;
+  readonly pesoMixto?: number | null;
 }
 
 export interface LoteReproductoraDto {
-  loteId: string;
-  reproductoraId: string;
-  nombreLote: string;
-  fechaEncasetamiento: string | null;
-  m: number | null;
-  h: number | null;
-  mixtas: number | null;
-  mortCajaH: number | null;
-  mortCajaM: number | null;
-  unifH: number | null;
-  unifM: number | null;
-  pesoInicialM: number | null;
-  pesoInicialH: number | null;
-  pesoMixto?: number | null;
+  readonly loteId: string;
+  readonly reproductoraId: string;
+  readonly nombreLote: string;
+  readonly fechaEncasetamiento: string | null; // ISO o null
+  readonly m: number | null;
+  readonly h: number | null;
+  readonly mixtas: number | null;
+  readonly mortCajaH: number | null;
+  readonly mortCajaM: number | null;
+  readonly unifH: number | null;
+  readonly unifM: number | null;
+  readonly pesoInicialM: number | null;
+  readonly pesoInicialH: number | null;
+  readonly pesoMixto?: number | null;
 }
 
 export type CreateLoteReproductoraDto = LoteReproductoraDto;
 export type UpdateLoteReproductoraDto = LoteReproductoraDto;
 
-// ------------ Tipos opcionales para búsqueda paginada (si activas /search) ------------
+/* ===========================
+   Búsqueda paginada (opcional)
+   =========================== */
 export interface LoteReproductoraSearchRequest {
   loteId?: string;
   reproductoraId?: string;
-  fromDate?: string | Date; // se serializa a ISO (UTC) si viene Date
+  fromDate?: string | Date;
   toDate?: string | Date;
   page?: number;
   pageSize?: number;
-  orderBy?: string; // 'FechaEncasetamiento' | 'NombreLote' | ...
+  orderBy?: string;
   desc?: boolean;
 }
 
 export interface PagedResult<T> {
-  total: number;
-  page: number;
-  pageSize: number;
-  items: T[];
+  readonly total: number;
+  readonly page: number;
+  readonly pageSize: number;
+  readonly items: ReadonlyArray<T>;
 }
 
-// ASP.NET Core ProblemDetails/ValidationProblemDetails (mínimo útil)
+/** ASP.NET Core ProblemDetails */
 export interface ProblemDetails {
-  type?: string;
-  title?: string;
-  status?: number;
-  detail?: string;
-  instance?: string;
-  errors?: Record<string, string[]>;
+  readonly type?: string;
+  readonly title?: string;
+  readonly status?: number;
+  readonly detail?: string;
+  readonly instance?: string;
+  readonly errors?: Record<string, string[]>;
 }
 
-// ============ Service ============
+/* ===========================
+   Service
+   =========================== */
 @Injectable({ providedIn: 'root' })
 export class LoteReproductoraService {
   private readonly base = `${environment.apiUrl}`;
@@ -107,24 +114,30 @@ export class LoteReproductoraService {
   // ---------- Helpers ----------
   private buildParams(obj: Record<string, unknown>): HttpParams {
     let params = new HttpParams();
-    Object.entries(obj)
-      .filter(([, v]) => v !== undefined && v !== null && v !== '')
-      .forEach(([k, v]) => {
-        if (v instanceof Date) {
-          params = params.set(k, v.toISOString());
-        } else {
-          params = params.set(k, String(v));
-        }
-      });
+    for (const [k, v] of Object.entries(obj)) {
+      if (v === undefined || v === null || v === '') continue;
+      if (Array.isArray(v)) {
+        v.filter(x => x !== undefined && x !== null && x !== '')
+         .forEach(x => params = params.append(k, this.valToString(x)));
+        continue;
+      }
+      params = params.set(k, this.valToString(v));
+    }
     return params;
   }
 
+  private valToString(v: unknown): string {
+    if (v instanceof Date) return v.toISOString();
+    if (typeof v === 'string') return v;
+    return String(v);
+  }
+
+  /** Acepta ISO o 'yyyy-MM-dd' y devuelve ISO/UTC o null */
   private toIsoOrNull(d?: string | Date | null): string | null {
     if (!d) return null;
     if (d instanceof Date) return d.toISOString();
-    // Si ya viene string, asumimos ISO o 'yyyy-MM-dd'
-    const date = new Date(d);
-    return isNaN(date.getTime()) ? d : date.toISOString();
+    const parsed = new Date(d);
+    return isNaN(parsed.getTime()) ? d : parsed.toISOString();
   }
 
   private handleError = (err: HttpErrorResponse) => {
@@ -136,92 +149,93 @@ export class LoteReproductoraService {
     return throwError(() => ({ status: err.status, message, problem }));
   };
 
-  // ---------- Granjas ----------
-  getGranjas(): Observable<FarmDto[]> {
-    return this.http
-      .get<FarmDto[]>(`${this.base}/Farm`)
-      .pipe(catchError(this.handleError));
+  // ---------- Catálogos ----------
+  getGranjas(): Observable<ReadonlyArray<FarmDto>> {
+    return this.http.get<FarmDto[]>(`${this.base}/Farm`).pipe(catchError(this.handleError));
   }
 
-  // ---------- Núcleos ----------
-  getNucleosPorGranja(granjaId: number): Observable<NucleoDto[]> {
-    const params = this.buildParams({ granjaId });
+  /**
+   * Núcleos por granja:
+   * - Envía `granjaId` y también `farmId` (por compatibilidad de API).
+   * - Fallback: filtra en cliente por `granjaId`.
+   */
+  getNucleosPorGranja(granjaId: number): Observable<ReadonlyArray<NucleoDto>> {
+    const gid = Number(granjaId);
+    const params = this.buildParams({ granjaId: gid, farmId: gid });
     return this.http
       .get<NucleoDto[]>(`${this.base}/Nucleo`, { params })
-      .pipe(catchError(this.handleError));
+      .pipe(
+        map(rows => {
+          const list = [...(rows ?? [])];
+          return list.filter(n => Number(n.granjaId) === gid);
+        }),
+        catchError(this.handleError)
+      );
   }
 
-  // ---------- Lotes ----------
-  getLotes(): Observable<LoteDto[]> {
-    return this.http
-      .get<LoteDto[]>(`${this.base}/Lote`)
-      .pipe(catchError(this.handleError));
+  getLotes(): Observable<ReadonlyArray<LoteDto>> {
+    return this.http.get<LoteDto[]>(`${this.base}/Lote`).pipe(catchError(this.handleError));
   }
 
-  // ---------- Lote Reproductora (CRUD) ----------
-  /**
-   * Lista general. Si pasas `loteId`, filtra en servidor.
-   * (Puedes reemplazar `getByLoteId` por este.)
-   */
-  getAll(loteId?: string): Observable<LoteReproductoraDto[]> {
+  // ---------- Lote Reproductora ----------
+  getAll(): Observable<ReadonlyArray<LoteReproductoraDto>>;
+  getAll(loteId: string): Observable<ReadonlyArray<LoteReproductoraDto>>;
+  getAll(loteId?: string): Observable<ReadonlyArray<LoteReproductoraDto>> {
     const params = this.buildParams({ loteId });
     return this.http
       .get<LoteReproductoraDto[]>(this.resourceBase, { params })
       .pipe(catchError(this.handleError));
   }
 
-  getByLoteId(loteId: string): Observable<LoteReproductoraDto[]> {
+  getByLoteId(loteId: string): Observable<ReadonlyArray<LoteReproductoraDto>> {
     return this.getAll(loteId);
   }
 
   getById(loteId: string, repId: string): Observable<LoteReproductoraDto> {
     return this.http
-      .get<LoteReproductoraDto>(`${this.resourceBase}/${loteId}/${repId}`)
+      .get<LoteReproductoraDto>(`${this.resourceBase}/${encodeURIComponent(loteId)}/${encodeURIComponent(repId)}`)
       .pipe(catchError(this.handleError));
   }
 
   create(dto: CreateLoteReproductoraDto): Observable<LoteReproductoraDto> {
-    // Asegura fecha ISO (UTC) si viene en 'yyyy-MM-dd'
     const payload: CreateLoteReproductoraDto = {
       ...dto,
       fechaEncasetamiento: this.toIsoOrNull(dto.fechaEncasetamiento),
-    } as CreateLoteReproductoraDto;
-
-    return this.http
-      .post<LoteReproductoraDto>(this.resourceBase, payload)
-      .pipe(catchError(this.handleError));
+    };
+    return this.http.post<LoteReproductoraDto>(this.resourceBase, payload).pipe(catchError(this.handleError));
   }
 
   update(dto: UpdateLoteReproductoraDto): Observable<LoteReproductoraDto> {
     const payload: UpdateLoteReproductoraDto = {
       ...dto,
       fechaEncasetamiento: this.toIsoOrNull(dto.fechaEncasetamiento),
-    } as UpdateLoteReproductoraDto;
-
+    };
     return this.http
-      .put<LoteReproductoraDto>(`${this.resourceBase}/${dto.loteId}/${dto.reproductoraId}`, payload)
+      .put<LoteReproductoraDto>(
+        `${this.resourceBase}/${encodeURIComponent(dto.loteId)}/${encodeURIComponent(dto.reproductoraId)}`,
+        payload
+      )
       .pipe(catchError(this.handleError));
   }
 
   delete(loteId: string, repId: string): Observable<void> {
     return this.http
-      .delete<void>(`${this.resourceBase}/${loteId}/${repId}`)
+      .delete<void>(`${this.resourceBase}/${encodeURIComponent(loteId)}/${encodeURIComponent(repId)}`)
       .pipe(catchError(this.handleError));
   }
 
   // ---------- Bulk ----------
-  createMany(dtos: CreateLoteReproductoraDto[]): Observable<LoteReproductoraDto[]> {
+  createMany(dtos: CreateLoteReproductoraDto[]): Observable<ReadonlyArray<LoteReproductoraDto>> {
     const payload = (dtos ?? []).map(d => ({
       ...d,
       fechaEncasetamiento: this.toIsoOrNull(d.fechaEncasetamiento),
-    })) as CreateLoteReproductoraDto[];
-
+    }));
     return this.http
       .post<LoteReproductoraDto[]>(`${this.resourceBase}/bulk`, payload)
       .pipe(catchError(this.handleError));
   }
 
-  // ---------- Search (opcional: requiere endpoint /search en el back) ----------
+  // ---------- Search (si está expuesto en el backend) ----------
   search(req: LoteReproductoraSearchRequest): Observable<PagedResult<LoteReproductoraDto>> {
     const params = this.buildParams({
       loteId: req.loteId,
@@ -234,32 +248,24 @@ export class LoteReproductoraService {
       desc: req.desc ?? true,
     });
 
-    // Si tu controller retorna {success, message, total, page, pageSize, data}
-    // puedes mapear aquí a PagedResult<T>:
-    return this.http
-      .get<any>(`${this.resourceBase}/search`, { params })
-      .pipe(
-        map((res) => {
-          // Adapta si tu controller devuelve directamente PagedResult<T>
-          if ('items' in res && 'total' in res) {
-            return res as PagedResult<LoteReproductoraDto>;
-          }
-          // Forma envuelta { success, data, total, page, pageSize }
-          return {
-            total: res.total ?? res?.data?.length ?? 0,
-            page: res.page ?? 1,
-            pageSize: res.pageSize ?? (res?.data?.length ?? 0),
-            items: (res.data ?? res.items ?? []) as LoteReproductoraDto[],
-          } as PagedResult<LoteReproductoraDto>;
-        }),
-        catchError(this.handleError)
-      );
+    return this.http.get<any>(`${this.resourceBase}/search`, { params }).pipe(
+      map((res) => {
+        if ('items' in res && 'total' in res) return res as PagedResult<LoteReproductoraDto>;
+        return {
+          total: res.total ?? res?.data?.length ?? 0,
+          page: res.page ?? 1,
+          pageSize: res.pageSize ?? (res?.data?.length ?? 0),
+          items: (res.data ?? res.items ?? []) as LoteReproductoraDto[],
+        } as PagedResult<LoteReproductoraDto>;
+      }),
+      catchError(this.handleError)
+    );
   }
 
   // ---------- Actualiza Lote (metadatos del lote padre) ----------
-  updateLote(dto: LoteDtoExtendido): Observable<any> {
+  updateLote(dto: LoteDtoExtendido): Observable<unknown> {
     return this.http
-      .put(`${this.base}/Lote/${dto.loteId}`, dto)
+      .put(`${this.base}/Lote/${encodeURIComponent(dto.loteId)}`, dto)
       .pipe(catchError(this.handleError));
   }
 }

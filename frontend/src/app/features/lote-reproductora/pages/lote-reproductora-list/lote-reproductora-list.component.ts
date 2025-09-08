@@ -38,7 +38,7 @@ export class LoteReproductoraListComponent implements OnInit {
   faPlus = faPlus; faPen = faPen; faTrash = faTrash; faEye = faEye;
 
   // Data
-  granjas: FarmDto[] = [];
+  readonly granjas: FarmDto[] = [];
   nucleos: NucleoDto[] = [];
   lotes: LoteDto[] = [];
   registros: LoteReproductoraDto[] = [];
@@ -86,7 +86,9 @@ export class LoteReproductoraListComponent implements OnInit {
       incubadoras: this.fb.array([] as FormGroup[])
     });
 
-    this.svc.getGranjas().subscribe(r => (this.granjas = r));
+    this.svc.getGranjas().subscribe(r => {
+      (this.granjas as FarmDto[]).push(...r);
+    });
   }
 
   // ---- helpers bulk ----
@@ -176,7 +178,7 @@ export class LoteReproductoraListComponent implements OnInit {
 
     const reqId = ++this.nucleosReq;
     this.svc.getNucleosPorGranja(this.selectedGranjaId).subscribe({
-      next: (n) => { if (reqId !== this.nucleosReq) return; this.nucleos = n; },
+      next: (n) => { if (reqId !== this.nucleosReq) return; this.nucleos = [...n]; },
       error: () => { if (reqId !== this.nucleosReq) return; this.nucleos = []; }
     });
   }
@@ -216,7 +218,7 @@ export class LoteReproductoraListComponent implements OnInit {
     this.svc.getByLoteId(this.selectedLoteId)
       .pipe(finalize(() => { if (reqId === this.registrosReq) this.loading = false; }))
       .subscribe({
-        next: (r) => { if (reqId !== this.registrosReq) return; this.registros = r ?? []; },
+        next: (r) => { if (reqId !== this.registrosReq) return; this.registros = [...(r ?? [])]; },
         error: () => { if (reqId !== this.registrosReq) return; this.registros = []; }
       });
   }

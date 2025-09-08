@@ -1,4 +1,3 @@
-// file: src/ZooSanMarino.API/Program.cs
 using System.Text;
 using EFCore.NamingConventions;
 using FluentValidation;
@@ -6,83 +5,126 @@ using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using ZooSanMarino.API.Extensions;             // MigrateAndSeedAsync
-using ZooSanMarino.API.Infrastructure;         // HttpCurrentUser
-using ZooSanMarino.Application.Interfaces;      // ICurrentUser + servicios
-using ZooSanMarino.Application.Options;         // JwtOptions
-using ZooSanMarino.Application.Validators;      // SeguimientoLoteLevanteDtoValidator
+using ZooSanMarino.API.Extensions;           // MigrateAndSeedAsync (si la usas)
+using ZooSanMarino.API.Infrastructure;       // HttpCurrentUser
+using ZooSanMarino.Application.Interfaces;    // ICurrentUser + servicios
+using ZooSanMarino.Application.Options;       // JwtOptions
+using ZooSanMarino.Application.Validators;    // SeguimientoLoteLevanteDtoValidator
 using ZooSanMarino.Domain.Entities;
 using ZooSanMarino.Infrastructure.Persistence;
-using ZooSanMarino.Infrastructure.Providers;    // EfAlimentoNutricionProvider / NullGramajeProvider
+using ZooSanMarino.Infrastructure.Providers;  // EfAlimentoNutricionProvider / NullGramajeProvider
 using ZooSanMarino.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ─────────────────────────────────────
-// Puerto
+// 0) Cargar .env → variables de entorno (antes de AddEnvironmentVariables)
+//    Busca en ubicaciones típicas y hace shim de ZOO_CONN → ConnectionStrings__ZooSanMarinoContext
 // ─────────────────────────────────────
-var port = Environment.GetEnvironmentVariable("PORT") ?? "5002";
+static void LoadDotEnvIfExists(string path)
+{
+    if (!File.Exists(path)) return;
+    foreach (var raw in File.ReadAllLines(path))
+    {
+        var line = raw.Trim();
+        if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#")) continue;
+        var idx = line.IndexOf('=');
+        if (idx <= 0) continue;
+
+        var key = line[..idx].Trim();
+        var val = line[(idx + 1)..].Trim();
+
+        if ((val.StartsWith("\"") && val.EndsWith("\"")) || (val.StartsWith("'") && val.EndsWith("'")))
+            val = val[1..^1];
+
+        Environment.SetEnvironmentVariable(key, val);
+    }
+}
+
+var envPaths = new[]
+{
+    Path.Combine(builder.Environment.ContentRootPath, ".env"),              // src/ZooSanMarino.API/.env
+    Path.Combine(builder.Environment.ContentRootPath, "..", ".env"),        // backend/src/.env
+    Path.Combine(builder.Environment.ContentRootPath, "..", "..", ".env"),  // backend/.env
+};
+foreach (var p in envPaths) LoadDotEnvIfExists(Path.GetFullPath(p));
+
+// Shim: permitir ZOO_CONN antiguo
+var legacyConn = Environment.GetEnvironmentVariable("ZOO_CONN");
+if (!string.IsNullOrWhiteSpace(legacyConn))
+{
+    Environment.SetEnvironmentVariable("ConnectionStrings__ZooSanMarinoContext", legacyConn);
+}
+
+// ─────────────────────────────────────
+// 1) appsettings.json → appsettings.{ENV}.json → EnvironmentVariables
+//    (ENV sobreescribe a JSON)
+// ─────────────────────────────────────
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables();
+
+// ─────────────────────────────────────
+// 2) Puerto (desde config / .env)
+// ─────────────────────────────────────
+var port = builder.Configuration["PORT"] ?? "5002";
 builder.WebHost.UseUrls($"http://+:{port}");
 
 // ─────────────────────────────────────
-// Conexión a BD
+/* 3) Conexión a BD (solo desde Configuration, con fallbacks) */
 // ─────────────────────────────────────
-var conn = Environment.GetEnvironmentVariable("ZOO_CONN")
-          ?? builder.Configuration.GetConnectionString("ZooSanMarinoContext");
+var conn =
+    builder.Configuration.GetConnectionString("ZooSanMarinoContext")
+    ?? builder.Configuration["ConnectionStrings:ZooSanMarinoContext"]
+    ?? builder.Configuration["ZOO_CONN"]
+    ?? Environment.GetEnvironmentVariable("ZOO_CONN");
+
 if (string.IsNullOrWhiteSpace(conn))
-    throw new InvalidOperationException("Connection string no configurada (ZOO_CONN o ConnectionStrings:ZooSanMarinoContext).");
+    throw new InvalidOperationException("ConnectionStrings:ZooSanMarinoContext no está configurada (revisa .env y su ubicación).");
 
 // Recomendado para Npgsql con timestamps legacy si lo usas
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 // ─────────────────────────────────────
-// JWT (mezcla appsettings y variables de entorno)
+/* 4) JWT: bind directo desde Configuration (appsettings + ENV con __)
+   Claves esperadas en .env:
+   - JwtSettings__Key
+   - JwtSettings__Issuer
+   - JwtSettings__Audience
+   - JwtSettings__DurationInMinutes
+*/
 // ─────────────────────────────────────
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("JwtSettings"));
 var jwt = builder.Configuration.GetSection("JwtSettings").Get<JwtOptions>() ?? new JwtOptions();
-string? envKey      = Environment.GetEnvironmentVariable("JWT_KEY");
-string? envIssuer   = Environment.GetEnvironmentVariable("JWT_ISSUER");
-string? envAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE");
-string? envDuration = Environment.GetEnvironmentVariable("JWT_DURATION");
-if (!string.IsNullOrWhiteSpace(envKey))      jwt.Key = envKey;
-if (!string.IsNullOrWhiteSpace(envIssuer))   jwt.Issuer = envIssuer;
-if (!string.IsNullOrWhiteSpace(envAudience)) jwt.Audience = envAudience;
-if (int.TryParse(envDuration, out var dur))  jwt.DurationInMinutes = dur;
 jwt.EnsureValid();
 builder.Services.AddSingleton(jwt);
 
 // ─────────────────────────────────────
-// CORS (abrir según necesites)
+// 5) CORS (desde AllowedOrigins en configuración; '*' para AllowAnyOrigin)
 // ─────────────────────────────────────
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AppCors", policy =>
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader());
-});
+var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+builder.Services.addcorsFromOrigins("AppCors", allowedOrigins);
 
 // ─────────────────────────────────────
-// DbContext
+// 6) DbContext
 // ─────────────────────────────────────
 builder.Services.AddDbContext<ZooSanMarinoContext>(opts =>
     opts.UseSnakeCaseNamingConvention()
         .UseNpgsql(conn));
 
 // ─────────────────────────────────────
-// Identity Hasher
+// 7) Infra básica
 // ─────────────────────────────────────
 builder.Services.AddScoped<IPasswordHasher<Login>, PasswordHasher<Login>>();
-
-// ─────────────────────────────────────
-// IHttpContextAccessor + ICurrentUser
-// ─────────────────────────────────────
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
 
 // ─────────────────────────────────────
-// Servicios de aplicación/infra
+// 8) Servicios de aplicación/infra
 // ─────────────────────────────────────
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
@@ -108,22 +150,19 @@ builder.Services.AddScoped<ICatalogItemService, CatalogItemService>();
 builder.Services.AddScoped<IFarmInventoryService, FarmInventoryService>();
 builder.Services.AddScoped<IFarmInventoryMovementService, FarmInventoryMovementService>();
 
-
-// Proveedores de nutrición/gramaje
+// Proveedores (ajusta cuando tengas provider real de gramaje)
 builder.Services.AddScoped<IAlimentoNutricionProvider, EfAlimentoNutricionProvider>();
-builder.Services.AddScoped<IGramajeProvider, NullGramajeProvider>(); // cambia a tu provider real cuando esté
+builder.Services.AddScoped<IGramajeProvider, NullGramajeProvider>();
 
 // ─────────────────────────────────────
-// FluentValidation
+// 9) FluentValidation + HealthChecks
 // ─────────────────────────────────────
 builder.Services.AddValidatorsFromAssemblyContaining<SeguimientoLoteLevanteDtoValidator>();
 builder.Services.AddFluentValidationAutoValidation();
-
-// Health checks
 builder.Services.AddHealthChecks();
 
 // ─────────────────────────────────────
-// Auth (JWT) — ignora preflight OPTIONS
+// 10) Auth (JWT) — ignora preflight OPTIONS
 // ─────────────────────────────────────
 var keyBytes = Encoding.UTF8.GetBytes(jwt.Key);
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -131,29 +170,28 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     {
         opts.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer           = true,
-            ValidateAudience         = true,
+            ValidateIssuer = true,
+            ValidateAudience = true,
             ValidateIssuerSigningKey = true,
-            ValidateLifetime         = true,
-            ValidIssuer      = jwt.Issuer,
-            ValidAudience    = jwt.Audience,
+            ValidateLifetime = true,
+            ValidIssuer = jwt.Issuer,
+            ValidAudience = jwt.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(keyBytes),
-            ClockSkew        = TimeSpan.Zero
+            ClockSkew = TimeSpan.Zero
         };
 
         opts.Events = new JwtBearerEvents
         {
             OnMessageReceived = ctx =>
             {
-                if (HttpMethods.IsOptions(ctx.Request.Method))
-                    ctx.NoResult(); // no autenticar preflight
+                if (HttpMethods.IsOptions(ctx.Request.Method)) ctx.NoResult();
                 return Task.CompletedTask;
             }
         };
     });
 
 // ─────────────────────────────────────
-// Authorization (políticas por permiso)
+// 11) Authorization (políticas por permiso)
 // ─────────────────────────────────────
 builder.Services.AddAuthorization(opt =>
 {
@@ -163,7 +201,7 @@ builder.Services.AddAuthorization(opt =>
 });
 
 // ─────────────────────────────────────
-// Swagger + Bearer
+// 12) Swagger + Bearer
 // ─────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -186,14 +224,14 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // ─────────────────────────────────────
-// Controllers
+// 13) Controllers
 // ─────────────────────────────────────
 builder.Services.AddControllers();
 
 var app = builder.Build();
 
 // ─────────────────────────────────────
-// Pipeline
+// 14) Pipeline HTTP
 // ─────────────────────────────────────
 app.UseSwagger();
 app.UseSwaggerUI(c =>
@@ -211,14 +249,91 @@ app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapHealthChecks("/hc");
 
+// Debug JWT (para verificar .env)
+app.MapGet("/debug/jwt", (IOptions<JwtOptions> opt) =>
+{
+    var o = opt.Value;
+    string Mask(string s) => string.IsNullOrEmpty(s) ? "" : $"{s[..Math.Min(4, s.Length)]}***{s[^4..]}";
+    return Results.Ok(new
+    {
+        Issuer = o.Issuer,
+        Audience = o.Audience,
+        Duration = o.DurationInMinutes,
+        KeyMasked = Mask(o.Key),
+        KeyLength = o.Key?.Length ?? 0
+    });
+});
+
+// Debug ConnectionString (para verificar .env)
+app.MapGet("/debug/config/conn", (IConfiguration cfg) =>
+{
+    var raw = cfg.GetConnectionString("ZooSanMarinoContext")
+           ?? cfg["ConnectionStrings:ZooSanMarinoContext"]
+           ?? cfg["ZOO_CONN"];
+    var safe = string.IsNullOrEmpty(raw)
+        ? ""
+        : System.Text.RegularExpressions.Regex.Replace(raw, "(Password=)([^;]+)", "$1******", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    return Results.Ok(new { ConnectionString = safe });
+});
+
+// Ping DB (no toca esquema)
+app.MapGet("/db-ping", async (ZooSanMarinoContext ctx) =>
+{
+    try
+    {
+        await ctx.Database.OpenConnectionAsync();
+        await ctx.Database.CloseConnectionAsync();
+        return Results.Ok(new { status = "ok", db = "reachable" });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem($"DB unreachable: {ex.Message}");
+    }
+});
+
 // Catch-all OPTIONS
-app.MapMethods("{*path}", new[] { "OPTIONS" }, () => Results.Ok())
-   .RequireCors("AppCors");
+app.MapMethods("{*path}", new[] { "OPTIONS" }, () => Results.Ok()).RequireCors("AppCors");
 
-// Migrar + Seed
-await app.MigrateAndSeedAsync();
+// ─────────────────────────────────────
+// 15) Migrar + Seed controlados por config (apagado por defecto)
+// ─────────────────────────────────────
+bool runMigrations = app.Configuration.GetValue<bool>("Database:RunMigrations");
+bool runSeed       = app.Configuration.GetValue<bool>("Database:RunSeed");
 
-// Controllers
+if (runMigrations || runSeed)
+{
+    // Si tienes una sobrecarga que acepte flags, mejor:
+    // await app.MigrateAndSeedAsync(runMigrations, runSeed);
+    await app.MigrateAndSeedAsync();
+}
+
+// ─────────────────────────────────────
+// 16) Controllers
+// ─────────────────────────────────────
 app.MapControllers();
-
 app.Run();
+
+
+// ─────────────────────────────────────
+// Extensión pequeña para CORS desde lista de orígenes
+// ─────────────────────────────────────
+internal static class CorsExtensions
+{
+    public static void addcorsFromOrigins(this IServiceCollection services, string policyName, string[] origins)
+    {
+        services.AddCors(options =>
+        {
+            options.AddPolicy(policyName, policy =>
+            {
+                if (origins is null || origins.Length == 0 || Array.Exists(origins, x => x == "*"))
+                {
+                    policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+                }
+                else
+                {
+                    policy.WithOrigins(origins).AllowAnyMethod().AllowAnyHeader();
+                }
+            });
+        });
+    }
+}

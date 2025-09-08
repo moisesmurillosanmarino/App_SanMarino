@@ -110,7 +110,8 @@ export class DashboardComponent implements OnInit {
     })
     .pipe(finalize(() => { this.loadingSummary = false; }))
     .subscribe({
-      next: ({ users, farms, lotes }: { users: UserListItem[]; farms: FarmDto[]; lotes: LoteDto[] }) => {
+      next: ({ users, farms, lotes }: { users: UserListItem[]; farms: FarmDto[]; lotes: LoteDto[] | readonly LoteDto[] }) => {
+        lotes = [...lotes]; // Ensure lotes is mutable
         // índices
         this.farmsIndex.clear(); this.lotesIndex.clear();
         farms.forEach(f => this.farmsIndex.set(f.id, f));
@@ -152,7 +153,8 @@ export class DashboardComponent implements OnInit {
     })
     .pipe(finalize(() => this.loadingActivities = false))
     .subscribe({
-      next: ({ lotes, levante }: { lotes: LoteDto[]; levante: SeguimientoLoteLevanteDto[] }) => {
+      next: ({ lotes, levante }: { lotes: readonly LoteDto[] | LoteDto[]; levante: SeguimientoLoteLevanteDto[] }) => {
+        lotes = [...lotes]; // Ensure lotes is mutable
         if (!this.lotesIndex.size) lotes.forEach(l => this.lotesIndex.set(l.loteId, l));
 
         const actsLevante: Activity[] = (levante ?? [])
@@ -213,7 +215,7 @@ export class DashboardComponent implements OnInit {
     const loadLotes$ = sample.length
       ? of(sample)
       : this.loteRepSvc.getLotes().pipe(
-          map((ls: LoteDto[]) => ls.slice(0, 10)),
+          map((ls: readonly LoteDto[]) => [...ls].slice(0, 10)),
           catchError((err) => { this.setError('production', this.describeError(err, 'Fallo al cargar lotes')); return of([] as LoteDto[]); })
         );
 
@@ -265,7 +267,7 @@ export class DashboardComponent implements OnInit {
 
     forkJoin({
       lotes: this.loteRepSvc.getLotes().pipe(
-        map((ls: LoteDto[]) => ls.slice(0, 10)),
+        map((ls: readonly LoteDto[]) => [...ls].slice(0, 10)),
         catchError((err) => { this.setError('mortality', this.describeError(err, 'Fallo al cargar lotes')); return of([] as LoteDto[]); })
       ),
       levante: this.levanteSvc.getAll().pipe(

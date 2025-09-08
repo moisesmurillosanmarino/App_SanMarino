@@ -1,3 +1,4 @@
+// src/app/features/lote-reproductora/pages/seguimiento-diario-lote-reproductora-list/seguimiento-diario-lote-reproductora-list.component.ts
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -6,19 +7,21 @@ import { finalize } from 'rxjs/operators';
 // Sidebar
 import { SidebarComponent } from '../../../../shared/components/sidebar/sidebar.component';
 
-// Catálogos y reproductoras (backend ya existente)
+// Catálogos y reproductoras
 import {
   LoteReproductoraService,
   FarmDto, NucleoDto, LoteDto, LoteReproductoraDto
 } from '../../../lote-reproductora/services/lote-reproductora.service';
 
-// Seguimiento diario (nuevo backend LoteSeguimiento)
+// Seguimiento diario
 import {
   LoteSeguimientoService,
   LoteSeguimientoDto
 } from '../../services/lote-seguimiento.service';
 
-// Fila UI (mantenemos nombres “Levante-like” para reusar el template/validaciones)
+// Empresas (igual que en otros módulos)
+import { Company, CompanyService } from '../../../../core/services/company/company.service';
+
 interface UiSeguimiento {
   id: number;
   fechaRegistro: string;   // ISO
@@ -33,7 +36,7 @@ interface UiSeguimiento {
   tipoAlimento: string;
   consumoKgHembras: number;
   observaciones?: string;
-  ciclo: string; // 'Normal' | 'Reforzado' (UI-only)
+  ciclo: string; // 'Normal' | 'Reforzado'
 }
 
 @Component({
@@ -44,17 +47,19 @@ interface UiSeguimiento {
   styleUrls: ['./seguimiento-diario-lote-reproductora-list.component.scss']
 })
 export class SeguimientoDiarioLoteReproductoraListComponent implements OnInit {
-  // Catálogos
-  granjas: FarmDto[] = [];
-  nucleos: NucleoDto[] = [];
-  lotes:   LoteDto[] = [];
-  repros:  LoteReproductoraDto[] = []; // reproductoras del lote seleccionado
+  // Catálogos (opción A: arreglos mutables)
+  companies: Company[] = [];
+  granjas:   FarmDto[] = [];
+  nucleos:   NucleoDto[] = [];
+  lotes:     LoteDto[]  = [];
+  repros:    LoteReproductoraDto[] = [];
 
-  // Selección
-  selectedGranjaId: number | null = null;
-  selectedNucleoId: string | null = null;
-  selectedLoteId: string | null = null;
-  selectedReproId: string | null = null;
+  // Filtros
+  selectedCompanyId: number | null = null;
+  selectedGranjaId:  number | null = null;
+  selectedNucleoId:  string | null = null;
+  selectedLoteId:    string | null = null;
+  selectedReproId:   string | null = null;
 
   // Datos
   seguimientos: UiSeguimiento[] = [];
@@ -72,12 +77,24 @@ export class SeguimientoDiarioLoteReproductoraListComponent implements OnInit {
 
   constructor(
     private fb: FormBuilder,
+    private companySvc: CompanyService,
     private reproSvc: LoteReproductoraService,
     private segApi: LoteSeguimientoService
   ) {}
 
+  // Getters para nombres y filtrados
+  get granjasFiltradas(): FarmDto[] {
+    if (!this.selectedCompanyId) return this.granjas;
+    return this.granjas.filter(g => g.companyId === this.selectedCompanyId);
+  }
+  get selectedCompanyName(): string {
+    return this.companies.find(c => c.id === this.selectedCompanyId)?.name ?? '';
+  }
+  get selectedGranjaName(): string {
+    return this.granjas.find(g => g.id === this.selectedGranjaId)?.name ?? '';
+  }
+
   ngOnInit(): void {
-    // Form
     this.form = this.fb.group({
       fechaRegistro:      [new Date().toISOString().substring(0,10), Validators.required],
       loteId:             ['', Validators.required],
@@ -91,33 +108,64 @@ export class SeguimientoDiarioLoteReproductoraListComponent implements OnInit {
       tipoAlimento:       ['', Validators.required],
       consumoKgHembras:   [0, [Validators.required, Validators.min(0)]],
       observaciones:      [''],
-      ciclo:              ['Normal', Validators.required] // UI-only
+      ciclo:              ['Normal', Validators.required]
     });
 
-    // Catálogo base
-    this.reproSvc.getGranjas().subscribe(r => (this.granjas = r ?? []));
+    // Cargar catálogos (copias mutables)
+    this.companySvc.getAll().subscribe({
+      next: (cs) => (this.companies = [...(cs ?? [])]),
+      error: ()   => (this.companies = [])
+    });
+    this.reproSvc.getGranjas().subscribe({
+      next: (fs) => (this.granjas = [...(fs ?? [])]),
+      error: ()   => (this.granjas = [])
+    });
   }
 
-  // ─────────── Filtros en cascada ───────────
+  // ===== Cascada =====
+  onCompanyChange(): void {
+    this.selectedGranjaId = null;
+    this.selectedNucleoId = null;
+    this.selectedLoteId   = null;
+    this.selectedReproId  = null;
+
+    this.nucleos = [];
+    this.lotes   = [];
+    this.repros  = [];
+    this.seguimientos = [];
+  }
+
   onGranjaChange(): void {
     this.selectedNucleoId = null;
-    this.selectedLoteId = null;
-    this.selectedReproId = null;
-    this.nucleos = []; this.lotes = []; this.repros = []; this.seguimientos = [];
+    this.selectedLoteId   = null;
+    this.selectedReproId  = null;
+
+    this.nucleos = [];
+    this.lotes   = [];
+    this.repros  = [];
+    this.seguimientos = [];
 
     if (!this.selectedGranjaId) return;
 
     const reqId = ++this.nucleosReq;
     this.reproSvc.getNucleosPorGranja(this.selectedGranjaId).subscribe({
-      next: (n) => { if (reqId !== this.nucleosReq) return; this.nucleos = n ?? []; },
-      error: ()   => { if (reqId !== this.nucleosReq) return; this.nucleos = []; }
+      next: (n) => {
+        if (reqId !== this.nucleosReq) return;
+        const gid = Number(this.selectedGranjaId);
+        // Doble garantía: si el back no filtró, filtramos aquí
+        this.nucleos = [...(n ?? [])].filter(x => Number(x.granjaId) === gid);
+      },
+      error: () => { if (reqId !== this.nucleosReq) return; this.nucleos = []; }
     });
   }
 
   onNucleoChange(): void {
-    this.selectedLoteId = null;
-    this.selectedReproId = null;
-    this.lotes = []; this.repros = []; this.seguimientos = [];
+    this.selectedLoteId   = null;
+    this.selectedReproId  = null;
+
+    this.lotes   = [];
+    this.repros  = [];
+    this.seguimientos = [];
 
     if (!this.selectedGranjaId || !this.selectedNucleoId) return;
 
@@ -127,7 +175,8 @@ export class SeguimientoDiarioLoteReproductoraListComponent implements OnInit {
         if (reqId !== this.lotesReq) return;
         const gid = String(this.selectedGranjaId);
         const nid = String(this.selectedNucleoId);
-        this.lotes = (l ?? []).filter(x => String(x.granjaId) === gid && String(x.nucleoId) === nid);
+        const src = [...(l ?? [])];
+        this.lotes = src.filter(x => String(x.granjaId) === gid && String(x.nucleoId) === nid);
       },
       error: () => { if (reqId !== this.lotesReq) return; this.lotes = []; }
     });
@@ -135,7 +184,9 @@ export class SeguimientoDiarioLoteReproductoraListComponent implements OnInit {
 
   onLoteChange(): void {
     this.selectedReproId = null;
-    this.repros = []; this.seguimientos = [];
+    this.repros = [];
+    this.seguimientos = [];
+
     if (!this.selectedLoteId) return;
 
     const reqId = ++this.reproReq;
@@ -143,7 +194,7 @@ export class SeguimientoDiarioLoteReproductoraListComponent implements OnInit {
     this.reproSvc.getByLoteId(this.selectedLoteId)
       .pipe(finalize(() => { if (reqId === this.reproReq) this.loading = false; }))
       .subscribe({
-        next: (rows) => { if (reqId !== this.reproReq) return; this.repros = rows ?? []; },
+        next: (rows) => { if (reqId !== this.reproReq) return; this.repros = [...(rows ?? [])]; },
         error: () =>   { if (reqId !== this.reproReq) return; this.repros = []; }
       });
   }
@@ -162,7 +213,7 @@ export class SeguimientoDiarioLoteReproductoraListComponent implements OnInit {
       });
   }
 
-  // ─────────── CRUD ───────────
+  // ===== CRUD =====
   create(): void {
     if (!this.selectedLoteId || !this.selectedReproId) return;
 
@@ -225,9 +276,9 @@ export class SeguimientoDiarioLoteReproductoraListComponent implements OnInit {
         next: () => {
           this.modalOpen = false;
           this.editing = null;
-          this.onReproChange(); // refresca la tabla
+          this.onReproChange();
         },
-        error: () => { /* podrías mostrar toast */ }
+        error: () => { /* opcional: toast */ }
       });
   }
 
@@ -242,7 +293,7 @@ export class SeguimientoDiarioLoteReproductoraListComponent implements OnInit {
       });
   }
 
-  // ─────────── Mapas UI ↔ API ───────────
+  // ===== Mapas UI ↔ API =====
   private uiToApi(raw: any): Omit<LoteSeguimientoDto, 'id'> {
     const toIso = (d: string) => new Date(d).toISOString();
     return {
@@ -258,7 +309,6 @@ export class SeguimientoDiarioLoteReproductoraListComponent implements OnInit {
       tipoAlimento: raw.tipoAlimento,
       consumoAlimento: raw.consumoKgHembras,
       observaciones: raw.observaciones ?? null,
-      // opcionales no usados en UI:
       pesoInicial: null,
       pesoFinal: null
     };
@@ -267,7 +317,7 @@ export class SeguimientoDiarioLoteReproductoraListComponent implements OnInit {
   private apiToUi(x: LoteSeguimientoDto): UiSeguimiento {
     return {
       id: x.id,
-      fechaRegistro: x.fecha,                 // usamos pipe date en la vista
+      fechaRegistro: x.fecha,
       loteId: x.loteId ?? '',
       reproductoraId: x.reproductoraId ?? '',
       mortalidadHembras: x.mortalidadH ?? 0,
@@ -283,12 +333,7 @@ export class SeguimientoDiarioLoteReproductoraListComponent implements OnInit {
     };
   }
 
-  // ─────────── Helpers ───────────
+  // Helpers
   trackById = (_: number, r: UiSeguimiento) => r.id;
   trackByIdx = (i: number) => i;
-
-  get selectedGranjaName(): string {
-    const g = this.granjas.find(x => x.id === this.selectedGranjaId);
-    return g?.name ?? '';
-  }
 }

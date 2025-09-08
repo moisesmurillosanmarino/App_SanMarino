@@ -1,4 +1,3 @@
-<!-- src/app/features/lote-levante/pages/seguimiento-lote-levante-list/seguimiento-lote-levante-list.component.html -->
 <div class="ux-page" [attr.aria-busy]="loading ? 'true' : null">
   <!-- Sidebar -->
   <app-sidebar class="ux-sidebar"></app-sidebar>
@@ -11,6 +10,7 @@
         <h1>Seguimiento Diario de Levante</h1>
 
         <div class="ux-header__meta">
+          <!-- Granja -->
           <ng-template #noGranjaChip>
             <span class="chip chip--warning">
               <span class="chip__dot" aria-hidden="true"></span>
@@ -23,15 +23,23 @@
             Granja: {{ selectedGranjaName || selectedGranjaId }}
           </span>
 
+          <!-- Núcleo -->
+          <span class="chip chip--muted" *ngIf="selectedNucleoId">
+            Núcleo: {{ selectedNucleoId }}
+          </span>
+
+          <!-- Galpón -->
           <span class="chip chip--muted" *ngIf="selectedGalponId">
             Galpón: {{ selectedGalponId === SIN_GALPON ? '— Sin galpón —' : selectedGalponId }}
           </span>
 
+          <!-- Lote -->
           <span class="chip chip--info" *ngIf="selectedLoteId">
             <span class="chip__dot" aria-hidden="true"></span>
             Lote: {{ selectedLoteNombre }}
           </span>
 
+          <!-- Edad y # registros -->
           <span class="chip chip--muted" *ngIf="selectedLoteId">
             {{ calcularEdadSemanas(selectedLote?.fechaEncaset) }} sem
           </span>
@@ -47,67 +55,188 @@
         (click)="create()"
         class="btn btn--primary"
         [disabled]="!selectedLoteId"
-        [title]="!selectedLoteId ? 'Primero selecciona lote' : 'Crear nuevo registro'"
-      >
+        [title]="!selectedLoteId ? 'Primero selecciona lote' : 'Crear nuevo registro'">
         Nuevo registro
       </button>
     </header>
 
     <!-- Filtros en cascada -->
-    <section class="ux-card" style="padding: 1rem;">
+    <section class="ux-card" role="group" aria-label="Filtros">
       <div class="ux-toolbar">
         <!-- Granja -->
-        <div>
+        <div class="ux-field">
           <label class="ux-label" for="granja-select">Granja</label>
           <div class="ux-select">
             <select
               id="granja-select"
               [ngModel]="selectedGranjaId"
-              (ngModelChange)="selectedGranjaId = $event; onGranjaChange()"
-            >
+              (ngModelChange)="selectedGranjaId = $event; onGranjaChange()">
               <option [ngValue]="null">— Seleccione —</option>
-              <option *ngFor="let g of granjas" [ngValue]="g.id">
-                {{ g.name }}
-              </option>
+              <option *ngFor="let g of granjas" [ngValue]="g.id">{{ g.name }}</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Núcleo (nuevo) -->
+        <div class="ux-field">
+          <label class="ux-label" for="nucleo-select">Núcleo</label>
+          <div class="ux-select">
+            <select
+              id="nucleo-select"
+              [disabled]="!selectedGranjaId || nucleos.length === 0"
+              [ngModel]="selectedNucleoId"
+              (ngModelChange)="selectedNucleoId = $event; onNucleoChange()">
+              <option [ngValue]="null">— Todos —</option>
+              <option *ngFor="let n of nucleos; trackBy: trackByNucleo" [ngValue]="n.nucleoId">{{ n.nucleoNombre }}</option>
             </select>
           </div>
         </div>
 
         <!-- Galpón (derivado de lotes) -->
-        <div>
+        <div class="ux-field">
           <label class="ux-label" for="galpon-select">Galpón</label>
           <div class="ux-select">
             <select
               id="galpon-select"
               [disabled]="!selectedGranjaId || galpones.length === 0"
               [ngModel]="selectedGalponId"
-              (ngModelChange)="selectedGalponId = $event; onGalponChange()"
-            >
+              (ngModelChange)="selectedGalponId = $event; onGalponChange()">
               <option [ngValue]="null">— Todos —</option>
               <option *ngFor="let g of galpones" [ngValue]="g.id">{{ g.label }}</option>
             </select>
           </div>
         </div>
 
-        <!-- Lote (filtrado por granja/galpón) -->
-        <div>
+        <!-- Lote (filtrado por granja/núcleo/galpón) -->
+        <div class="ux-field">
           <label class="ux-label" for="lote-select">Lote</label>
           <div class="ux-select">
             <select
               id="lote-select"
               [disabled]="!selectedGranjaId || lotes.length === 0"
               [ngModel]="selectedLoteId"
-              (ngModelChange)="selectedLoteId = $event; onLoteChange()"
-            >
+              (ngModelChange)="selectedLoteId = $event; onLoteChange()">
               <option [ngValue]="null" disabled>— Seleccione —</option>
               <option *ngFor="let l of lotes" [ngValue]="l.loteId">
-                {{ l.loteNombre || l.loteId }}
-                ({{ calcularEdadSemanas(l.fechaEncaset) }} sem)
+                {{ l.loteNombre || l.loteId }} ({{ calcularEdadSemanas(l.fechaEncaset) }} sem)
               </option>
             </select>
           </div>
         </div>
       </div>
+    </section>
+
+    <!-- Ficha del Lote + Estados (resumen visual) -->
+    <section class="ux-card" *ngIf="selectedLoteId">
+      <div class="grid grid-2">
+        <!-- Ficha del lote -->
+        <div>
+          <h3 class="sr-only">Ficha del Lote</h3>
+          <div class="grid grid-2" style="row-gap:.6rem; column-gap:1rem;">
+            <div class="form-field">
+              <label>📋 Nombre</label>
+              <div><strong>{{ selectedLote?.loteNombre || selectedLoteId }}</strong></div>
+            </div>
+            <div class="form-field">
+              <label>🏠 Granja</label>
+              <div>{{ selectedGranjaName || '—' }}</div>
+            </div>
+            <div class="form-field">
+              <label>🧬 Núcleo</label>
+              <div>{{ selectedNucleoId || '—' }}</div>
+            </div>
+            <div class="form-field">
+              <label>🏚️ Galpón</label>
+              <div>{{ selectedLote?.galponId || '—' }}</div>
+            </div>
+            <div class="form-field">
+              <label>📅 Encaset</label>
+              <div>{{ selectedLote?.fechaEncaset | date:'shortDate' }}</div>
+            </div>
+            <div class="form-field">
+              <label>⏳ Edad (sem)</label>
+              <div>{{ calcularEdadSemanas(selectedLote?.fechaEncaset) }}</div>
+            </div>
+            <div class="form-field">
+              <label>📦 Aves encasetadas</label>
+              <div>{{ (selectedLote?.avesEncasetadas || 0) | number:'1.0-0' }}</div>
+            </div>
+            <div class="form-field">
+              <label>🐔 Hembras L (inicial)</label>
+              <div>{{ (selectedLote?.hembrasL || 0) | number:'1.0-0' }}</div>
+            </div>
+            <div class="form-field">
+              <label>🐓 Machos L (inicial)</label>
+              <div>{{ (selectedLote?.machosL || 0) | number:'1.0-0' }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Estados / métricas -->
+        <div>
+          <h3 class="sr-only">Estados del Lote</h3>
+          <div class="grid grid-2" style="row-gap:.8rem; column-gap:1rem;">
+            <!-- Iniciales -->
+            <div class="ux-card" style="padding:.75rem">
+              <div class="form-field">
+                <label>🐔 Hembras iniciales</label>
+                <div><strong>{{ (resumenSelected?.hembrasIniciales || 0) | number:'1.0-0' }}</strong></div>
+              </div>
+              <div class="form-field">
+                <label>🐓 Machos iniciales</label>
+                <div><strong>{{ (resumenSelected?.machosIniciales || 0) | number:'1.0-0' }}</strong></div>
+              </div>
+            </div>
+
+            <!-- Mortalidad caja -->
+            <div class="ux-card" style="padding:.75rem">
+              <div class="form-field">
+                <label>📦 Mort. caja H</label>
+                <div>{{ (resumenSelected?.mortCajaHembras || 0) | number:'1.0-0' }}</div>
+              </div>
+              <div class="form-field">
+                <label>📦 Mort. caja M</label>
+                <div>{{ (resumenSelected?.mortCajaMachos || 0) | number:'1.0-0' }}</div>
+              </div>
+            </div>
+
+            <!-- Mortalidad acumulada -->
+            <div class="ux-card" style="padding:.75rem">
+              <div class="form-field">
+                <label>✖ Mort. acum H</label>
+                <div>{{ (resumenSelected?.mortalidadAcumHembras || 0) | number:'1.0-0' }}</div>
+              </div>
+              <div class="form-field">
+                <label>✖ Mort. acum M</label>
+                <div>{{ (resumenSelected?.mortalidadAcumMachos || 0) | number:'1.0-0' }}</div>
+              </div>
+            </div>
+
+            <!-- Saldos (vivas) -->
+            <div class="ux-card" style="padding:.75rem">
+              <div class="form-field">
+                <label>✅ Vivas H</label>
+                <div><strong>{{ (resumenSelected?.saldoHembras || 0) | number:'1.0-0' }}</strong></div>
+              </div>
+              <div class="form-field">
+                <label>✅ Vivas M</label>
+                <div><strong>{{ (resumenSelected?.saldoMachos || 0) | number:'1.0-0' }}</strong></div>
+              </div>
+              <div class="form-field form-field--full" style="margin-top:.25rem">
+                <label>🔢 Vivas totales</label>
+                <div>
+                  <strong>
+                    {{
+                      ((resumenSelected?.saldoHembras || 0) + (resumenSelected?.saldoMachos || 0))
+                        | number:'1.0-0'
+                    }}
+                  </strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div> <!-- /grid -->
     </section>
 
     <!-- Tabla de registros -->
@@ -142,8 +271,7 @@
                   type="button"
                   class="btn btn--outline"
                   (click)="create()"
-                  [disabled]="!selectedLoteId"
-                >
+                  [disabled]="!selectedLoteId">
                   Crear el primero
                 </button>
               </td>
@@ -167,15 +295,13 @@
                     (click)="edit(s)"
                     class="icon-btn"
                     title="Editar"
-                    aria-label="Editar registro"
-                  >✎</button>
+                    aria-label="Editar registro">✎</button>
                   <button
                     type="button"
                     (click)="delete(s.id)"
                     class="icon-btn icon-btn--danger"
                     title="Eliminar"
-                    aria-label="Eliminar registro"
-                  >🗑</button>
+                    aria-label="Eliminar registro">🗑</button>
                 </div>
               </td>
             </tr>
@@ -198,8 +324,7 @@
   class="ux-modal"
   role="dialog"
   aria-modal="true"
-  aria-labelledby="seguimiento-modal-title"
->
+  aria-labelledby="seguimiento-modal-title">
   <div class="ux-modal__dialog">
     <header class="ux-modal__header">
       <h2 id="seguimiento-modal-title">
@@ -216,7 +341,7 @@
           <input id="f-fecha" type="date" formControlName="fechaRegistro" />
         </div>
 
-        <!-- Lote (fijo al seleccionado, pero editable si quieres) -->
+        <!-- Lote (fijo al seleccionado, editable si se requiere) -->
         <div class="form-field">
           <label for="f-lote">Lote</label>
           <div class="ux-select">
@@ -237,13 +362,13 @@
 
         <!-- Consumo -->
         <div class="form-field">
-          <label for="f-consumo">Consumo Hembras (kg)</label>
-          <input id="f-consumo" type="number" step="0.01" formControlName="consumoKgHembras" />
+          <label for="f-consumo-h">Consumo Hembras (kg)</label>
+          <input id="f-consumo-h" type="number" step="0.01" formControlName="consumoKgHembras" />
         </div>
 
         <div class="form-field">
-          <label for="f-consumo">Consumo Machos (kg)</label>
-          <input id="f-consumo" type="number" step="0.01" />
+          <label for="f-consumo-m">Consumo Machos (kg)</label>
+          <input id="f-consumo-m" type="number" step="0.01" />
         </div>
 
         <!-- Mortalidad -->
@@ -257,15 +382,15 @@
           <input id="f-mm" type="number" min="0" formControlName="mortalidadMachos" />
         </div>
 
-        <!-- peso de machos y hembres  -->
+        <!-- Peso de machos y hembras (sin binding aún) -->
         <div class="form-field">
-          <label for="f-mm">Promedio peso M</label>
-          <input id="f-mm" type="number" min="0" />
+          <label for="f-pm">Promedio peso M</label>
+          <input id="f-pm" type="number" min="0" />
         </div>
 
-         <div class="form-field">
-          <label for="f-mm">Promedio peso H</label>
-          <input id="f-mm" type="number" min="0" />
+        <div class="form-field">
+          <label for="f-ph">Promedio peso H</label>
+          <input id="f-ph" type="number" min="0" />
         </div>
 
         <!-- Selección -->
@@ -278,15 +403,14 @@
           <input id="f-selm" type="number" min="0" formControlName="selM" />
         </div>
 
-        <!-- Uniformidad -->
+        <!-- Uniformidad (sin binding) -->
         <div class="form-field">
-          <label for="f-selm">Uniformidad Hembras</label>
-          <input id="f-selm" type="number" min="0" formControlName="selM" />
+          <label for="f-uh">Uniformidad Hembras</label>
+          <input id="f-uh" type="number" min="0" />
         </div>
-        
-         <div class="form-field">
-          <label for="f-selm">Uniformidad Machos</label>
-          <input id="f-selm" type="number" min="0" formControlName="selM" />
+        <div class="form-field">
+          <label for="f-um">Uniformidad Machos</label>
+          <input id="f-um" type="number" min="0" />
         </div>
 
         <!-- Error sexaje -->
