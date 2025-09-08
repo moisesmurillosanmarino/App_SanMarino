@@ -4,3 +4,6 @@ frontend/package-lock.json
 node_modules/
 **/bin/
 **/obj/
+backend/tests/ZooSanMarino.Application.Tests/obj/Debug/net9.0/ZooSanMarino.Application.Tests.AssemblyInfoInputs.cache
+backend/tests/ZooSanMarino.Domain.Tests/obj/Debug/net9.0/ZooSanMarino.Domain.Tests.AssemblyInfo.cs
+backend/tests/ZooSanMarino.Domain.Tests/obj/Debug/net9.0/ZooSanMarino.Domain.Tests.AssemblyInfoInputs.cache
