@@ -80,7 +80,7 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     });
 
     // 2) form modal
-    this.form = this.fb.group({
+   this.form = this.fb.group({
       fechaRegistro:      [new Date().toISOString().substring(0, 10), Validators.required],
       loteId:             ['', Validators.required],
       mortalidadHembras:  [0, [Validators.required, Validators.min(0)]],
@@ -92,7 +92,16 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       tipoAlimento:       ['', Validators.required],
       consumoKgHembras:   [0, [Validators.required, Validators.min(0)]],
       observaciones:      [''],
-      ciclo:              ['Normal', Validators.required]
+      ciclo:              ['Normal', Validators.required],
+
+      // ↓ NUEVOS (opcionales)
+      consumoKgMachos:    [null, [Validators.min(0)]],
+      pesoPromH:          [null, [Validators.min(0)]],
+      pesoPromM:          [null, [Validators.min(0)]],
+      uniformidadH:       [null, [Validators.min(0), Validators.max(100)]],
+      uniformidadM:       [null, [Validators.min(0), Validators.max(100)]],
+      cvH:                [null, [Validators.min(0)]],
+      cvM:                [null, [Validators.min(0)]],
     });
   }
 
@@ -271,7 +280,6 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
   // ================== CRUD modal ==================
   create(): void {
     if (!this.selectedLoteId) return;
-
     this.editing = null;
     this.form.reset({
       fechaRegistro: new Date().toISOString().substring(0, 10),
@@ -285,10 +293,20 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       tipoAlimento: '',
       consumoKgHembras: 0,
       observaciones: '',
-      ciclo: 'Normal'
+      ciclo: 'Normal',
+
+      // ↓ NUEVOS
+      consumoKgMachos: null,
+      pesoPromH: null,
+      pesoPromM: null,
+      uniformidadH: null,
+      uniformidadM: null,
+      cvH: null,
+      cvM: null,
     });
     this.modalOpen = true;
   }
+
 
   edit(seg: SeguimientoLoteLevanteDto): void {
     this.editing = seg;
@@ -304,10 +322,20 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       tipoAlimento: seg.tipoAlimento,
       consumoKgHembras: seg.consumoKgHembras,
       observaciones: seg.observaciones || '',
-      ciclo: seg.ciclo || 'Normal'
+      ciclo: seg.ciclo || 'Normal',
+
+      // ↓ NUEVOS
+      consumoKgMachos: seg.consumoKgMachos ?? null,
+      pesoPromH: seg.pesoPromH ?? null,
+      pesoPromM: seg.pesoPromM ?? null,
+      uniformidadH: seg.uniformidadH ?? null,
+      uniformidadM: seg.uniformidadM ?? null,
+      cvH: seg.cvH ?? null,
+      cvM: seg.cvM ?? null,
     });
     this.modalOpen = true;
   }
+
 
   delete(id: number): void {
     if (!confirm('¿Eliminar este registro?')) return;
@@ -320,23 +348,32 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
   }
 
   save(): void {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      return;
-    }
+    if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     const raw = this.form.value;
 
     const dto: CreateSeguimientoLoteLevanteDto = {
       fechaRegistro: new Date(raw.fechaRegistro).toISOString(),
       loteId: raw.loteId,
+
       mortalidadHembras: raw.mortalidadHembras,
       mortalidadMachos: raw.mortalidadMachos,
       selH: raw.selH,
       selM: raw.selM,
       errorSexajeHembras: raw.errorSexajeHembras,
       errorSexajeMachos: raw.errorSexajeMachos,
+
       tipoAlimento: raw.tipoAlimento,
       consumoKgHembras: raw.consumoKgHembras,
+
+      // ↓ NUEVOS
+      consumoKgMachos: raw.consumoKgMachos ?? null,
+      pesoPromH: raw.pesoPromH ?? null,
+      pesoPromM: raw.pesoPromM ?? null,
+      uniformidadH: raw.uniformidadH ?? null,
+      uniformidadM: raw.uniformidadM ?? null,
+      cvH: raw.cvH ?? null,
+      cvM: raw.cvM ?? null,
+
       observaciones: raw.observaciones,
       kcalAlH: null,
       protAlH: null,
@@ -350,19 +387,12 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       : this.segSvc.create(dto);
 
     this.loading = true;
-    op$
-      .pipe(finalize(() => (this.loading = false)))
-      .subscribe({
-        next: () => {
-          this.modalOpen = false;
-          this.editing = null;
-          this.onLoteChange(); // refresca la tabla del lote actual
-        },
-        error: () => {
-          // opcional: toast/error
-        }
-      });
+    op$.pipe(finalize(() => (this.loading = false))).subscribe({
+      next: () => { this.modalOpen = false; this.editing = null; this.onLoteChange(); },
+      error: () => { /* TODO: notificación */ }
+    });
   }
+
 
   // ================== helpers ==================
   trackById = (_: number, r: SeguimientoLoteLevanteDto) => r.id;

@@ -1,4 +1,3 @@
-// file: backend/src/ZooSanMarino.Infrastructure/Services/SeguimientoLoteLevanteService.cs
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using ZooSanMarino.Application.DTOs;
@@ -27,6 +26,7 @@ public class SeguimientoLoteLevanteService : ISeguimientoLoteLevanteService
         _current = current;
     }
 
+    // Mapeo a DTO actualizado con los nuevos campos opcionales
     private static readonly Expression<Func<SeguimientoLoteLevante, SeguimientoLoteLevanteDto>> ToDto =
         x => new SeguimientoLoteLevanteDto(
             x.Id, x.LoteId, x.FechaRegistro,
@@ -34,7 +34,13 @@ public class SeguimientoLoteLevanteService : ISeguimientoLoteLevanteService
             x.SelH, x.SelM,
             x.ErrorSexajeHembras, x.ErrorSexajeMachos,
             x.ConsumoKgHembras, x.TipoAlimento, x.Observaciones,
-            x.KcalAlH, x.ProtAlH, x.KcalAveH, x.ProtAveH, x.Ciclo
+            x.KcalAlH, x.ProtAlH, x.KcalAveH, x.ProtAveH, x.Ciclo,
+
+            // NUEVOS
+            x.ConsumoKgMachos,
+            x.PesoPromH, x.PesoPromM,
+            x.UniformidadH, x.UniformidadM,
+            x.CvH, x.CvM
         );
 
     // ===========================
@@ -87,19 +93,17 @@ public class SeguimientoLoteLevanteService : ISeguimientoLoteLevanteService
             }
         }
 
-        // 3) Sugerir consumo por gramaje si <= 0
+        // 3) Sugerir consumo por gramaje si <= 0 (hembras)
         double consumoKgH = dto.ConsumoKgHembras;
         if (consumoKgH <= 0 && !string.IsNullOrWhiteSpace(lote.GalponId) && lote.FechaEncaset.HasValue)
         {
             int semana = CalcularSemana(lote.FechaEncaset.Value, dto.FechaRegistro);
 
             double? gramajeGrAve = null;
-            // Si el provider espera int, intentamos parsear el GalponId:
             if (int.TryParse(lote.GalponId, out var galponIdInt))
                 gramajeGrAve = await _gramaje.GetGramajeGrPorAveAsync(galponIdInt, semana, dto.TipoAlimento);
             else
             {
-                // Si tienes una sobrecarga string, úsala. Si no, este bloque se ignora.
                 if (_gramaje is IGramajeProviderV2 v2)
                     gramajeGrAve = await v2.GetGramajeGrPorAveAsync(lote.GalponId, semana, dto.TipoAlimento);
             }
@@ -111,7 +115,7 @@ public class SeguimientoLoteLevanteService : ISeguimientoLoteLevanteService
             }
         }
 
-        // 4) Derivados
+        // 4) Derivados (por ahora solo hembras, igual que antes)
         var (kcalAveH, protAveH) = CalcularDerivados(consumoKgH, kcalAlH, protAlH);
 
         var ent = new SeguimientoLoteLevante
@@ -124,13 +128,25 @@ public class SeguimientoLoteLevanteService : ISeguimientoLoteLevanteService
             SelM = dto.SelM,
             ErrorSexajeHembras = dto.ErrorSexajeHembras,
             ErrorSexajeMachos = dto.ErrorSexajeMachos,
+
             ConsumoKgHembras = consumoKgH,
+            ConsumoKgMachos = dto.ConsumoKgMachos,
+
+            PesoPromH = dto.PesoPromH,
+            PesoPromM = dto.PesoPromM,
+            UniformidadH = dto.UniformidadH,
+            UniformidadM = dto.UniformidadM,
+            CvH = dto.CvH,
+            CvM = dto.CvM,
+
             TipoAlimento = dto.TipoAlimento,
             Observaciones = dto.Observaciones,
+
             KcalAlH = kcalAlH,
             ProtAlH = protAlH,
             KcalAveH = kcalAveH,
             ProtAveH = protAveH,
+
             Ciclo = dto.Ciclo
         };
 
@@ -208,13 +224,25 @@ public class SeguimientoLoteLevanteService : ISeguimientoLoteLevanteService
         ent.SelM = dto.SelM;
         ent.ErrorSexajeHembras = dto.ErrorSexajeHembras;
         ent.ErrorSexajeMachos = dto.ErrorSexajeMachos;
+
         ent.ConsumoKgHembras = consumoKgH;
+        ent.ConsumoKgMachos = dto.ConsumoKgMachos;
+
+        ent.PesoPromH = dto.PesoPromH;
+        ent.PesoPromM = dto.PesoPromM;
+        ent.UniformidadH = dto.UniformidadH;
+        ent.UniformidadM = dto.UniformidadM;
+        ent.CvH = dto.CvH;
+        ent.CvM = dto.CvM;
+
         ent.TipoAlimento = dto.TipoAlimento;
         ent.Observaciones = dto.Observaciones;
+
         ent.KcalAlH = kcalAlH;
         ent.ProtAlH = protAlH;
         ent.KcalAveH = kcalAveH;
         ent.ProtAveH = protAveH;
+
         ent.Ciclo = dto.Ciclo;
 
         await _ctx.SaveChangesAsync();
@@ -224,7 +252,13 @@ public class SeguimientoLoteLevanteService : ISeguimientoLoteLevanteService
             ent.MortalidadHembras, ent.MortalidadMachos,
             ent.SelH, ent.SelM, ent.ErrorSexajeHembras, ent.ErrorSexajeMachos,
             ent.ConsumoKgHembras, ent.TipoAlimento, ent.Observaciones,
-            ent.KcalAlH, ent.ProtAlH, ent.KcalAveH, ent.ProtAveH, ent.Ciclo
+            ent.KcalAlH, ent.ProtAlH, ent.KcalAveH, ent.ProtAveH, ent.Ciclo,
+
+            // NUEVOS
+            ent.ConsumoKgMachos,
+            ent.PesoPromH, ent.PesoPromM,
+            ent.UniformidadH, ent.UniformidadM,
+            ent.CvH, ent.CvM
         );
     }
 

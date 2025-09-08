@@ -4,18 +4,31 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 
+
 export interface SeguimientoLoteLevanteDto {
   id: number;
   fechaRegistro: string;
   loteId: string;
+
   mortalidadHembras: number;
   mortalidadMachos: number;
   selH: number;
   selM: number;
   errorSexajeHembras: number;
   errorSexajeMachos: number;
+
   tipoAlimento: string;
   consumoKgHembras: number;
+
+  // ↓ NUEVOS (opcionales)
+  consumoKgMachos?: number | null;
+  pesoPromH?: number | null;
+  pesoPromM?: number | null;
+  uniformidadH?: number | null;
+  uniformidadM?: number | null;
+  cvH?: number | null;
+  cvM?: number | null;
+
   observaciones?: string;
   kcalAlH?: number | null;
   protAlH?: number | null;
@@ -25,23 +38,37 @@ export interface SeguimientoLoteLevanteDto {
 }
 
 export interface CreateSeguimientoLoteLevanteDto {
-  fechaRegistro: string;   // ISO (ej: 2025-08-27T00:00:00.000Z)
+  fechaRegistro: string;
   loteId: string;
+
   mortalidadHembras: number;
   mortalidadMachos: number;
   selH: number;
   selM: number;
   errorSexajeHembras: number;
   errorSexajeMachos: number;
+
   tipoAlimento: string;
   consumoKgHembras: number;
+
+  // ↓ NUEVOS (opcionales)
+  consumoKgMachos?: number | null;
+  pesoPromH?: number | null;
+  pesoPromM?: number | null;
+  uniformidadH?: number | null;
+  uniformidadM?: number | null;
+  cvH?: number | null;
+  cvM?: number | null;
+
   observaciones?: string;
   kcalAlH?: number | null;
   protAlH?: number | null;
   kcalAveH?: number | null;
   protAveH?: number | null;
-  ciclo: string;           // backend valida "Normal"
+  ciclo: string;
 }
+
+
 
 export interface UpdateSeguimientoLoteLevanteDto extends CreateSeguimientoLoteLevanteDto {
   id: number;

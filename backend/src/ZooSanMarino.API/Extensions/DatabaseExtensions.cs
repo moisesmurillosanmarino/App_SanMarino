@@ -9,26 +9,49 @@ namespace ZooSanMarino.API.Extensions;
 
 public static class DatabaseExtensions
 {
+    /// <summary>
+    /// Lee Database:RunMigrations y Database:RunSeed de la configuración y ejecuta en base a ellos.
+    /// </summary>
     public static async Task MigrateAndSeedAsync(this WebApplication app)
     {
+        var runMigrations = app.Configuration.GetValue<bool>("Database:RunMigrations");
+        var runSeed       = app.Configuration.GetValue<bool>("Database:RunSeed");
+        await app.MigrateAndSeedAsync(runMigrations, runSeed);
+    }
+
+    /// <summary>
+    /// Ejecuta migraciones y/o seed según flags.
+    /// </summary>
+    public static async Task MigrateAndSeedAsync(this WebApplication app, bool runMigrations, bool runSeed)
+    {
         using var scope = app.Services.CreateScope();
-        var logger = scope.ServiceProvider
-                          .GetRequiredService<ILoggerFactory>()
-                          .CreateLogger("Startup:DB");
+        var sp = scope.ServiceProvider;
+
+        var logger = sp.GetRequiredService<ILoggerFactory>()
+                       .CreateLogger("Startup:DB");
 
         try
         {
-            var ctx = scope.ServiceProvider.GetRequiredService<ZooSanMarinoContext>();
+            var ctx = sp.GetRequiredService<ZooSanMarinoContext>(); // ← corregido
 
-            // 1) Migraciones (la migración crea/siembra catalogo_items)
-            //await ctx.Database.MigrateAsync();
+            if (runMigrations)
+            {
+                await ctx.Database.MigrateAsync();
+                logger.LogInformation("✅ EF Core migrations applied.");
+            }
 
-            // 2) Seeders idempotentes restantes
-            await PermissionSeed.EnsureAsync(ctx);
-            await MenuSeed.EnsureAsync(ctx);
-           // await CatalogItemSeed.EnsureAsync(ctx);
+            if (runSeed)
+            {
+                await PermissionSeed.EnsureAsync(ctx);
+                await MenuSeed.EnsureAsync(ctx);
+                // await CatalogItemSeed.EnsureAsync(ctx);
+                logger.LogInformation("✅ Seed completed.");
+            }
 
-            logger.LogInformation("✅ DB migrated & seeded (catalogo_items seeded via EF migration).");
+            if (!runMigrations && !runSeed)
+            {
+                logger.LogInformation("ℹ️ Database:RunMigrations/RunSeed = false; no actions executed.");
+            }
         }
         catch (Exception ex)
         {

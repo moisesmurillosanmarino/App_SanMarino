@@ -13,3 +13,5 @@ backend/tests/ZooSanMarino.Domain.Tests/obj/Debug/net9.0/ZooSanMarino.Domain.Tes
 backend/tests/ZooSanMarino.Domain.Tests/obj/Debug/net9.0/ZooSanMarino.Domain.Tests.AssemblyInfo.cs
 backend/tests/ZooSanMarino.Application.Tests/obj/Debug/net9.0/ZooSanMarino.Application.Tests.AssemblyInfoInputs.cache
 /backend/tests
+/backend/tests/ZooSanMarino.Application.Tests/obj
+/backend/.vscode
