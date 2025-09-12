@@ -82,4 +82,24 @@ public class SeguimientoLoteLevanteController : ControllerBase
         var result = await _svc.FilterAsync(loteId, desde, hasta);
         return Ok(result);
     }
+
+    /// <summary>Resultado calculado (ejecuta SP y devuelve snapshot del lote).</summary>
+    [HttpGet("por-lote/{loteId}/resultado")]
+    [ProducesResponseType(typeof(ResultadoLevanteResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ResultadoLevanteResponse>> GetResultadoPorLote(
+        string loteId,
+        [FromQuery] DateTime? desde,
+        [FromQuery] DateTime? hasta,
+        [FromQuery] bool recalcular = true)
+    {
+        try
+        {
+            var res = await _svc.GetResultadoAsync(loteId, desde, hasta, recalcular);
+            return Ok(res);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+    }
 }

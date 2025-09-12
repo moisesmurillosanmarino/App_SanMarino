@@ -11,4 +11,7 @@ public record SeguimientoLoteLevanteDto(
     // NUEVOS
     double? ConsumoKgMachos, double? PesoPromH, double? PesoPromM,
     double? UniformidadH, double? UniformidadM, double? CvH, double? CvM
+    // gestiones de administrativo  
+    // int? IdAdministrativo, string? NombreAdministrativo, string? ApellidoAdministrativo, string? DireccionAdministrativo, string? TelefonoAdministrativo, string? EmailAdministrativo, string? FechaNacimientoAdministrativo, string? GeneroAdministrativo, string? EstadoAdministrativo, string? CodigoAdministrativo, string? TipoAdministrativo, string? RolAdministrativo, string? ClaveAdministrativo, string? ClaveAdministrativoConfirmada, string? ClaveAdministrativoConfirmadaConfirmada, string? ClaveAdministrativoConfirmadaConfirmadaConfirmada, string? ClaveAdministrativoConfirmada
+    
 );

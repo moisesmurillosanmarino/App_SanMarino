@@ -333,18 +333,75 @@ public class SeguimientoLoteLevanteService : ISeguimientoLoteLevanteService
             .Select(g => new
             {
                 MortH = g.Sum(x => x.MortalidadHembras),
-                SelH  = g.Sum(x => x.SelH),
-                ErrH  = g.Sum(x => x.ErrorSexajeHembras)
+                SelH = g.Sum(x => x.SelH),
+                ErrH = g.Sum(x => x.ErrorSexajeHembras)
             })
             .SingleOrDefaultAsync();
 
         int mort = sum?.MortH ?? 0;
-        int sel  = sum?.SelH  ?? 0;
-        int err  = sum?.ErrH  ?? 0;
+        int sel = sum?.SelH ?? 0;
+        int err = sum?.ErrH ?? 0;
 
         var vivas = baseH.Base - baseH.MortCaja - mort - sel - err;
         return Math.Max(0, vivas);
     }
+    
+      public async Task<ResultadoLevanteResponse> GetResultadoAsync(
+        string loteId, DateTime? desde, DateTime? hasta, bool recalcular = true)
+    {
+        // 0) Validar lote/tenant
+        var lote = await _ctx.Lotes.AsNoTracking()
+            .SingleOrDefaultAsync(l => l.LoteId == loteId
+                                     && l.CompanyId == _current.CompanyId
+                                     && l.DeletedAt == null);
+        if (lote is null)
+            throw new InvalidOperationException($"Lote '{loteId}' no existe o no pertenece a la compañía.");
+
+        // 1) Recalcular on-demand (opcional)
+        if (recalcular)
+        {
+            // IMPORTANTE: usa parámetro para evitar SQL injection
+            await _ctx.Database.ExecuteSqlInterpolatedAsync(
+                $"select sp_recalcular_seguimiento_levante({loteId})");
+        }
+
+        // 2) Query del snapshot
+        var q = from r in _ctx.ProduccionResultadoLevante.AsNoTracking()
+                where r.LoteId == loteId
+                select r;
+
+        if (desde.HasValue) q = q.Where(x => x.Fecha >= desde.Value.Date);
+        if (hasta.HasValue) q = q.Where(x => x.Fecha <= hasta.Value.Date);
+
+        var items = await q.OrderBy(x => x.Fecha)
+            .Select(r => new ResultadoLevanteItemDto(
+                r.Fecha, r.EdadSemana,
+                // H
+                r.HembraViva, r.MortH, r.SelHOut, r.ErrH,
+                r.ConsKgH, r.PesoH, r.UnifH, r.CvH,
+                r.MortHPct, r.SelHPct, r.ErrHPct,
+                r.MsEhH, r.AcMortH, r.AcSelH, r.AcErrH,
+                r.AcConsKgH, r.ConsAcGrH, r.GrAveDiaH,
+                r.DifConsHPct, r.DifPesoHPct, r.RetiroHPct, r.RetiroHAcPct,
+                // M
+                r.MachoVivo, r.MortM, r.SelMOut, r.ErrM,
+                r.ConsKgM, r.PesoM, r.UnifM, r.CvM,
+                r.MortMPct, r.SelMPct, r.ErrMPct,
+                r.MsEmM, r.AcMortM, r.AcSelM, r.AcErrM,
+                r.AcConsKgM, r.ConsAcGrM, r.GrAveDiaM,
+                r.DifConsMPct, r.DifPesoMPct, r.RetiroMPct, r.RetiroMAcPct,
+                // Rel/Guías
+                r.RelMHPct,
+                r.PesoHGuia, r.UnifHGuia, r.ConsAcGrHGuia, r.GrAveDiaHGuia, r.MortHPctGuia,
+                r.PesoMGuia, r.UnifMGuia, r.ConsAcGrMGuia, r.GrAveDiaMGuia, r.MortMPctGuia,
+                r.AlimentoHGuia, r.AlimentoMGuia
+            ))
+            .ToListAsync();
+
+        return new ResultadoLevanteResponse(
+            loteId, desde?.Date, hasta?.Date, items.Count, items);
+    }
+
 }
 
 // (Opcional): Si tienes provider que acepta string GalponId

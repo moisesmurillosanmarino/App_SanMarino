@@ -46,6 +46,8 @@ namespace ZooSanMarino.Infrastructure.Persistence
         public DbSet<CatalogItem> CatalogItems { get; set; } = null!;
         public DbSet<FarmProductInventory> FarmProductInventory => Set<FarmProductInventory>();
         public DbSet<FarmInventoryMovement> FarmInventoryMovements => Set<FarmInventoryMovement>();
+        public DbSet<ProduccionResultadoLevante> ProduccionResultadoLevante => Set<ProduccionResultadoLevante>();
+
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -111,7 +113,7 @@ namespace ZooSanMarino.Infrastructure.Persistence
         private void SetAuditFields()
         {
             var nowDto = DateTimeOffset.UtcNow; // para DateTimeOffset
-            var nowDt  = DateTime.UtcNow;       // para DateTime
+            var nowDt = DateTime.UtcNow;       // para DateTime
 
             // 1) CreatedAt / UpdatedAt en entidades
             foreach (var entry in ChangeTracker.Entries())
@@ -123,7 +125,7 @@ namespace ZooSanMarino.Infrastructure.Persistence
                 var createdProp = entry.Metadata.FindProperty("CreatedAt");
                 if (entry.State == EntityState.Added && createdProp is not null)
                 {
-                    var p   = entry.Property("CreatedAt");
+                    var p = entry.Property("CreatedAt");
                     var clr = createdProp.ClrType;
 
                     if (clr == typeof(DateTimeOffset) || clr == typeof(DateTimeOffset?))
@@ -142,7 +144,7 @@ namespace ZooSanMarino.Infrastructure.Persistence
                 var updatedProp = entry.Metadata.FindProperty("UpdatedAt");
                 if (updatedProp is not null && (entry.State == EntityState.Added || entry.State == EntityState.Modified))
                 {
-                    var p   = entry.Property("UpdatedAt");
+                    var p = entry.Property("UpdatedAt");
                     var clr = updatedProp.ClrType;
 
                     if (clr == typeof(DateTimeOffset) || clr == typeof(DateTimeOffset?))
@@ -190,7 +192,7 @@ namespace ZooSanMarino.Infrastructure.Persistence
                 var meta = trackedUserEntry.Metadata.FindProperty("UpdatedAt");
                 if (meta is not null)
                 {
-                    var p   = trackedUserEntry.Property("UpdatedAt");
+                    var p = trackedUserEntry.Property("UpdatedAt");
                     var clr = meta.ClrType;
 
                     if (clr == typeof(DateTimeOffset) || clr == typeof(DateTimeOffset?))
@@ -211,7 +213,7 @@ namespace ZooSanMarino.Infrastructure.Persistence
             var meta2 = entry.Metadata.FindProperty("UpdatedAt");
             if (meta2 is not null)
             {
-                var p   = entry.Property("UpdatedAt");
+                var p = entry.Property("UpdatedAt");
                 var clr = meta2.ClrType;
 
                 if (clr == typeof(DateTimeOffset) || clr == typeof(DateTimeOffset?))
@@ -223,4 +225,6 @@ namespace ZooSanMarino.Infrastructure.Persistence
             }
         }
     }
+    
+    
 }
