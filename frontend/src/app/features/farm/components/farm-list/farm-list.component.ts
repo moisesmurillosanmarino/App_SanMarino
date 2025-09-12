@@ -60,16 +60,10 @@ export class FarmListComponent implements OnInit {
   // Opciones dinámicas
   companyOptions: Company[] = [];
   statusOptions: string[]   = [];
+  regionOptions: string[]   = [];
 
   // Opciones “quemadas” de regional (ajusta si ya vienen de API)
-  regionOptions: Option[] = [
-    { id: 1, label: 'Centro' },
-    { id: 2, label: 'Costa' },
-    { id: 3, label: 'Occidente' },
-    { id: 4, label: 'Oriente' },
-    { id: 5, label: 'Ecuador' },
-    { id: 6, label: 'Occidente' }
-  ];
+ 
 
   // Departamento / Ciudad
   departamentos: DepartamentoDto[] = [];
@@ -102,18 +96,25 @@ export class FarmListComponent implements OnInit {
     this.loading = true;
     forkJoin({
       farms:     this.svc.getAll(),
+      //region_option_key
+      regionOptions: this.mlSvc.getByKey('region_option_key'),
       companies: this.companySvc.getAll(),
       master:    this.mlSvc.getByKey('status'),
       dptos:     this.dptoSvc.getAll()
     })
     .pipe(finalize(() => this.loading = false))
-    .subscribe(({ farms, companies, master, dptos }) => {
+    .subscribe(({ farms, companies, master, dptos,regionOptions }) => {
       this.farms          = farms;
       this.companyOptions = companies;
       this.statusOptions  = master.options;
       this.departamentos  = dptos;
+      this.regionOptions  = regionOptions.options;
     });
   }
+
+
+   
+
 
   get farmsFiltradas(): FarmDto[] {
     return this.farms.filter(f => {
@@ -193,18 +194,15 @@ export class FarmListComponent implements OnInit {
     const c = this.companyOptions.find(x => x.id === id);
     return c ? c.name : '';
   }
-  regionLabel(id: number|null): string {
-    const o = this.regionOptions.find(x => x.id === id);
-    return o ? o.label : '';
-  }
+
   departamentoNombre(id: number|null): string {
-    const d = this.departamentos.find(x => x.id === id);
-    return d ? d.nombre : '';
+    const d = this.departamentos.find(x => x.departamentoId === id);
+    return d ? d.departamentoNombre : '';
   }
   ciudadNombre(id: number|null): string {
-    const c = this.ciudades.find(x => x.id === id);
+    const c = this.ciudades.find(x => x.municipioId === id);
     // si la lista de ciudades visible no corresponde (p.e. otra granja), intenta buscar rápido
-    if (c) return c.nombre;
+    if (c) return c.municipioNombre;
     return ''; // opcional: puedes mantener un cache global si lo necesitas
   }
 }

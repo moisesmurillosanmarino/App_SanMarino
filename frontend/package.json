@@ -22,6 +22,8 @@
     "@fortawesome/angular-fontawesome": "^1.0.0",
     "@fortawesome/fontawesome-svg-core": "6.4.0",
     "@fortawesome/free-solid-svg-icons": "6.4.0",
+    "chart.js": "^4",
+    "ng2-charts": "^5",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.14.3"

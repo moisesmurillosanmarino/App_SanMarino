@@ -1,16 +1,20 @@
-<!-- src/app/features/auth/login/login.component.html -->
 <div class="login-shell min-h-screen flex items-center justify-center">
   <div class="login-card w-full max-w-md rounded-lg p-8" role="region" aria-label="Formulario de inicio de sesión">
-    <!-- Logo -->
-    <div class="flex justify-center mb-6">
-      <img
-        src="https://sanmarino.com.co/wp-content/uploads/2018/06/Logo-redes-sociales-sanmarino-03.png"
-        alt="Sanmarino Logo"
-        class="brand-logo h-16"
-        loading="eager"
-        decoding="async"
-      />
-    </div>
+
+    <!-- Logos (dos marcas con divisor) -->
+  <!-- Logo único con control de tamaño -->
+<div class="flex justify-center mb-6">
+  <div class="logo-wrap" role="img" aria-label="Logo Sanmarino Tecnología e Innovación">
+    <img
+      src="assets/brand/icono-logo.png"
+      alt="Sanmarino Tecnología e Innovación"
+      class="logo-img"
+      loading="eager"
+      decoding="async"
+    />
+  </div>
+</div>
+
 
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="space-y-4" novalidate>
       <!-- Error global -->
@@ -74,6 +78,13 @@
       >
         {{ loading ? 'Ingresando…' : 'Entrar' }}
       </button>
+     
+        <img
+          src="assets/brand/italcol-blanco.png"
+          class="logo-img-accent "
+          loading="eager"
+          decoding="async"
+        />
     </form>
   </div>
 </div>

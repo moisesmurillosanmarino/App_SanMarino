@@ -17,7 +17,7 @@
           <label for="filtro-regional" class="ux-label">Regional</label>
           <select id="filtro-regional" class="ux-input" [(ngModel)]="filtroRegionalId">
             <option [ngValue]="null">Todas</option>
-            <option *ngFor="let r of regionOptions" [ngValue]="r.id">{{ r.label }}</option>
+            <option *ngFor="let r of regionOptions" [ngValue]="r">{{ r }}</option>
           </select>
         </div>
 
@@ -79,7 +79,7 @@
               <td>{{ f.id }}</td>
               <td>{{ companyName(f.companyId) }}</td>
               <td class="font-medium text-slate-800">{{ f.name }}</td>
-              <td>{{ regionLabel(f.regionalId) }}</td>
+              <td>{{ f.regionalId }}</td>
               <td>{{ f.status }}</td>
               <td>{{ departamentoNombre(f.departamentoId) }}</td>
               <td>{{ ciudadNombre(f.ciudadId) }}</td>
@@ -157,7 +157,7 @@
           <label class="ux-label">Regional <span class="req">*</span></label>
           <select formControlName="regionalId" class="ux-input">
             <option value="">Seleccione…</option>
-            <option *ngFor="let r of regionOptions" [value]="r.id">{{ r.label }}</option>
+            <option *ngFor="let r of regionOptions" [value]="r">{{ r }}</option>
           </select>
         </div>
 
@@ -175,7 +175,7 @@
           <label class="ux-label">Departamento <span class="req">*</span></label>
           <select formControlName="departamentoId" class="ux-input" (change)="onDepartamentoChange()">
             <option value="">Seleccione…</option>
-            <option *ngFor="let d of departamentos" [value]="d.id">{{ d.nombre }}</option>
+            <option *ngFor="let d of departamentos" [value]="d.departamentoId">{{ d.departamentoNombre }}</option>
           </select>
         </div>
 
@@ -184,7 +184,7 @@
           <label class="ux-label">Ciudad <span class="req">*</span></label>
           <select formControlName="ciudadId" class="ux-input">
             <option value="">Seleccione…</option>
-            <option *ngFor="let c of ciudades" [value]="c.id">{{ c.nombre }}</option>
+            <option *ngFor="let c of ciudades" [value]="c.municipioId">{{ c.municipioNombre }}</option>
           </select>
         </div>
       </div>

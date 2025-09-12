@@ -5,8 +5,9 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 
 export interface DepartamentoDto {
-  id: number;
-  nombre: string;
+  departamentoId: number;
+  departamentoNombre: string;
+  paisId: any ;
 }
 
 @Injectable({ providedIn: 'root' })

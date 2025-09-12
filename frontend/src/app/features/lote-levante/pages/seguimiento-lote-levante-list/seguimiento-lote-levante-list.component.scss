@@ -583,3 +583,13 @@
 :host #tab-hembras:checked + label.ux-tab  { background: var(--white); color: var(--brand-red); transform: translateY(1px); }
 :host #tab-machos:checked  + label.ux-tab  { background: var(--white); color: var(--brand-red); transform: translateY(1px); }
 :host #tab-opcional:checked + label.ux-tab { background: var(--white); color: var(--brand-red); transform: translateY(1px); }
+
+
+
+/* estilos mínimos sugeridos */
+.ux-tablist { display:flex; gap:.5rem; margin-bottom:.5rem; }
+.ux-tab-btn[aria-selected="true"] { font-weight:600; border-bottom:2px solid currentColor; }
+.ux-tab-btn:disabled { opacity:.5; cursor:not-allowed; }
+
+
+

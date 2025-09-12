@@ -1,13 +1,11 @@
-// src/app/features/lote-levante/services/seguimiento-lote-levante.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 
-
 export interface SeguimientoLoteLevanteDto {
   id: number;
-  fechaRegistro: string;
+  fechaRegistro: string;          // ISO
   loteId: string;
 
   mortalidadHembras: number;
@@ -20,7 +18,7 @@ export interface SeguimientoLoteLevanteDto {
   tipoAlimento: string;
   consumoKgHembras: number;
 
-  // ↓ NUEVOS (opcionales)
+  // Opcionales nuevos
   consumoKgMachos?: number | null;
   pesoPromH?: number | null;
   pesoPromM?: number | null;
@@ -34,11 +32,13 @@ export interface SeguimientoLoteLevanteDto {
   protAlH?: number | null;
   kcalAveH?: number | null;
   protAveH?: number | null;
-  ciclo: string;
+  ciclo: string;                  // "Normal" | "Reforzado"
+  tipoAlimentoHembras?: number | null; // (calculo interno, no se envía en create/update)
+  tipoAlimentoMachos?: number | null;  // (calculo interno, no se envía en create/update)
 }
 
 export interface CreateSeguimientoLoteLevanteDto {
-  fechaRegistro: string;
+  fechaRegistro: string;          // ISO
   loteId: string;
 
   mortalidadHembras: number;
@@ -51,7 +51,7 @@ export interface CreateSeguimientoLoteLevanteDto {
   tipoAlimento: string;
   consumoKgHembras: number;
 
-  // ↓ NUEVOS (opcionales)
+  // Opcionales nuevos
   consumoKgMachos?: number | null;
   pesoPromH?: number | null;
   pesoPromM?: number | null;
@@ -66,37 +66,68 @@ export interface CreateSeguimientoLoteLevanteDto {
   kcalAveH?: number | null;
   protAveH?: number | null;
   ciclo: string;
+  tipoAlimentoHembras?: number | null; // (calculo interno, no se envía en create/update)
+  tipoAlimentoMachos?: number | null;  // (calculo interno, no se envía en create/update)
 }
-
-
 
 export interface UpdateSeguimientoLoteLevanteDto extends CreateSeguimientoLoteLevanteDto {
   id: number;
 }
 
+export interface ResultadoLevanteItemDto {
+  fecha: string;            // "2025-09-08T00:00:00"
+  edadSemana: number | null;
+
+  hembraViva: number | null;
+  mortH: number; selH: number; errH: number;
+  consKgH: number | null; pesoH: number | null; unifH: number | null; cvH: number | null;
+  mortHPct: number | null; selHPct: number | null; errHPct: number | null;
+  msEhH: number | null; acMortH: number | null; acSelH: number | null; acErrH: number | null;
+  acConsKgH: number | null; consAcGrH: number | null; grAveDiaH: number | null;
+  difConsHPct: number | null; difPesoHPct: number | null; retiroHPct: number | null; retiroHAcPct: number | null;
+
+  machoVivo: number | null;
+  mortM: number; selM: number; errM: number;
+  consKgM: number | null; pesoM: number | null; unifM: number | null; cvM: number | null;
+  mortMPct: number | null; selMPct: number | null; errMPct: number | null;
+  msEmM: number | null; acMortM: number | null; acSelM: number | null; acErrM: number | null;
+  acConsKgM: number | null; consAcGrM: number | null; grAveDiaM: number | null;
+  difConsMPct: number | null; difPesoMPct: number | null; retiroMPct: number | null; retiroMAcPct: number | null;
+
+  relMHPct: number | null;
+
+  pesoHGuia: number | null; unifHGuia: number | null; consAcGrHGuia: number | null; grAveDiaHGuia: number | null; mortHPctGuia: number | null;
+  pesoMGuia: number | null; unifMGuia: number | null; consAcGrMGuia: number | null; grAveDiaMGuia: number | null; mortMPctGuia: number | null;
+  alimentoHGuia: string | null; alimentoMGuia: string | null;
+}
+
+export interface ResultadoLevanteResponse {
+  loteId: string;
+  desde: string | null;
+  hasta: string | null;
+  total: number;
+  items: ResultadoLevanteItemDto[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class SeguimientoLoteLevanteService {
-  /**
-   * Nota: environment.apiUrl debe incluir `/api` (p.ej. http://localhost:5002/api)
-   */
+  /** Nota: environment.apiUrl debe incluir `/api` (ej: http://localhost:5002/api) */
   private readonly baseUrl = `${environment.apiUrl}/SeguimientoLoteLevante`;
 
   constructor(private http: HttpClient) {}
 
-  /** NUEVO: GET todo (usa /filtro sin parámetros) */
+  /** GET general usando el endpoint de filtro sin parámetros */
   getAll(): Observable<SeguimientoLoteLevanteDto[]> {
     return this.http.get<SeguimientoLoteLevanteDto[]>(`${this.baseUrl}/filtro`);
   }
 
   /**
-   * Polyfill: obtener por id (el backend no expone GET /{id}).
-   * Se trae todo y filtra en cliente.
-   * Sugerencia: si quieres, añadimos en el back:
-   *   [HttpGet("{id}")] public async Task<IActionResult> GetById(int id) { ... }
+   * Polyfill de GetById: trae todo y filtra.
+   * (Si el backend agrega GET /{id}, cámbialo por una llamada directa.)
    */
   getById(id: number): Observable<SeguimientoLoteLevanteDto> {
     return this.getAll().pipe(
-      map((list) => {
+      map(list => {
         const found = (list ?? []).find(x => x.id === id);
         if (!found) throw new Error(`Seguimiento ${id} no encontrado`);
         return found;
@@ -104,20 +135,20 @@ export class SeguimientoLoteLevanteService {
     );
   }
 
-  /** GET por lote */
+  /** GET por LoteId */
   getByLoteId(loteId: string): Observable<SeguimientoLoteLevanteDto[]> {
     return this.http.get<SeguimientoLoteLevanteDto[]>(
       `${this.baseUrl}/por-lote/${encodeURIComponent(loteId)}`
     );
   }
 
-  /** GET filtro opcional (loteId, desde, hasta) */
+  /** Filtro (loteId, desde, hasta) en ISO */
   filter(params: { loteId?: string; desde?: string | Date; hasta?: string | Date }): Observable<SeguimientoLoteLevanteDto[]> {
-    let httpParams = new HttpParams();
-    if (params.loteId) httpParams = httpParams.set('loteId', params.loteId);
-    if (params.desde)  httpParams = httpParams.set('desde', this.toIsoDate(params.desde));
-    if (params.hasta)  httpParams = httpParams.set('hasta', this.toIsoDate(params.hasta));
-    return this.http.get<SeguimientoLoteLevanteDto[]>(`${this.baseUrl}/filtro`, { params: httpParams });
+    let hp = new HttpParams();
+    if (params.loteId) hp = hp.set('loteId', params.loteId);
+    if (params.desde)  hp = hp.set('desde', this.toIso(params.desde));
+    if (params.hasta)  hp = hp.set('hasta', this.toIso(params.hasta));
+    return this.http.get<SeguimientoLoteLevanteDto[]>(`${this.baseUrl}/filtro`, { params: hp });
   }
 
   /** Crear */
@@ -136,8 +167,26 @@ export class SeguimientoLoteLevanteService {
   }
 
   // Helpers
-  private toIsoDate(d: string | Date): string {
+  private toIso(d: string | Date): string {
     const dd = typeof d === 'string' ? new Date(d) : d;
     return dd.toISOString();
+    // Si el back requiriera fecha sin hora: return dd.toISOString().substring(0, 10);
   }
+
+  getResultado(params: {
+    loteId: string;
+    desde?: string | Date;
+    hasta?: string | Date;
+    recalcular?: boolean;     // default true
+  }): Observable<ResultadoLevanteResponse> {
+    const { loteId } = params;
+    let hp = new HttpParams()
+      .set('recalcular', String(params.recalcular ?? true));
+    if (params.desde) hp = hp.set('desde', this.toIso(params.desde));
+    if (params.hasta) hp = hp.set('hasta', this.toIso(params.hasta));
+    const url = `${this.baseUrl}/por-lote/${encodeURIComponent(loteId)}/resultado`;
+    return this.http.get<ResultadoLevanteResponse>(url, { params: hp });
+  }
+
+ 
 }
