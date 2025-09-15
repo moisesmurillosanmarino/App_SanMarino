@@ -1,17 +1,10 @@
 <div class="flex h-screen">
-  <app-sidebar class="w-64"></app-sidebar>
+  <div class="flex" [class.h-screen]="!embedded">
+  <!-- cuando embedded=true, no fuerzas h-screen ni repites sidebar -->
+</div>
+
 
   <div class="main-content" [attr.aria-busy]="loading ? 'true' : null">
-    <!-- Header -->
-    <div class="header">
-      <div class="header__title">
-        <h1>Gestión de Núcleos</h1>
-      </div>
-      <button class="btn-primary" (click)="openModal()">
-        <fa-icon [icon]="faPlus" class="mr-2" aria-hidden="true"></fa-icon>
-        Nuevo Núcleo
-      </button>
-    </div>
 
     <!-- Filtros (Compañía / Granja / Texto) -->
     <div class="ux-card p-4 mb-4">
@@ -66,6 +59,12 @@
         <div class="lg:col-span-1">
           <button class="btn-ghost w-full" (click)="resetFilters()">Limpiar</button>
         </div>
+        <div class="lg:col-span-1">
+        <button class="btn-primary  " (click)="openModal()">
+          <fa-icon [icon]="faPlus" class="mr-2" aria-hidden="true"></fa-icon>
+          Nuevo Núcleo
+        </button>
+      </div>
       </div>
     </div>
 

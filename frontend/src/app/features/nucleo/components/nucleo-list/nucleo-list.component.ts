@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit,Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   ReactiveFormsModule,
@@ -21,6 +21,8 @@ import {
 import { FarmService, FarmDto } from '../../../farm/services/farm.service';
 import { Company, CompanyService } from '../../../../core/services/company/company.service';
 
+
+
 @Component({
   selector: 'app-nucleo-list',
   standalone: true,
@@ -38,6 +40,7 @@ export class NucleoListComponent implements OnInit {
   faPlus  = faPlus;
   faPen   = faPen;
   faTrash = faTrash;
+  @Input() embedded = false;
 
   // Filtros
   filtro: string = '';

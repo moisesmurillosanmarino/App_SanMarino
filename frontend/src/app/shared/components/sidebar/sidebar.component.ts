@@ -64,12 +64,8 @@ export class SidebarComponent {
 
     // Elementos fuera de configuración
     { label: 'Granjas',   icon: this.faBuilding,  link: ['/config','farms-list'] },
-    { label: 'Núcleos',   icon: this.faWarehouse, link: ['/config','nucleos'] },
-    { label: 'Galpones',  icon: this.faWarehouse, link: ['/config','galpones'] },
     { label: 'Lotes',     icon: this.faBoxesAlt,  link: ['/config','lotes'] },
-    { label: 'Crear lote Reproductora', icon: this.faBoxesAlt, link: ['/daily-log','reproductora'] },
-      // 👇 Nuevo: Inventario
-    { label: 'Inventario',             icon: this.faWarehouse, link: ['/config','inventario'] },
+  
     {
       label: 'Registros Diarios',
       icon: this.faCalendarDay,
@@ -80,6 +76,7 @@ export class SidebarComponent {
        { label: 'Seguimiento Diario Lote Reproductora', icon: this.faBoxesAlt, link: ['/daily-log','seguimiento-diario-lote-reproductora'] } 
       ]
     },
+     { label: 'Inventario',             icon: this.faWarehouse, link: ['/config','inventario'] },
 
     {
       label: 'Configuración',

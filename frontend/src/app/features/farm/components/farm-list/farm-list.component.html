@@ -2,124 +2,187 @@
 <div class="flex h-screen">
   <app-sidebar class="w-64"></app-sidebar>
 
-  <!-- Contenedor con scroll SOLO para el contenido; el modal va FUERA de este div -->
+  <!-- Contenido -->
   <div class="flex-1 p-6 overflow-auto ux-page" [attr.aria-busy]="loading ? 'true' : null">
-    <!-- Tabs -->
-    <div class="ux-tabs mb-4">
-      <button class="ux-tab active" type="button">Listado de Granjas</button>
+
+    <!-- Tabs locales (sin router) -->
+    <div class="ux-tabs mb-4" role="tablist" aria-label="Módulos relacionados">
+      <button
+        id="tab-granjas"
+        type="button"
+        class="ux-tab"
+        role="tab"
+        [class.active]="activeTab === 'granjas'"
+        (click)="activeTab = 'granjas'"
+        [attr.aria-selected]="activeTab === 'granjas' ? 'true' : 'false'"
+        [attr.tabindex]="activeTab === 'granjas' ? '0' : '-1'"
+        aria-controls="panel-granjas"
+      >
+        Granjas
+      </button>
+
+      <button
+        id="tab-nucleos"
+        type="button"
+        class="ux-tab"
+        role="tab"
+        [class.active]="activeTab === 'nucleos'"
+        (click)="activeTab = 'nucleos'"
+        [attr.aria-selected]="activeTab === 'nucleos' ? 'true' : 'false'"
+        [attr.tabindex]="activeTab === 'nucleos' ? '0' : '-1'"
+        aria-controls="panel-nucleos"
+      >
+        Núcleos
+      </button>
+
+      <button
+        id="tab-galpones"
+        type="button"
+        class="ux-tab"
+        role="tab"
+        [class.active]="activeTab === 'galpones'"
+        (click)="activeTab = 'galpones'"
+        [attr.aria-selected]="activeTab === 'galpones' ? 'true' : 'false'"
+        [attr.tabindex]="activeTab === 'galpones' ? '0' : '-1'"
+        aria-controls="panel-galpones"
+      >
+        Galpones
+      </button>
     </div>
 
-    <!-- Barra de acciones / Filtros -->
-    <div class="ux-card mb-4">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-3 p-4">
-        <!-- Filtro por Regional -->
-        <div>
-          <label for="filtro-regional" class="ux-label">Regional</label>
-          <select id="filtro-regional" class="ux-input" [(ngModel)]="filtroRegionalId">
-            <option [ngValue]="null">Todas</option>
-            <option *ngFor="let r of regionOptions" [ngValue]="r">{{ r }}</option>
-          </select>
-        </div>
+    <!-- ========= PESTAÑA: GRANJAS ========= -->
+    <section
+      id="panel-granjas"
+      role="tabpanel"
+      aria-labelledby="tab-granjas"
+      *ngIf="activeTab === 'granjas'"
+    >
+      <!-- Filtros -->
+      <div class="ux-card mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3 p-4">
+          <div>
+            <label for="filtro-regional" class="ux-label">Regional</label>
+            <select id="filtro-regional" class="ux-input" [(ngModel)]="filtroRegionalId">
+              <option [ngValue]="null">Todas</option>
+              <option *ngFor="let r of regionOptions" [ngValue]="r.id">{{ r.label }}</option>
+            </select>
+          </div>
 
-        <!-- Filtro por Nombre de Granja -->
-        <div>
-          <label for="filtro-nombre" class="ux-label">Nombre de la granja</label>
-          <div class="ux-input-icon">
-            <fa-icon [icon]="['fas','magnifying-glass']" aria-hidden="true"></fa-icon>
-            <input
-              id="filtro-nombre"
-              class="ux-input"
-              type="text"
-              [(ngModel)]="filtroNombre"
-              placeholder="Ej: Granja San Pedro"
-            />
+          <div>
+            <label for="filtro-nombre" class="ux-label">Nombre de la granja</label>
+            <div class="ux-input-icon">
+              <fa-icon [icon]="['fas','magnifying-glass']" aria-hidden="true"></fa-icon>
+              <input
+                id="filtro-nombre"
+                class="ux-input"
+                type="text"
+                [(ngModel)]="filtroNombre"
+                placeholder="Ej: Granja San Pedro"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label for="filtro-estado" class="ux-label">Estado</label>
+            <select id="filtro-estado" class="ux-input" [(ngModel)]="filtroEstado">
+              <option [ngValue]="''">Todos</option>
+              <option *ngFor="let s of statusOptions" [ngValue]="s">{{ s }}</option>
+            </select>
+          </div>
+
+          <div class="flex items-end justify-end">
+            <button (click)="openModal()" class="btn-primary w-full md:w-auto">
+              <fa-icon [icon]="faPlus" class="mr-2" aria-hidden="true"></fa-icon>
+              Nueva Granja
+            </button>
           </div>
         </div>
+      </div>
 
-        <!-- Filtro por Estado -->
-        <div>
-          <label for="filtro-estado" class="ux-label">Estado</label>
-          <select id="filtro-estado" class="ux-input" [(ngModel)]="filtroEstado">
-            <option [ngValue]="''">Todos</option>
-            <option *ngFor="let s of statusOptions" [ngValue]="s">{{ s }}</option>
-          </select>
+      <!-- Tabla -->
+      <div class="ux-card">
+        <div class="ux-scroll">
+          <table class="ux-table">
+            <caption class="sr-only">Listado de granjas</caption>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Compañía</th>
+                <th>Nombre</th>
+                <th>Regional</th>
+                <th>Estado</th>
+                <th>Departamento</th>
+                <th>Ciudad</th>
+                <th class="text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let f of farmsFiltradas; trackBy: trackByFarm" class="ux-row">
+                <td>{{ f.id }}</td>
+                <td>{{ companyName(f.companyId) }}</td>
+                <td class="font-medium text-slate-800">{{ f.name }}</td>
+                <td>{{ regionalLabel(f.regionalId) }}</td>
+                <td>{{ f.status }}</td>
+                <td>{{ departamentoNombre(f.departamentoId) }}</td>
+                <td>{{ ciudadNombre(f.ciudadId) }}</td>
+                <td class="text-center">
+                  <div class="inline-flex items-center gap-2">
+                    <button type="button" (click)="openModal(f)" class="icon-btn" title="Editar">
+                      <fa-icon [icon]="faPen" aria-hidden="true"></fa-icon>
+                    </button>
+                    <button type="button" (click)="delete(f.id)" class="icon-btn danger" title="Eliminar">
+                      <fa-icon [icon]="faTrash" aria-hidden="true"></fa-icon>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+
+              <tr *ngIf="farmsFiltradas.length === 0">
+                <td colspan="8" class="empty-state">
+                  <div class="empty-illustration">🫥</div>
+                  <p>No hay granjas para mostrar.</p>
+                  <button (click)="openModal()" class="btn-secondary mt-2">
+                    <fa-icon [icon]="faPlus" class="mr-2" aria-hidden="true"></fa-icon>
+                    Crear la primera
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
-        <!-- CTA -->
-        <div class="flex items-end justify-end">
-          <button (click)="openModal()" class="btn-primary w-full md:w-auto">
-            <fa-icon [icon]="faPlus" class="mr-2" aria-hidden="true"></fa-icon>
-            Nueva Granja
-          </button>
+        <div *ngIf="loading" class="loading-overlay" aria-live="polite">
+          <div class="spinner"></div>
+          Cargando…
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Tabla -->
-    <div class="ux-card">
-      <div class="ux-scroll">
-        <table class="ux-table">
-          <caption class="sr-only">Listado de granjas</caption>
+    <!-- ========= PESTAÑA: NÚCLEOS ========= -->
+    <section
+      id="panel-nucleos"
+      role="tabpanel"
+      aria-labelledby="tab-nucleos"
+      *ngIf="activeTab === 'nucleos'"
+    >
+      <!-- Incrustación directa. Pasa embedded=true para ocultar su sidebar. -->
+      <app-nucleo-list [embedded]="true"></app-nucleo-list>
+    </section>
 
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Compañía</th>
-              <th>Nombre</th>
-              <th>Regional</th>
-              <th>Estado</th>
-              <th>Departamento</th>
-              <th>Ciudad</th>
-              <th class="text-center">Acciones</th>
-            </tr>
-          </thead>
+    <!-- ========= PESTAÑA: GALPONES ========= -->
+    <section
+      id="panel-galpones"
+      role="tabpanel"
+      aria-labelledby="tab-galpones"
+      *ngIf="activeTab === 'galpones'"
+    >
+      <app-galpon-list [embedded]="true"></app-galpon-list>
+    </section>
 
-          <tbody>
-            <tr *ngFor="let f of farmsFiltradas" class="ux-row">
-              <td>{{ f.id }}</td>
-              <td>{{ companyName(f.companyId) }}</td>
-              <td class="font-medium text-slate-800">{{ f.name }}</td>
-              <td>{{ f.regionalId }}</td>
-              <td>{{ f.status }}</td>
-              <td>{{ departamentoNombre(f.departamentoId) }}</td>
-              <td>{{ ciudadNombre(f.ciudadId) }}</td>
-              <td class="text-center">
-                <div class="inline-flex items-center gap-2">
-                  <button type="button" (click)="openModal(f)" class="icon-btn" title="Editar">
-                    <fa-icon [icon]="faPen" aria-hidden="true"></fa-icon>
-                  </button>
-                  <button type="button" (click)="delete(f.id)" class="icon-btn danger" title="Eliminar">
-                    <fa-icon [icon]="faTrash" aria-hidden="true"></fa-icon>
-                  </button>
-                </div>
-              </td>
-            </tr>
-
-            <!-- vacío -->
-            <tr *ngIf="farmsFiltradas.length === 0">
-              <td colspan="8" class="empty-state">
-                <div class="empty-illustration">🫥</div>
-                <p>No hay granjas para mostrar.</p>
-                <button (click)="openModal()" class="btn-secondary mt-2">
-                  <fa-icon [icon]="faPlus" class="mr-2" aria-hidden="true"></fa-icon>
-                  Crear la primera
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Overlay de carga (opcional) -->
-      <div *ngIf="loading" class="loading-overlay" aria-live="polite">
-        <div class="spinner"></div>
-        Cargando…
-      </div>
-    </div>
   </div>
 </div>
 
-<!-- Modal SIEMPRE fuera del contenedor con overflow -->
+<!-- Modal fuera del scroll -->
 <div
   *ngIf="modalOpen"
   class="ux-modal"
@@ -135,56 +198,76 @@
       <button type="button" (click)="modalOpen = false" class="btn-muted" aria-label="Cerrar">Cerrar</button>
     </div>
 
+    <!-- Atajos dentro del modal (sin router) -->
+    <nav class="ux-tabs mb-4" role="tablist" aria-label="Atajos de módulos">
+      <button
+        type="button"
+        class="ux-tab"
+        [class.active]="activeTab === 'granjas'"
+        (click)="activeTab = 'granjas'"
+      >
+        Granja
+      </button>
+      <button
+        type="button"
+        class="ux-tab"
+        (click)="activeTab = 'nucleos'; modalOpen = false"
+      >
+        Núcleos
+      </button>
+      <button
+        type="button"
+        class="ux-tab"
+        (click)="activeTab = 'galpones'; modalOpen = false"
+      >
+        Galpones
+      </button>
+    </nav>
+
     <form [formGroup]="form" (ngSubmit)="save()" class="grid grid-cols-1 gap-4" novalidate>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Nombre -->
         <div>
           <label class="ux-label">Nombre <span class="req">*</span></label>
           <input formControlName="name" class="ux-input" />
         </div>
 
-        <!-- Compañía -->
         <div>
           <label class="ux-label">Compañía <span class="req">*</span></label>
           <select formControlName="companyId" class="ux-input">
-            <option value="">Seleccione…</option>
-            <option *ngFor="let c of companyOptions" [value]="c.id">{{ c.name }}</option>
+            <option [ngValue]="null">Seleccione…</option>
+            <option *ngFor="let c of companyOptions" [ngValue]="c.id">{{ c.name }}</option>
           </select>
         </div>
 
-        <!-- Regional -->
         <div>
           <label class="ux-label">Regional <span class="req">*</span></label>
           <select formControlName="regionalId" class="ux-input">
-            <option value="">Seleccione…</option>
-            <option *ngFor="let r of regionOptions" [value]="r">{{ r }}</option>
+            <option [ngValue]="null">Seleccione…</option>
+            <option *ngFor="let r of regionOptions" [ngValue]="r.id">{{ r.label }}</option>
           </select>
         </div>
 
-        <!-- Estado -->
         <div>
           <label class="ux-label">Estado <span class="req">*</span></label>
           <select formControlName="status" class="ux-input">
-            <option value="">Seleccione…</option>
-            <option *ngFor="let s of statusOptions" [value]="s">{{ s }}</option>
+            <option [ngValue]="''">Seleccione…</option>
+            <option *ngFor="let s of statusOptions" [ngValue]="s">{{ s }}</option>
           </select>
         </div>
 
-        <!-- Departamento -->
         <div>
           <label class="ux-label">Departamento <span class="req">*</span></label>
           <select formControlName="departamentoId" class="ux-input" (change)="onDepartamentoChange()">
-            <option value="">Seleccione…</option>
-            <option *ngFor="let d of departamentos" [value]="d.departamentoId">{{ d.departamentoNombre }}</option>
+            <option [ngValue]="null">Seleccione…</option>
+            <option *ngFor="let d of departamentos" [ngValue]="d.departamentoId">{{ d.departamentoNombre }}</option>
           </select>
         </div>
 
-        <!-- Ciudad -->
         <div>
           <label class="ux-label">Ciudad <span class="req">*</span></label>
           <select formControlName="ciudadId" class="ux-input">
-            <option value="">Seleccione…</option>
-            <option *ngFor="let c of ciudades" [value]="c.municipioId">{{ c.municipioNombre }}</option>
+            <option [ngValue]="null">Seleccione…</option>
+            <option *ngFor="let c of ciudades" [ngValue]="c.municipioId">{{ c.municipioNombre }}</option>
           </select>
         </div>
       </div>

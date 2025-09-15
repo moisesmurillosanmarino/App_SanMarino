@@ -1,5 +1,5 @@
 // src/app/features/galpon/pages/galpon-list/galpon-list.component.ts
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit,Input  } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormsModule
@@ -28,6 +28,7 @@ interface NucleoOption { id: string; label: string; granjaId: number; }
   styleUrls: ['./galpon-list.component.scss']
 })
 export class GalponListComponent implements OnInit {
+    @Input() embedded = false;
   // Iconos
   faPlus = faPlus; faPen = faPen; faTrash = faTrash; faEye = faEye;
 

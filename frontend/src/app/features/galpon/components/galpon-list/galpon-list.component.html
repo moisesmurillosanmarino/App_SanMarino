@@ -1,6 +1,8 @@
 <!-- src/app/features/galpon/pages/galpon-list/galpon-list.component.html -->
 <div class="flex h-screen" [attr.aria-busy]="loading ? 'true' : null">
-  <app-sidebar class="w-64"></app-sidebar>
+    <div class="flex" [class.h-screen]="!embedded">
+ 
+</div>
 
   <div class="flex-1 p-6 bg-warm-gray-100 overflow-auto ux-page">
     <!-- Header -->
