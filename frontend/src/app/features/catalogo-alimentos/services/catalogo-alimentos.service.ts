@@ -1,4 +1,4 @@
-//apps/features/catalogo-alimentos/services/catalogo-alimentos.service.ts
+// apps/features/catalogo-alimentos/services/catalogo-alimentos.service.ts
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -11,11 +11,19 @@ export interface PagedResult<T> {
   pageSize: number;
 }
 
+export type CatalogItemType =
+  | 'alimento'
+  | 'medicamento'
+  | 'accesorio'
+  | 'biologico'
+  | 'consumible'
+  | 'otro';
+
 export interface CatalogItemDto {
   id?: number;
   codigo: string;
   nombre: string;
-  metadata?: any;
+  metadata?: any;   // aquí vive type_item, especie, raza, genero y otros
   activo: boolean;
 }
 
@@ -34,7 +42,7 @@ export interface CatalogItemUpdateRequest {
 
 @Injectable({ providedIn: 'root' })
 export class CatalogoAlimentosService {
-  private readonly baseUrl = `${environment.apiUrl}/catalogo-alimentos`;
+  private readonly baseUrl = `${environment.apiUrl}/catalogo-alimentos`; // mismo endpoint, compatible
 
   constructor(private http: HttpClient) {}
 

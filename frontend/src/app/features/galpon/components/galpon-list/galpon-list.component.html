@@ -1,16 +1,13 @@
 <!-- src/app/features/galpon/pages/galpon-list/galpon-list.component.html -->
 <div class="flex h-screen" [attr.aria-busy]="loading ? 'true' : null">
     <div class="flex" [class.h-screen]="!embedded">
- 
+
 </div>
 
   <div class="flex-1 p-6 bg-warm-gray-100 overflow-auto ux-page">
     <!-- Header -->
     <div class="ux-header">
-      <div class="ux-header__title">
-        <h1 class="ux-title">Gestión de Galpones</h1>
-        <p class="ux-subtitle">Administra galpones por núcleo, granja y empresa.</p>
-      </div>
+
       <button (click)="openModal()" class="btn-primary">
         <fa-icon [icon]="faPlus" aria-hidden="true"></fa-icon>
         <span>Nuevo Galpón</span>

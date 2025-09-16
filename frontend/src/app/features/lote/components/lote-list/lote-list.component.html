@@ -1,14 +1,9 @@
 <!-- src/app/features/lote/pages/lote-list/lote-list.component.html -->
 <div class="flex h-screen" [attr.aria-busy]="loading ? 'true' : null">
-  <app-sidebar class="w-64"></app-sidebar>
 
   <div class="flex-1 p-6 bg-warm-gray-100 overflow-auto ux-page">
     <!-- Header -->
     <div class="ux-header">
-      <div class="ux-header__title">
-        <h1 class="ux-title">Gestión de Lotes</h1>
-        <p class="ux-subtitle">Crea, edita y consulta lotes por galpón, núcleo y granja.</p>
-      </div>
       <button (click)="openModal()" class="btn-primary">
         <fa-icon [icon]="faPlus" aria-hidden="true"></fa-icon>
         <span>Nuevo Lote</span>

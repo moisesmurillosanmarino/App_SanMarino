@@ -63,9 +63,11 @@ export class SidebarComponent {
     { label: 'Dashboard', icon: this.faTachometerAlt, link: ['/dashboard'] },
 
     // Elementos fuera de configuración
-    { label: 'Granjas',   icon: this.faBuilding,  link: ['/config','farms-list'] },
-    { label: 'Lotes',     icon: this.faBoxesAlt,  link: ['/config','lotes'] },
-  
+    // Después (apunta al contenedor con tabs)
+    { label: 'Gestion de Granjas',   icon: this.faBuilding,  link: ['/config','farm-management'] },
+    { label: 'Gestion de Lotes',   icon: this.faBuilding,  link: ['/config','lote-management'] },
+    //{ label: 'Lotes',     icon: this.faBoxesAlt,  link: ['/config','lotes'] },
+
     {
       label: 'Registros Diarios',
       icon: this.faCalendarDay,
@@ -73,10 +75,10 @@ export class SidebarComponent {
       children: [
         { label: 'Seguimiento Diario de Levante',    icon: this.faBoxesAlt, link: ['/daily-log','seguimiento'] },
         { label: 'Seguimiento Diario de Producción', icon: this.faBoxesAlt, link: ['/daily-log','produccion'] },
-       { label: 'Seguimiento Diario Lote Reproductora', icon: this.faBoxesAlt, link: ['/daily-log','seguimiento-diario-lote-reproductora'] } 
+       { label: 'Seguimiento Diario Lote Reproductora', icon: this.faBoxesAlt, link: ['/daily-log','seguimiento-diario-lote-reproductora'] }
       ]
     },
-     { label: 'Inventario',             icon: this.faWarehouse, link: ['/config','inventario'] },
+     { label: 'Gestion de Inventario',             icon: this.faWarehouse, link: ['/config','inventario-management'] },
 
     {
       label: 'Configuración',
@@ -89,7 +91,7 @@ export class SidebarComponent {
         { label: 'Empresas',               icon: this.faBuilding, link: ['/config','companies'] },
         { label: 'Catálogo de alimentos',  icon: this.faList,     link: ['/config','catalogo-alimentos'] }
 
-      
+
       ]
     }
   ];

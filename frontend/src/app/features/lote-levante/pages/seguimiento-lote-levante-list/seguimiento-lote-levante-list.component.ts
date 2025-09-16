@@ -1,12 +1,11 @@
+// src/app/features/lote-levante/pages/seguimiento-lote-levante-list/seguimiento-lote-levante-list.component.ts
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { finalize } from 'rxjs/operators';
 
-
 import { SidebarComponent } from '../../../../shared/components/sidebar/sidebar.component';
 
-// Servicios de dominio
 import { LoteService, LoteDto, LoteMortalidadResumenDto } from '../../../lote/services/lote.service';
 import {
   SeguimientoLoteLevanteService,
@@ -18,6 +17,17 @@ import { FarmService, FarmDto } from '../../../farm/services/farm.service';
 import { NucleoService, NucleoDto } from '../../services/nucleo.service';
 import { SeguimientoCalculosComponent } from "../../seguimiento-calculos/seguimiento-calculos.component";
 
+type Sexo = 'H' | 'M' | 'A';  // H = hembras, M = machos, A = ambos
+type Raza = 'RA' | 'ITAL' | 'PAVA' | 'GENERICA';
+
+interface AlimentoOpt {
+  id: string;        // código o slug interno
+  nombre: string;    // etiqueta a mostrar
+  sexo: Sexo;        // a quién aplica
+  raza: Raza;        // línea/raza para filtrados futuros
+  activo?: boolean;  // por si luego quieres desactivar alguno
+}
+
 @Component({
   selector: 'app-seguimiento-lote-levante-list',
   standalone: true,
@@ -28,6 +38,58 @@ import { SeguimientoCalculosComponent } from "../../seguimiento-calculos/seguimi
 export class SeguimientoLoteLevanteListComponent implements OnInit {
   // ================== constantes / sentinelas ==================
   readonly SIN_GALPON = '__SIN_GALPON__';
+
+  // ================== CATÁLOGO LOCAL: Alimentos ==================
+  // Notas:
+  // - sexo: 'H' hembras, 'M' machos, 'A' ambos
+  // - raza: tomada del screenshot/convención. Si no hubo dato claro, se usa 'GENERICA'.
+  // - Puedes extender libremente esta lista o moverla a un servicio cuando tengas API.
+  readonly alimentos: AlimentoOpt[] = [
+    // ====== Genéricos de levante/producción (ambos) ======
+    { id: 'preiniciador',           nombre: 'Preiniciador',             sexo: 'A', raza: 'GENERICA' },
+    { id: 'iniciador-h',            nombre: 'Iniciador H',              sexo: 'H', raza: 'GENERICA' },
+    { id: 'iniciador-m',            nombre: 'Iniciador M',              sexo: 'M', raza: 'GENERICA' },
+    { id: 'crecimiento',            nombre: 'Crecimiento',              sexo: 'A', raza: 'GENERICA' },
+    { id: 'desarrollo-h',           nombre: 'Desarrollo H',             sexo: 'H', raza: 'GENERICA' },
+    { id: 'desarrollo-m',           nombre: 'Desarrollo M',             sexo: 'M', raza: 'GENERICA' },
+    { id: 'prepostura-h',           nombre: 'Prepostura H',             sexo: 'H', raza: 'GENERICA' },
+    { id: 'mantenimiento',          nombre: 'Mantenimiento',            sexo: 'A', raza: 'GENERICA' },
+
+    // ====== Basados en tu imagen (códigos/etiquetas abreviadas) ======
+    // GR PRODUCCIÓN I / II (Reproductoras) – parecen Hembras
+    { id: 'gr-prod-i-reprod',       nombre: 'GR Producción I Reprod',   sexo: 'H', raza: 'RA' },
+    { id: 'gr-prod-ii-reprod',      nombre: 'GR Producción II Reprod',  sexo: 'H', raza: 'RA' },
+
+    // Huevo "prepico" / Fase III (mantengo genérico; ajusta cuando definas exactamente)
+    { id: 'huevo-prepico-reprod',   nombre: 'Huevo Prepico Reprod',     sexo: 'H', raza: 'GENERICA' },
+    { id: 'huevo-prepico-f3',       nombre: 'Huevo Prepico Fase III',   sexo: 'H', raza: 'GENERICA' },
+
+    // ITAL (línea italiana) – Hembras (pollita/polla reproducciones)
+    { id: 'ital-polla-levante-rep', nombre: 'ITAL Polla Levante Reprod', sexo: 'H', raza: 'ITAL' },
+    { id: 'ital-pollita-prein',     nombre: 'ITAL Pollita Prein Reprod', sexo: 'H', raza: 'ITAL' },
+    { id: 'ital-pollita-inic',      nombre: 'ITAL Pollita Inici Reprod', sexo: 'H', raza: 'ITAL' },
+    { id: 'ital-prepico-reprod',    nombre: 'ITAL Prepico Reproductor',  sexo: 'H', raza: 'ITAL' },
+    { id: 'ital-prepostura-reprod', nombre: 'ITAL Prepostura Reproductor', sexo: 'H', raza: 'ITAL' },
+
+    // MACHOS REPRODUCTORES (varias “líneas” A / N / S según se alcanza a leer)
+    { id: 'machos-reprod-a',        nombre: 'Machos Reproductores A',   sexo: 'M', raza: 'RA' },
+    { id: 'machos-reprod-n',        nombre: 'Machos Reproductores N',   sexo: 'M', raza: 'RA' },
+    { id: 'machos-reprod-s',        nombre: 'Machos Reproductores S',   sexo: 'M', raza: 'RA' },
+
+    // PAVA (turquía) – los dejo como “ambos” para no frenar el flujo (puedes ocultarlos si no aplica)
+    { id: 'pava-mantenimiento-pll', nombre: 'Pava Mantenimiento PLL',    sexo: 'A', raza: 'PAVA' },
+    { id: 'pava-reprod-crec-1',     nombre: 'Pava Reprod Crecimiento 1', sexo: 'A', raza: 'PAVA' },
+    { id: 'pava-reprod-crec-2',     nombre: 'Pava Reprod Crecimiento 2', sexo: 'A', raza: 'PAVA' },
+    { id: 'pava-reprod-produccion', nombre: 'Pava Reprod Producción',    sexo: 'A', raza: 'PAVA' },
+  ];
+
+  get alimentosH(): AlimentoOpt[] { return this.alimentos.filter(a => a.activo !== false && (a.sexo === 'H' || a.sexo === 'A')); }
+  get alimentosM(): AlimentoOpt[] { return this.alimentos.filter(a => a.activo !== false && (a.sexo === 'M' || a.sexo === 'A')); }
+
+  mapAlimentoNombre = (id?: string | null) => {
+    if (!id) return '';
+    return this.alimentos.find(a => a.id === id)?.nombre ?? id;
+  };
 
   // ================== catálogos ==================
   granjas: FarmDto[] = [];
@@ -82,9 +144,13 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       selM:               [0, [Validators.required, Validators.min(0)]],
       errorSexajeHembras: [0, [Validators.required, Validators.min(0)]],
       errorSexajeMachos:  [0, [Validators.required, Validators.min(0)]],
-      tipoAlimento:       ['', Validators.required],
+
+      // legacy (por compatibilidad con back)
+      tipoAlimento:       [''],
+
       consumoKgHembras:   [0, [Validators.required, Validators.min(0)]],
       observaciones:      [''],
+
       // Nuevos opcionales
       consumoKgMachos: [null, [Validators.min(0)]],
       pesoPromH:       [null, [Validators.min(0)]],
@@ -93,8 +159,14 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       uniformidadM:    [null, [Validators.min(0), Validators.max(100)]],
       cvH:             [null, [Validators.min(0)]],
       cvM:             [null, [Validators.min(0)]],
+
+      // Selects por sexo (los que verás en los tabs)
+      tipoAlimentoHembras: [''],
+      tipoAlimentoMachos:  [''],
+
       consumoAlimentoHembras: [null],
-      consumoAlimentoMachos: [null],
+      consumoAlimentoMachos:  [null],
+      ciclo: ['Normal'],
     });
   }
 
@@ -257,7 +329,10 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       selM: 0,
       errorSexajeHembras: 0,
       errorSexajeMachos: 0,
+
+      // legacy
       tipoAlimento: '',
+
       consumoKgHembras: 0,
       observaciones: '',
       ciclo: 'Normal',
@@ -269,8 +344,13 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       uniformidadM: null,
       cvH: null,
       cvM: null,
+
+      // nuevos selects
+      tipoAlimentoHembras: '',
+      tipoAlimentoMachos:  '',
+
       consumoAlimentoHembras: null,
-      consumoAlimentoMachos: null,
+      consumoAlimentoMachos:  null,
     });
     this.modalOpen = true;
   }
@@ -286,7 +366,10 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       selM: seg.selM,
       errorSexajeHembras: seg.errorSexajeHembras,
       errorSexajeMachos: seg.errorSexajeMachos,
-      tipoAlimento: seg.tipoAlimento,
+
+      // legacy si llegó
+      tipoAlimento: seg.tipoAlimento ?? '',
+
       consumoKgHembras: seg.consumoKgHembras,
       observaciones: seg.observaciones || '',
       ciclo: seg.ciclo || 'Normal',
@@ -298,8 +381,10 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       uniformidadM: seg.uniformidadM ?? null,
       cvH: seg.cvH ?? null,
       cvM: seg.cvM ?? null,
-      tipoAlimentoHembras: seg.tipoAlimentoHembras ?? null,
-      tipoAlimentoMachos: seg.tipoAlimentoMachos ?? null,
+
+      // nuevos
+      tipoAlimentoHembras: seg.tipoAlimentoHembras ?? '',
+      tipoAlimentoMachos:  seg.tipoAlimentoMachos ?? '',
     });
     this.modalOpen = true;
   }
@@ -324,6 +409,9 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     const raw = this.form.value;
 
+    const tipoAlH = (raw.tipoAlimentoHembras || '').toString().trim();
+    const tipoAlM = (raw.tipoAlimentoMachos  || '').toString().trim();
+
     const dto: CreateSeguimientoLoteLevanteDto = {
       fechaRegistro: new Date(raw.fechaRegistro).toISOString(),
       loteId: raw.loteId,
@@ -335,7 +423,9 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       errorSexajeHembras: Number(raw.errorSexajeHembras) || 0,
       errorSexajeMachos: Number(raw.errorSexajeMachos) || 0,
 
-      tipoAlimento: raw.tipoAlimento,
+      // compat: mantenemos "tipoAlimento"
+      tipoAlimento: raw.tipoAlimento || tipoAlH || tipoAlM || '',
+
       consumoKgHembras: Number(raw.consumoKgHembras) || 0,
 
       consumoKgMachos: this.toNumOrNull(raw.consumoKgMachos),
@@ -352,8 +442,10 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       kcalAveH: null,
       protAveH: null,
       ciclo: raw.ciclo,
-      tipoAlimentoMachos: null,
-      tipoAlimentoHembras: null,
+
+      // nuevos
+      tipoAlimentoHembras: tipoAlH || null,
+      tipoAlimentoMachos:  tipoAlM || null,
     };
 
     const op$ = this.editing
@@ -367,7 +459,7 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
         this.editing = null;
         this.onLoteChange();
       },
-      error: () => { /* aquí puedes mostrar un toast */ }
+      error: () => { /* TODO: toast de error */ }
     });
   }
 
@@ -397,78 +489,71 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     if (v === null || v === undefined) return false;
     const s = String(v).trim().toLowerCase();
     return !(s === '' || s === '0' || s === 'null' || s === 'undefined');
-  }
+    }
 
   private normalizeId(v: unknown): string {
     if (v === null || v === undefined) return '';
     return String(v).trim();
   }
 
-  // 👇 Añade cerca de otras propiedades de UI
-calcsOpen = false;
-calcsLoading = false;
-calcsDesde: string | null = null;   // formato yyyy-MM-dd
-calcsHasta: string | null = null;
+  // ========= CÁLCULOS =========
+  calcsOpen = false;
+  calcsLoading = false;
+  calcsDesde: string | null = null;
+  calcsHasta: string | null = null;
 
-// Respuesta del API de cálculos (forma mínima)
-calcsResp: {
-  loteId: string;
-  total: number;
-  desde?: string | null;
-  hasta?: string | null;
-  items: Array<{
-    fecha: string;
-    edadSemana?: number | null;
+  calcsResp: {
+    loteId: string;
+    total: number;
+    desde?: string | null;
+    hasta?: string | null;
+    items: Array<{
+      fecha: string;
+      edadSemana?: number | null;
+      hembraViva?: number | null;
+      mortH: number; selH: number; errH: number;
+      consKgH?: number | null; pesoH?: number | null; unifH?: number | null;
+      mortHPct?: number | null; selHPct?: number | null; errHPct?: number | null;
+      machoVivo?: number | null;
+      mortM: number; selM: number; errM: number;
+      consKgM?: number | null; pesoM?: number | null; unifM?: number | null;
+      mortMPct?: number | null; selMPct?: number | null; errMPct?: number | null;
+      retiroHPct?: number | null; retiroHAcPct?: number | null;
+      retiroMPct?: number | null; retiroMAcPct?: number | null;
+      relMHPct?: number | null;
+    }>;
+  } | null = null;
 
-    hembraViva?: number | null;
-    mortH: number; selH: number; errH: number;
-    consKgH?: number | null; pesoH?: number | null; unifH?: number | null;
-    mortHPct?: number | null; selHPct?: number | null; errHPct?: number | null;
+  openCalculos(): void {
+    if (!this.selectedLoteId) return;
+    this.calcsOpen = true;
+    this.calcsDesde = null;
+    this.calcsHasta = null;
+    this.reloadCalculos();
+  }
 
-    machoVivo?: number | null;
-    mortM: number; selM: number; errM: number;
-    consKgM?: number | null; pesoM?: number | null; unifM?: number | null;
-    mortMPct?: number | null; selMPct?: number | null; errMPct?: number | null;
+  closeCalculos(): void {
+    this.calcsOpen = false;
+  }
 
-    retiroHPct?: number | null; retiroHAcPct?: number | null;
-    retiroMPct?: number | null; retiroMAcPct?: number | null;
-    relMHPct?: number | null;
-  }>;
-} | null = null;
+  reloadCalculos(): void {
+    if (!this.selectedLoteId) return;
+    this.calcsLoading = true;
 
-// 👇 Métodos
-openCalculos(): void {
-  if (!this.selectedLoteId) return;
-  this.calcsOpen = true;
-  // valores por defecto del filtro (opcional)
-  this.calcsDesde = null;
-  this.calcsHasta = null;
-  this.reloadCalculos();
-}
-
-closeCalculos(): void {
-  this.calcsOpen = false;
-}
-
-reloadCalculos(): void {
-  if (!this.selectedLoteId) return;
-  this.calcsLoading = true;
-
-  this.segSvc.getResultado({
-    loteId: this.selectedLoteId,
-    desde: this.calcsDesde || undefined,
-    hasta: this.calcsHasta || undefined,
-    recalcular: true
-  }).subscribe({
-    next: (res) => {
-      this.calcsResp = res ?? null;
-      this.calcsLoading = false;
-    },
-    error: () => {
-      this.calcsResp = null;
-      this.calcsLoading = false;
-    }
-  });
-}
-
+    this.segSvc.getResultado({
+      loteId: this.selectedLoteId,
+      desde: this.calcsDesde || undefined,
+      hasta: this.calcsHasta || undefined,
+      recalcular: true
+    }).subscribe({
+      next: (res) => {
+        this.calcsResp = res ?? null;
+        this.calcsLoading = false;
+      },
+      error: () => {
+        this.calcsResp = null;
+        this.calcsLoading = false;
+      }
+    });
+  }
 }

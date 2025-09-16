@@ -118,6 +118,12 @@ export const appConfig: ApplicationConfig = {
           { path: 'cities/:id',       component: CityDetailComponent },
 
           // CRUD Granjas
+          {
+            path: 'farm-management',
+            loadComponent: () =>
+              import('./features/farm/pages/farm-management/farm-management.component')
+                .then(m => m.FarmManagementComponent)
+          },
           { path: 'farms-list',          component: FarmListComponent },
           { path: 'farms-list/new',      component: FarmFormComponent },
           { path: 'farms-list/:id/edit', component: FarmFormComponent },
@@ -132,6 +138,12 @@ export const appConfig: ApplicationConfig = {
           { path: 'galpones/new',       component: GalponFormComponent },
           { path: 'galpones/:galponId', component: GalponFormComponent },
 
+          {
+            path: 'lote-management',
+            loadComponent: () =>
+              import('./features/lote/page/lote-management/lote-management.componet')
+                .then(m => m.LoteManagementComponent)
+          },
           // Lotes
           { path: 'lotes', component: LoteListComponent },
 
@@ -149,6 +161,13 @@ export const appConfig: ApplicationConfig = {
             loadChildren: () =>
               import('./features/inventario/inventario.module')
                 .then(m => m.InventarioModule)
+          },
+
+          {
+            path: 'inventario-management',
+            loadComponent: () =>
+              import('./features/inventario/page/inventario-managemen/inventario-managemen.component')
+                .then(m => m.InventarioManagementComponent)
           },
 
           { path: '', redirectTo: 'farms-list', pathMatch: 'full' }

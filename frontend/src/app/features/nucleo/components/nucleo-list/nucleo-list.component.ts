@@ -1,4 +1,4 @@
-import { Component, OnInit,Input } from '@angular/core';
+import { Component, OnInit, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   ReactiveFormsModule,
@@ -21,8 +21,6 @@ import {
 import { FarmService, FarmDto } from '../../../farm/services/farm.service';
 import { Company, CompanyService } from '../../../../core/services/company/company.service';
 
-
-
 @Component({
   selector: 'app-nucleo-list',
   standalone: true,
@@ -34,61 +32,62 @@ import { Company, CompanyService } from '../../../../core/services/company/compa
     FontAwesomeModule
   ],
   templateUrl: './nucleo-list.component.html',
-  styleUrls: ['./nucleo-list.component.scss']
+  styleUrls: ['./nucleo-list.component.scss'],
+  // Opcional: añade la clase 'embedded' al host cuando embedded=true (para tus estilos)
+  host: { '[class.embedded]': 'embedded' }
 })
 export class NucleoListComponent implements OnInit {
   faPlus  = faPlus;
   faPen   = faPen;
   faTrash = faTrash;
+
   @Input() embedded = false;
 
   // Filtros
-  filtro: string = '';
+  filtro = '';
   selectedCompanyId: number | null = null;
   selectedFarmId: number | null = null;
 
   // Datos
-  nucleos:   NucleoDto[] = [];
-  viewNucleos: NucleoDto[] = []; // resultado filtrado
-  farms:     FarmDto[]   = [];
-  companies: Company[]   = [];
+  nucleos: NucleoDto[] = [];
+  viewNucleos: NucleoDto[] = [];
+  farms: FarmDto[] = [];
+  companies: Company[] = [];
 
   // Mapas auxiliares
-  farmMap:    Record<number,string> = {};
-  companyMap: Record<number,string> = {};
+  farmMap: Record<number, string> = {};
+  companyMap: Record<number, string> = {};
 
-  loading    = false;
-  modalOpen  = false;
-  editing    : NucleoDto | null = null;
-  form      !: FormGroup;
+  loading = false;
+  modalOpen = false;
+  editing: NucleoDto | null = null;
+  form!: FormGroup;
 
   constructor(
-    private fb:          FormBuilder,
-    private nucleoSvc:   NucleoService,
-    private farmSvc:     FarmService,
-    private companySvc:  CompanyService
+    private fb: FormBuilder,
+    private nucleoSvc: NucleoService,
+    private farmSvc: FarmService,
+    private companySvc: CompanyService
   ) {}
 
   ngOnInit() {
     // Formulario
     this.form = this.fb.group({
-      nucleoId:      ['', Validators.required],
-      granjaId:      [null, Validators.required],
-      nucleoNombre:  ['', Validators.required]
+      nucleoId: ['', Validators.required],
+      granjaId: [null, Validators.required],
+      nucleoNombre: ['', Validators.required]
     });
 
     // Cargar granjas y companies
     this.farmSvc.getAll().subscribe(list => {
       this.farms = list;
-      list.forEach(f => this.farmMap[f.id] = f.name);
+      list.forEach(f => (this.farmMap[f.id] = f.name));
       this.recompute();
 
       this.companySvc.getAll().subscribe(clist => {
         this.companies = clist;
         clist.forEach(c => {
-          if (c.id !== undefined) {
-            this.companyMap[c.id] = c.name;
-          }
+          if (c.id !== undefined) this.companyMap[c.id] = c.name;
         });
         this.recompute();
       });
@@ -98,6 +97,9 @@ export class NucleoListComponent implements OnInit {
     this.loadNucleos();
   }
 
+  // ===== NEW: trackBy para *ngFor
+  trackByNucleo = (_: number, n: NucleoDto) => `${n.nucleoId}|${n.granjaId}`;
+
   // Granja filtrada por compañía (para el combo)
   get farmsFiltered(): FarmDto[] {
     if (this.selectedCompanyId == null) return this.farms;
@@ -106,8 +108,9 @@ export class NucleoListComponent implements OnInit {
 
   private loadNucleos() {
     this.loading = true;
-    this.nucleoSvc.getAll()
-      .pipe(finalize(() => this.loading = false))
+    this.nucleoSvc
+      .getAll()
+      .pipe(finalize(() => (this.loading = false)))
       .subscribe(list => {
         this.nucleos = list;
         this.recompute();
@@ -139,7 +142,9 @@ export class NucleoListComponent implements OnInit {
           String(n.nucleoId ?? ''),
           this.safe(n.nucleoNombre),
           this.safe(this.getFarmName(n.granjaId))
-        ].map(this.normalize).join(' ');
+        ]
+          .map(this.normalize)
+          .join(' ');
         return haystack.includes(term);
       });
     }
@@ -167,29 +172,61 @@ export class NucleoListComponent implements OnInit {
     this.recompute();
   }
 
+  // ② openModal: asigna el ID al crear
   openModal(n?: NucleoDto) {
     this.editing = n ?? null;
     if (n) {
+      // Editar: usamos los valores existentes (incluye el ID)
       this.form.patchValue(n);
     } else {
-      this.form.reset({ nucleoId: '', granjaId: null, nucleoNombre: '' });
+      // Crear: generamos un ID de 6 dígitos único basado en lo que ya cargó la tabla
+      const newId = this.generateUniqueId6(this.nucleos);
+      this.form.reset({
+        nucleoId: newId,       // ← asignado automáticamente
+        granjaId: null,
+        nucleoNombre: ''
+      });
     }
     this.modalOpen = true;
   }
 
+  // ① Generador de ID de 6 dígitos que no colisiona con los existentes
+  private generateUniqueId6(existing: Array<NucleoDto>): string {
+    const used = new Set(existing.map(x => String(x.nucleoId)));
+    let tries = 0;
+    while (tries < 100) {
+      const rnd = Math.floor(100000 + Math.random() * 900000); // 100000..999999
+      const id = String(rnd);
+      if (!used.has(id)) return id;
+      tries++;
+    }
+    // Fallback improbable: añade sufijo incremental
+    let seq = 100000;
+    while (used.has(String(seq)) && seq <= 999999) seq++;
+    return String(seq);
+  }
+
   save() {
     if (this.form.invalid) return;
-    const v = this.form.value as NucleoDto;
-    let op$;
-    if (this.editing) {
-      const dto: UpdateNucleoDto = v;
-      op$ = this.nucleoSvc.update(dto);
-    } else {
-      const dto: CreateNucleoDto = v;
-      op$ = this.nucleoSvc.create(dto);
+
+    // Verificación rápida de unicidad (solo en crear)
+    if (!this.editing) {
+      const id = String(this.form.value.nucleoId);
+      if (this.nucleos.some(n => String(n.nucleoId) === id)) {
+        // Reintenta generar y asigna
+        const newId = this.generateUniqueId6(this.nucleos);
+        this.form.get('nucleoId')?.setValue(newId);
+      }
     }
+
+    const v = this.form.value as NucleoDto;
+    const op$ = this.editing
+      ? this.nucleoSvc.update(v as UpdateNucleoDto)
+      : this.nucleoSvc.create(v as CreateNucleoDto);
+
     this.loading = true;
-    op$.pipe(finalize(() => {
+    op$
+      .pipe(finalize(() => {
         this.loading = false;
         this.modalOpen = false;
         this.loadNucleos();
@@ -197,14 +234,18 @@ export class NucleoListComponent implements OnInit {
       .subscribe();
   }
 
+
   delete(n: NucleoDto) {
     if (!confirm(`¿Eliminar el núcleo “${n.nucleoNombre}”?`)) return;
     this.loading = true;
-    this.nucleoSvc.delete(n.nucleoId, n.granjaId)
-      .pipe(finalize(() => {
-        this.loading = false;
-        this.loadNucleos();
-      }))
+    this.nucleoSvc
+      .delete(n.nucleoId, n.granjaId)
+      .pipe(
+        finalize(() => {
+          this.loading = false;
+          this.loadNucleos();
+        })
+      )
       .subscribe();
   }
 
@@ -215,7 +256,7 @@ export class NucleoListComponent implements OnInit {
 
   getCompanyName(granjaId: number): string {
     const farm = this.farms.find(f => f.id === granjaId);
-    return farm ? (this.companyMap[farm.companyId] || '–') : '–';
+    return farm ? this.companyMap[farm.companyId] || '–' : '–';
   }
 
   private normalize(s: string): string {

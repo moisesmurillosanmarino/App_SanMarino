@@ -5,26 +5,39 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 
 export interface FarmDto {
-  id: number;
+  id: number;                  // ← número garantizado al leer
   name: string;
-  companyId: number;
-  regionalId: number;
-  departamentoId: number;   // ← nuevo
-  ciudadId: number;         // ← nuevo
-  status: string;
+  companyId: number;           // ← número garantizado al leer
+  status: 'A' | 'I' | string;
+
+  // Opcionales para UI
+  regional?: string | null;
+  regionalId?: number | null;
+  department?: string | null;
+  city?: string | null;
+  departamentoId?: number | null;
+  ciudadId?: number | null;
+
+  createdAt?: string;
+  updatedAt?: string;
+  company?: { id: number; name: string };
 }
 
 export interface CreateFarmDto {
   name: string;
   companyId: number;
-  regionalId: number;
-  departamentoId: number;   // ← nuevo
-  ciudadId: number;         // ← nuevo
-  status: string;
+  status: 'A' | 'I';
+  // opcionales
+  regional?: string | null;
+  regionalId?: number | null;
+  departamentoId?: number | null;
+  ciudadId?: number | null;
+  department?: string | null;
+  city?: string | null;
 }
 
 export interface UpdateFarmDto extends CreateFarmDto {
-  id: number;
+  id: number; // ← requerido en update
 }
 
 @Injectable({ providedIn: 'root' })

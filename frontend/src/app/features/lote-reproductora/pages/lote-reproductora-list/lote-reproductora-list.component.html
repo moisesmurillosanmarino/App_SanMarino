@@ -1,13 +1,10 @@
 <div class="flex h-screen" [attr.aria-busy]="loading ? 'true' : null">
-  <!-- Sidebar -->
-  <app-sidebar class="w-64"></app-sidebar>
 
   <!-- Main -->
   <div class="main-content">
     <!-- Header -->
     <header class="header">
       <div class="header__title">
-        <h1>Lotes Reproductora</h1>
         <span class="summary-chip ml-2" *ngIf="selectedLoteId">
           {{ registros?.length || 0 }} registro(s)
         </span>
