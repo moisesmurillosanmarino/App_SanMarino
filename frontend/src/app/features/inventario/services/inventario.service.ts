@@ -72,7 +72,7 @@ export interface FarmInventoryUpdateRequest {
 }
 
 /** Movimientos */
-export type MovementType = 'Entry' | 'Exit' | 'TransferIn' | 'TransferOut';
+export type MovementType = 'Entry' | 'Exit' | 'TransferIn' | 'TransferOut' | 'Adjust';
 export interface InventoryMovementDto {
   id: number;
   farmId: number;
@@ -99,19 +99,42 @@ export interface MovementQuery {
   pageSize?: number;
 }
 
-/** Entradas / Salidas / Traslado (requests) */
+/** Entradas / Salidas / Traslado / Ajuste (requests) */
 export interface InventoryEntryRequest {
   catalogItemId?: number;
   codigo?: string;
-  quantity: number;
+  quantity: number;      // positivo
   unit?: string;
   reference?: string;
   reason?: string;
   metadata?: any;
 }
-export interface InventoryExitRequest extends InventoryEntryRequest {}
+export interface InventoryExitRequest extends InventoryEntryRequest {} // quantity positivo; el API descuenta
 export interface InventoryTransferRequest extends InventoryEntryRequest {
   toFarmId: number;
+}
+export interface InventoryAdjustRequest extends InventoryEntryRequest {
+  // quantity puede ser positivo o negativo según el ajuste
+}
+
+/** ====== Kardex ====== */
+export interface KardexItemDto {
+  fecha: string;           // ISO date
+  tipo: MovementType | string;
+  referencia?: string | null;
+  cantidad: number;        // + entrada / - salida
+  unidad: string;
+  saldo: number;           // saldo acumulado tras el movimiento
+  motivo?: string | null;
+}
+
+/** ====== Conteo físico ====== */
+export interface StockCountItemRequest {
+  catalogItemId: number;
+  conteo: number;
+}
+export interface StockCountRequest {
+  items: StockCountItemRequest[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -123,7 +146,6 @@ export class InventarioService {
   // ===== Apoyos =====
   /** Granjas (conveniencia; también existe FarmService) */
   getFarms(): Observable<FarmDto[]> {
-    // Ajusta si tu endpoint real es otro (por tus controladores suele ser /Farm)
     return this.http.get<FarmDto[]>(`${this.api}/Farm`);
   }
 
@@ -146,6 +168,10 @@ export class InventarioService {
   // ===== Inventario (stock) =====
   getInventory(farmId: number): Observable<FarmInventoryDto[]> {
     return this.http.get<FarmInventoryDto[]>(`${this.api}/farms/${farmId}/inventory`);
+  }
+  /** Alias cómodo para los componentes que esperan getStock() */
+  getStock(farmId: number): Observable<FarmInventoryDto[]> {
+    return this.getInventory(farmId);
   }
   getInventoryById(farmId: number, id: number): Observable<FarmInventoryDto> {
     return this.http.get<FarmInventoryDto>(`${this.api}/farms/${farmId}/inventory/${id}`);
@@ -173,6 +199,12 @@ export class InventarioService {
     return this.http.post(`${this.api}/farms/${fromFarmId}/inventory/movements/transfer`, payload);
   }
 
+  /** NUEVO: Ajuste (+ / -) */
+  postAdjust(farmId: number, payload: InventoryAdjustRequest): Observable<InventoryMovementDto> {
+    // quantity puede venir positivo (sumar) o negativo (restar)
+    return this.http.post<InventoryMovementDto>(`${this.api}/farms/${farmId}/inventory/movements/adjust`, payload);
+  }
+
   /** (Opcional) Listado/consulta de movimientos si el API lo expone */
   listMovements(farmId: number, q: MovementQuery = {}): Observable<PagedResult<InventoryMovementDto>> {
     let params = new HttpParams();
@@ -191,5 +223,25 @@ export class InventarioService {
   /** (Opcional) Detalle de movimiento */
   getMovementById(farmId: number, movementId: number): Observable<InventoryMovementDto> {
     return this.http.get<InventoryMovementDto>(`${this.api}/farms/${farmId}/inventory/movements/${movementId}`);
+  }
+
+  // ===== NUEVO: Kardex =====
+  getKardex(
+    farmId: number,
+    catalogItemId: number,
+    from?: string,
+    to?: string
+  ): Observable<KardexItemDto[]> {
+    let params = new HttpParams().set('catalogItemId', catalogItemId);
+    if (from) params = params.set('from', from);
+    if (to)   params = params.set('to', to);
+    // Ajusta la ruta si tu API usa otro path (por ej. /kardex/items)
+    return this.http.get<KardexItemDto[]>(`${this.api}/farms/${farmId}/inventory/kardex`, { params });
+  }
+
+  // ===== NUEVO: Conteo físico =====
+  postConteoFisico(farmId: number, payload: StockCountRequest): Observable<void> {
+    // Ajusta el path si tu API real es distinto (e.g. /stock-counts, /counts)
+    return this.http.post<void>(`${this.api}/farms/${farmId}/inventory/stock-count`, payload);
   }
 }

@@ -163,12 +163,23 @@ export const appConfig: ApplicationConfig = {
                 .then(m => m.InventarioModule)
           },
 
-          {
-            path: 'inventario-management',
-            loadComponent: () =>
-              import('./features/inventario/page/inventario-managemen/inventario-managemen.component')
-                .then(m => m.InventarioManagementComponent)
-          },
+          // app.routes.ts
+        {
+          path: 'inventario-management',
+          loadComponent: () =>
+            import('./features/inventario/components/inventario-tabs/inventario-tabs.component')
+              .then(m => m.InventarioTabsComponent)
+        },
+
+        // app.routes.ts
+        {
+          path: 'inventario/catalogo',
+          loadComponent: () =>
+            import('./features/catalogo-alimentos/catalogo-alimentos.module')
+              .then(m => m.CatalogoAlimentosModule)
+        },
+
+
 
           { path: '', redirectTo: 'farms-list', pathMatch: 'full' }
         ]

@@ -12,6 +12,8 @@ import { CatalogoAlimentosFormComponent } from './pages/catalogo-alimentos-form/
     CatalogoAlimentosRoutingModule,
     CatalogoAlimentosListComponent,
     CatalogoAlimentosFormComponent
+  ], exports: [
+    CatalogoAlimentosListComponent  // 👈 **EXPORTAR**
   ]
 })
 export class CatalogoAlimentosModule {}

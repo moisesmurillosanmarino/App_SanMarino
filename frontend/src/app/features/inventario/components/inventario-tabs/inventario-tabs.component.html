@@ -6,36 +6,48 @@
     <!-- Header -->
     <div class="header">
       <div class="header__title">
-        <h1>Inventario de Productos</h1>
+        <h1>{{ title }}</h1>
+        <p class="header__subtitle">{{ subtitle }}</p> <!-- ← aquí va el SUBTÍTULO -->
       </div>
 
-      <!-- “Tabs” -->
-      <div class="actions">
-        <button
-          type="button"
-          class="btn-ghost"
-          [class.btn-secondary]="activeTab==='mov'"
-          (click)="setTab('mov')"
-          [attr.aria-pressed]="activeTab==='mov' ? 'true' : 'false'">
-          Entrada / Salida
+      <!-- Tabs -->
+      <div class="actions tabs-actions">
+        <button type="button" class="btn-ghost" [class.btn-secondary]="activeTab==='mov'"
+                (click)="setTab('mov')" [attr.aria-pressed]="activeTab==='mov'">
+          <fa-icon [icon]="faInOut" class="mr-2" aria-hidden="true"></fa-icon> Entrada / Salida
         </button>
 
-        <button
-          type="button"
-          class="btn-ghost"
-          [class.btn-secondary]="activeTab==='tras'"
-          (click)="setTab('tras')"
-          [attr.aria-pressed]="activeTab==='tras' ? 'true' : 'false'">
-          Traslado
+        <button type="button" class="btn-ghost" [class.btn-secondary]="activeTab==='tras'"
+                (click)="setTab('tras')" [attr.aria-pressed]="activeTab==='tras'">
+          <fa-icon [icon]="faSwap" class="mr-2" aria-hidden="true"></fa-icon> Traslado
         </button>
 
+        <button type="button" class="btn-ghost" [class.btn-secondary]="activeTab==='ajuste'"
+                (click)="setTab('ajuste')" [attr.aria-pressed]="activeTab==='ajuste'">
+          <fa-icon [icon]="faWrench" class="mr-2" aria-hidden="true"></fa-icon> Ajuste
+        </button>
+
+        <button type="button" class="btn-ghost" [class.btn-secondary]="activeTab==='kardex'"
+                (click)="setTab('kardex')" [attr.aria-pressed]="activeTab==='kardex'">
+          <fa-icon [icon]="faList" class="mr-2" aria-hidden="true"></fa-icon> Kardex
+        </button>
+
+        <button type="button" class="btn-ghost" [class.btn-secondary]="activeTab==='conteo'"
+                (click)="setTab('conteo')" [attr.aria-pressed]="activeTab==='conteo'">
+          <fa-icon [icon]="faClipboard" class="mr-2" aria-hidden="true"></fa-icon> Conteo físico
+        </button>
+
+        <button type="button" class="btn-ghost" [class.btn-secondary]="activeTab==='stock'"
+                (click)="setTab('stock')" [attr.aria-pressed]="activeTab==='stock'">
+          <fa-icon [icon]="faWare" class="mr-2" aria-hidden="true"></fa-icon> Stock
+        </button>
         <button
           type="button"
           class="btn-ghost"
-          [class.btn-secondary]="activeTab==='stock'"
-          (click)="setTab('stock')"
-          [attr.aria-pressed]="activeTab==='stock' ? 'true' : 'false'">
-          Stock
+          [class.btn-secondary]="activeTab==='catalogo'"
+          (click)="setTab('catalogo')"
+          [attr.aria-pressed]="activeTab==='catalogo' ? 'true' : 'false'">
+          Catálogo
         </button>
       </div>
     </div>
@@ -51,8 +63,24 @@
           <app-traslado-form></app-traslado-form>
         </ng-container>
 
+        <ng-container *ngIf="activeTab==='ajuste'">
+          <app-ajuste-form></app-ajuste-form>
+        </ng-container>
+
+        <ng-container *ngIf="activeTab==='kardex'">
+          <app-kardex-list></app-kardex-list>
+        </ng-container>
+
+        <ng-container *ngIf="activeTab==='conteo'">
+          <app-conteo-fisico></app-conteo-fisico>
+        </ng-container>
+
         <ng-container *ngIf="activeTab==='stock'">
           <app-inventario-list></app-inventario-list>
+        </ng-container>
+
+        <ng-container *ngIf="activeTab==='catalogo'">
+          <app-catalogo-alimentos-tab></app-catalogo-alimentos-tab>
         </ng-container>
       </div>
     </div>

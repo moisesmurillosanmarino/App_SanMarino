@@ -145,6 +145,7 @@ builder.Services.AddScoped<IMenuService,  MenuService>(); // o AddScoped<IMenuSe
 builder.Services.AddScoped<ICatalogItemService, CatalogItemService>();
 builder.Services.AddScoped<IFarmInventoryService, FarmInventoryService>();
 builder.Services.AddScoped<IFarmInventoryMovementService, FarmInventoryMovementService>();
+builder.Services.AddScoped<IFarmInventoryReportService, FarmInventoryReportService>(); // ← FALTABA
 
 // Proveedores (ajusta cuando tengas provider real de gramaje)
 builder.Services.AddScoped<IAlimentoNutricionProvider, EfAlimentoNutricionProvider>();

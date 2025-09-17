@@ -376,11 +376,3 @@
   clip: rect(1px,1px,1px,1px);
   padding: 0; border: 0; height: 1px; width: 1px; overflow: hidden;
 }
-
-
-/* src/app/features/inventario/components/inventario-tabs/inventario-tabs.component.scss */
-.header__subtitle {
-  margin-top: .25rem;
-  font-size: .95rem;
-  color: var(--warm-600, #57534e);
-}

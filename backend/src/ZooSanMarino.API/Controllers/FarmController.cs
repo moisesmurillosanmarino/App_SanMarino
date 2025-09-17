@@ -9,6 +9,7 @@ namespace ZooSanMarino.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Tags("Farms")]
 public class FarmController : ControllerBase
 {
     private readonly IFarmService _svc;
@@ -17,7 +18,11 @@ public class FarmController : ControllerBase
     // ===========================
     // LISTADO SIMPLE (compat)
     // ===========================
+    // /api/Farm  (ruta original)
+    // /Farm      (alias sin /api, para alinear con el front Angular)
     [HttpGet]
+    [HttpGet("/Farm")]
+    [ProducesResponseType(typeof(IEnumerable<FarmDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<FarmDto>>> GetAll()
     {
         var items = await _svc.GetAllAsync();
@@ -27,7 +32,11 @@ public class FarmController : ControllerBase
     // ===========================
     // BÚSQUEDA AVANZADA
     // ===========================
+    // /api/Farm/search
+    // /Farm/search (alias opcional por compatibilidad)
     [HttpGet("search")]
+    [HttpGet("/Farm/search")]
+    [ProducesResponseType(typeof(CommonDtos.PagedResult<FarmDtos.FarmDetailDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<CommonDtos.PagedResult<FarmDtos.FarmDetailDto>>> Search([FromQuery] FarmDtos.FarmSearchRequest req)
     {
         var res = await _svc.SearchAsync(req);
@@ -37,7 +46,10 @@ public class FarmController : ControllerBase
     // ===========================
     // DETALLE (incluye métricas)
     // ===========================
+    // /api/Farm/{id}
     [HttpGet("{id:int}")]
+    [ProducesResponseType(typeof(FarmDtos.FarmDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<FarmDtos.FarmDetailDto>> GetDetail(int id)
     {
         var res = await _svc.GetDetailByIdAsync(id);
@@ -46,7 +58,10 @@ public class FarmController : ControllerBase
     }
 
     // (Opcional) GET básico por id para compatibilidad con UIs antiguas
+    // /api/Farm/{id}/basic
     [HttpGet("{id:int}/basic")]
+    [ProducesResponseType(typeof(FarmDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<FarmDto>> GetByIdBasic(int id)
     {
         var res = await _svc.GetByIdAsync(id);
@@ -57,7 +72,10 @@ public class FarmController : ControllerBase
     // ===========================
     // ÁRBOL (Farm → Núcleos → Galpones)
     // ===========================
+    // /api/Farm/{id}/tree
     [HttpGet("{id:int}/tree")]
+    [ProducesResponseType(typeof(FarmDtos.FarmTreeDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<FarmDtos.FarmTreeDto>> GetTree(int id, [FromQuery] bool soloActivos = true)
     {
         var res = await _svc.GetTreeByIdAsync(id, soloActivos);
@@ -68,19 +86,25 @@ public class FarmController : ControllerBase
     // ===========================
     // CREATE
     // ===========================
+    // /api/Farm
     [HttpPost]
+    [ProducesResponseType(typeof(FarmDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<FarmDto>> Create([FromBody] CreateFarmDto dto)
     {
         if (dto is null) return BadRequest("Body requerido.");
         var created = await _svc.CreateAsync(dto);
-        // Apuntamos al detalle recién creado
         return CreatedAtAction(nameof(GetDetail), new { id = created.Id }, created);
     }
 
     // ===========================
     // UPDATE
     // ===========================
+    // /api/Farm/{id}
     [HttpPut("{id:int}")]
+    [ProducesResponseType(typeof(FarmDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<FarmDto>> Update(int id, [FromBody] UpdateFarmDto dto)
     {
         if (dto is null) return BadRequest("Body requerido.");
@@ -94,7 +118,10 @@ public class FarmController : ControllerBase
     // ===========================
     // DELETE (soft)
     // ===========================
+    // /api/Farm/{id}
     [HttpDelete("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(int id)
     {
         var ok = await _svc.DeleteAsync(id);
@@ -105,7 +132,10 @@ public class FarmController : ControllerBase
     // ===========================
     // DELETE (hard)
     // ===========================
+    // /api/Farm/{id}/hard
     [HttpDelete("{id:int}/hard")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> HardDelete(int id)
     {
         var ok = await _svc.HardDeleteAsync(id);

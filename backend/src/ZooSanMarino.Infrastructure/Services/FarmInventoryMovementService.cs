@@ -5,6 +5,8 @@ using ZooSanMarino.Application.Interfaces;
 using ZooSanMarino.Domain.Entities;
 using ZooSanMarino.Domain.Enums;
 using ZooSanMarino.Infrastructure.Persistence;
+using CommonDtos = ZooSanMarino.Application.DTOs.Common;
+
 
 namespace ZooSanMarino.Infrastructure.Services;
 
@@ -211,4 +213,105 @@ public class FarmInventoryMovementService : IFarmInventoryMovementService
 
         return (await MapMovementAsync(movOut, ct), await MapMovementAsync(movIn, ct));
     }
-}
+
+
+    public async Task<InventoryMovementDto> PostAdjustAsync(int farmId, InventoryAdjustRequest req, CancellationToken ct = default)
+    {
+        var itemId = await ResolveItemIdAsync(req.CatalogItemId, req.Codigo, ct);
+        var unit = string.IsNullOrWhiteSpace(req.Unit) ? "kg" : req.Unit.Trim();
+        string? userId = _current != null ? _current.UserId.ToString() : null;
+
+        await using var tx = await _db.Database.BeginTransactionAsync(ct);
+
+        var inv = await GetOrCreateInventoryAsync(farmId, itemId, unit, ct);
+        inv.Quantity += req.Quantity; // puede ser + o −
+        if (inv.Quantity < 0) throw new InvalidOperationException("El saldo no puede ser negativo.");
+        inv.Unit = unit;
+        inv.UpdatedAt = DateTimeOffset.UtcNow;
+
+        var mov = new FarmInventoryMovement
+        {
+            FarmId = farmId,
+            CatalogItemId = itemId,
+            Quantity = Math.Abs(req.Quantity),
+            MovementType = req.Quantity >= 0 ? InventoryMovementType.Adjust : InventoryMovementType.Adjust,
+            Unit = unit,
+            Reference = req.Reference,
+            Reason = req.Reason,
+            Metadata = req.Metadata ?? JsonDocument.Parse("{}"),
+            ResponsibleUserId = userId
+        };
+        _db.FarmInventoryMovements.Add(mov);
+
+        await _db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+        return await MapMovementAsync(mov, ct);
+    }
+
+  public async Task<CommonDtos.PagedResult<InventoryMovementDto>> GetPagedAsync(
+        int farmId, MovementQuery q, CancellationToken ct = default)
+    {
+        var query = _db.FarmInventoryMovements.AsNoTracking().Where(m => m.FarmId == farmId);
+
+        if (q.From.HasValue)               query = query.Where(m => m.CreatedAt >= q.From.Value);
+        if (q.To.HasValue)                 query = query.Where(m => m.CreatedAt <= q.To.Value);
+        if (q.CatalogItemId.HasValue)      query = query.Where(m => m.CatalogItemId == q.CatalogItemId.Value);
+        if (!string.IsNullOrWhiteSpace(q.Codigo))
+                                          query = query.Where(m => m.CatalogItem.Codigo == q.Codigo);
+        if (!string.IsNullOrWhiteSpace(q.Type) &&
+            Enum.TryParse<Domain.Enums.InventoryMovementType>(q.Type, out var mt))
+                                          query = query.Where(m => m.MovementType == mt);
+
+        var total = await query.LongCountAsync(ct);
+        var page  = q.Page <= 0 ? 1 : q.Page;
+        var size  = (q.PageSize <= 0 || q.PageSize > 200) ? 20 : q.PageSize;
+
+        var list = await query.OrderByDescending(m => m.CreatedAt)
+                              .Skip((page - 1) * size)
+                              .Take(size)
+                              .Select(m => new InventoryMovementDto
+                              {
+                                  Id = m.Id,
+                                  FarmId = m.FarmId,
+                                  CatalogItemId = m.CatalogItemId,
+                                  Codigo = m.CatalogItem.Codigo,
+                                  Nombre = m.CatalogItem.Nombre,
+                                  Quantity = m.Quantity,
+                                  MovementType = m.MovementType.ToString(),
+                                  Unit = m.Unit,
+                                  Reference = m.Reference,
+                                  Reason = m.Reason,
+                                  TransferGroupId = m.TransferGroupId,
+                                  Metadata = m.Metadata,
+                                  ResponsibleUserId = m.ResponsibleUserId,
+                                  CreatedAt = m.CreatedAt
+                              })
+                              .ToListAsync(ct);
+
+        return new CommonDtos.PagedResult<InventoryMovementDto>
+        {
+            Items = list,
+            Total = total,
+            Page = page,
+            PageSize = size
+        };
+    }
+    public async Task<InventoryMovementDto?> GetByIdAsync(int farmId, int movementId, CancellationToken ct = default)
+    {
+        var m = await _db.FarmInventoryMovements
+            .AsNoTracking()
+            .Include(x => x.CatalogItem)
+            .FirstOrDefaultAsync(x => x.Id == movementId && x.FarmId == farmId, ct);
+        if (m is null) return null;
+
+        return new InventoryMovementDto {
+            Id = m.Id, FarmId = m.FarmId, CatalogItemId = m.CatalogItemId,
+            Codigo = m.CatalogItem.Codigo, Nombre = m.CatalogItem.Nombre,
+            Quantity = m.Quantity, MovementType = m.MovementType.ToString(),
+            Unit = m.Unit, Reference = m.Reference, Reason = m.Reason,
+            TransferGroupId = m.TransferGroupId, Metadata = m.Metadata,
+            ResponsibleUserId = m.ResponsibleUserId, CreatedAt = m.CreatedAt
+        };
+    }
+
+    }
