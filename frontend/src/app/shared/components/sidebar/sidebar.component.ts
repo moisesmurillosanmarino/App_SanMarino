@@ -83,13 +83,13 @@ export class SidebarComponent {
     {
       label: 'Configuración',
       icon: this.faCog,
-      children: [
+      children: [  
         { label: 'Listas maestras',        icon: this.faList,     link: ['/config','master-lists'] },
         { label: 'Usuarios',               icon: this.faUsers,    link: ['/config','users'] },
         { label: 'Roles y permisos',       icon: this.faUsers,    link: ['/config','role-management'] },
         { label: 'Geografía',              icon: this.faGlobe,    link: ['/config','countries'] },
         { label: 'Empresas',               icon: this.faBuilding, link: ['/config','companies'] },
-        { label: 'Catálogo de alimentos',  icon: this.faList,     link: ['/config','catalogo-alimentos'] }
+       /** { label: 'Catálogo de alimentos',  icon: this.faList,     link: ['/config','catalogo-alimentos'] }*/
 
 
       ]

@@ -1,7 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Directive, ElementRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
-  ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormsModule
+  ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormsModule, NgControl
 } from '@angular/forms';
 import { HttpClientModule } from '@angular/common/http';
 import { finalize } from 'rxjs/operators';
@@ -20,9 +20,79 @@ import { GalponService } from '../../../galpon/services/galpon.service';
 import { GalponDetailDto } from '../../../galpon/models/galpon.models';
 import { UserService, UserDto } from '../../../../core/services/user/user.service';
 import { Company, CompanyService } from '../../../../core/services/company/company.service';
-// (Opcional) si sigues usando el pipe en otras vistas:
-// import { LoteFilterPipe } from '../../pipes/loteFilter.pipe';
 
+/* ============================================================
+   Directiva standalone para separador de miles (es-CO)
+   Uso en HTML (recomendado para hembrasL, machosL, mixtas):
+   <input type="text" formControlName="hembrasL" appThousandSeparator ... />
+   ============================================================ */
+@Directive({
+  selector: 'input[appThousandSeparator]',
+  standalone: true
+})
+export class ThousandSeparatorDirective {
+  private readonly formatter = new Intl.NumberFormat('es-CO', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0 // ← aves/individuos sin decimales
+  });
+
+  private decimalSeparator = ',';   // es-CO
+  private thousandSeparator = '.';  // es-CO
+
+  constructor(
+    private el: ElementRef<HTMLInputElement>,
+    private ngControl: NgControl
+  ) {}
+
+  // Al enfocar: quitar formato para edición cómoda
+  @HostListener('focus')
+  onFocus() {
+    const raw = this.unformat(this.el.nativeElement.value);
+    this.el.nativeElement.value = raw ?? '';
+  }
+
+  // Mientras escribe: actualizar el FormControl con número limpio
+  @HostListener('input', ['$event'])
+  onInput(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const raw = this.unformat(input.value);
+    const numeric = this.toNumber(raw);
+
+    // Enviar valor numérico al control (o null si inválido)
+    this.ngControl?.control?.setValue(
+      isNaN(numeric) ? null : Math.round(numeric), // redondeamos a entero
+      { emitEvent: true, emitModelToViewChange: false }
+    );
+  }
+
+  // Al salir: mostrar con separadores (si hay valor)
+  @HostListener('blur')
+  onBlur() {
+    const controlVal = this.ngControl?.control?.value;
+    if (controlVal === null || controlVal === undefined || controlVal === '') {
+      this.el.nativeElement.value = '';
+      return;
+    }
+    const n = Number(controlVal);
+    this.el.nativeElement.value = isNaN(n) ? '' : this.formatter.format(n);
+  }
+
+  private unformat(val: string): string {
+    if (!val) return '';
+    return val
+      .replace(new RegExp('\\' + this.thousandSeparator, 'g'), '') // quitar puntos
+      .replace(this.decimalSeparator, '.')                         // coma → punto
+      .replace(/[^\d.-]/g, '');                                    // limpiar
+  }
+
+  private toNumber(val: string): number {
+    return parseFloat(val);
+  }
+}
+
+/* ============================================================
+   Componente: LoteListComponent (actualizado con la directiva)
+   ============================================================ */
 @Component({
   selector: 'app-lote-list',
   standalone: true,
@@ -32,8 +102,8 @@ import { Company, CompanyService } from '../../../../core/services/company/compa
     HttpClientModule,
     SidebarComponent,
     FontAwesomeModule,
-    FormsModule
-    // ,LoteFilterPipe
+    FormsModule,
+    ThousandSeparatorDirective // ← disponible para tu template externo
   ],
   templateUrl: './lote-list.component.html',
   styleUrls: ['./lote-list.component.scss']
@@ -71,15 +141,15 @@ export class LoteListComponent implements OnInit {
   // Lotes
   lotes: LoteDto[] = [];
   viewLotes: LoteDto[] = [];
-  lotesReproductora = [] as any[]; // se llena en detalle
+  lotesReproductora = [] as any[];
 
-  // ------- Filtros en cascada (LISTA) -------
+  // Filtros en cascada (LISTA)
   selectedCompanyId: number | null = null;
   selectedFarmId: number | null = null;
   selectedNucleoId: string | null = null;
   selectedGalponId: string | null = null;
 
-  // ------- Filtros en cascada (MODAL existente) -------
+  // Filtros en cascada (MODAL)
   nucleosFiltrados:   NucleoDto[] = [];
   galponesFiltrados:  GalponDetailDto[] = [];
   filteredNucleos:    NucleoDto[] = [];
@@ -134,7 +204,7 @@ export class LoteListComponent implements OnInit {
       this.loadLotes();
     });
 
-    // ---- CHAIN (MODAL) ya existente ----
+    // ---- CHAIN (MODAL) ----
     this.form.get('granjaId')!.valueChanges.subscribe(granjaId => {
       this.nucleosFiltrados = this.nucleos.filter(n => n.granjaId === Number(granjaId));
       this.filteredNucleos  = this.nucleosFiltrados;
@@ -168,9 +238,7 @@ export class LoteListComponent implements OnInit {
     this.form.get('mixtas')!.valueChanges.subscribe(() => this.actualizarEncasetadas());
   }
 
-  // --------------------------
   // Init
-  // --------------------------
   private initForm(): void {
     this.form = this.fb.group({
       loteId:             ['', Validators.required],
@@ -202,9 +270,7 @@ export class LoteListComponent implements OnInit {
     });
   }
 
-  // --------------------------
   // Cargas
-  // --------------------------
   private loadLotes(): void {
     this.loading = true;
     this.loteSvc.getAll()
@@ -226,9 +292,7 @@ export class LoteListComponent implements OnInit {
       });
   }
 
-  // --------------------------
   // FILTROS (LISTA)
-  // --------------------------
   get farmsFilteredL(): FarmDto[] {
     if (this.selectedCompanyId == null) return this.farms;
     return this.farms.filter(f => f.companyId === this.selectedCompanyId);
@@ -304,23 +368,18 @@ export class LoteListComponent implements OnInit {
     const term = this.normalize(this.filtro);
     let res = [...this.lotes];
 
-    // Por compañía
     if (this.selectedCompanyId != null) {
       res = res.filter(l => this.farmById[l.granjaId]?.companyId === this.selectedCompanyId);
     }
-    // Por granja
     if (this.selectedFarmId != null) {
       res = res.filter(l => l.granjaId === this.selectedFarmId);
     }
-    // Por núcleo
     if (this.selectedNucleoId != null) {
       res = res.filter(l => (l.nucleoId ?? null) === this.selectedNucleoId);
     }
-    // Por galpón
     if (this.selectedGalponId != null) {
       res = res.filter(l => (l.galponId ?? null) === this.selectedGalponId);
     }
-    // Búsqueda de texto
     if (term) {
       res = res.filter(l => {
         const haystack = [
@@ -337,9 +396,7 @@ export class LoteListComponent implements OnInit {
     this.viewLotes = res;
   }
 
-  // --------------------------
   // Acciones UI (DETALLE / MODAL)
-  // --------------------------
   openDetail(lote: LoteDto): void {
     this.selectedLote = lote;
     this.resumenSelected = null;
@@ -452,9 +509,7 @@ export class LoteListComponent implements OnInit {
       .subscribe();
   }
 
-  // --------------------------
   // Helpers de vista
-  // --------------------------
   calcularEdadSemanas(fechaEncaset?: string | Date | null): number {
     if (!fechaEncaset) return 0;
     const inicio = new Date(fechaEncaset);
@@ -536,4 +591,15 @@ export class LoteListComponent implements OnInit {
   }
 
   trackByLote = (_: number, l: LoteDto) => l.loteId;
+
+  // Mantener enteros (por si llegan decimales desde otra fuente)
+  formatearnumeroEntero(controlName: string): void {
+    const valor = this.form.get(controlName)?.value;
+    if (valor != null && valor !== '') {
+      const valorEntero = Math.round(Number(valor));
+      this.form.get(controlName)?.setValue(valorEntero);
+    } else {
+      this.form.get(controlName)?.setValue(null);
+    }
+  }
 }

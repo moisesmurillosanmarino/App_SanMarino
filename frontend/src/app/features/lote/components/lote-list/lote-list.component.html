@@ -222,43 +222,96 @@
             <!-- Hembras -->
             <div>
               <label class="ux-label">🐔 # Aves Hembra</label>
-              <input type="number" formControlName="hembrasL" (input)="actualizarEncasetadas()" class="ux-input"/>
+              <input
+                type="text"
+                inputmode="numeric"
+                appThousandSeparator
+                formControlName="hembrasL"
+                (input)="actualizarEncasetadas()"
+                class="ux-input"
+                placeholder="0"
+              />
             </div>
 
             <!-- Machos -->
             <div>
               <label class="ux-label">🐓 # Aves Macho</label>
-              <input type="number" formControlName="machosL" (input)="actualizarEncasetadas()" class="ux-input"/>
+              <input
+                type="text"
+                inputmode="numeric"
+                appThousandSeparator
+                formControlName="machosL"
+                (input)="actualizarEncasetadas()"
+                class="ux-input"
+                placeholder="0"
+              />
             </div>
 
             <!-- Mixtas -->
             <div>
               <label class="ux-label">🐥 # Aves Mixtas</label>
-              <input type="number" formControlName="mixtas" (input)="actualizarEncasetadas()" class="ux-input"/>
+              <input
+                type="text"
+                inputmode="numeric"
+                appThousandSeparator
+                formControlName="mixtas"
+                (input)="actualizarEncasetadas()"
+                class="ux-input"
+                placeholder="0"
+              />
             </div>
 
             <!-- Peso H -->
             <div>
               <label class="ux-label">📈 Peso prom. llegada H</label>
-              <input type="number" formControlName="pesoInicialH" class="ux-input"/>
+              <input
+                type="text"
+                inputmode="decimal"
+                appThousandSeparator
+                formControlName="pesoInicialH"
+                class="ux-input"
+                placeholder="0"
+              />
             </div>
 
             <!-- Peso M -->
             <div>
               <label class="ux-label">📈 Peso prom. llegada M</label>
-              <input type="number" formControlName="pesoInicialM" class="ux-input"/>
+              <input
+                type="text"
+                inputmode="decimal"
+                appThousandSeparator
+                formControlName="pesoInicialM"
+                class="ux-input"
+                placeholder="0"
+              />
             </div>
 
             <!-- Peso Mixto -->
             <div>
               <label class="ux-label">📈 Peso prom. mixto</label>
-              <input type="number" formControlName="pesoMixto" class="ux-input"/>
+              <input
+                type="text"
+                inputmode="decimal"
+                appThousandSeparator
+                formControlName="pesoMixto"
+                class="ux-input"
+                placeholder="0"
+              />
             </div>
 
             <!-- Aves Encasetadas (readonly) -->
             <div>
               <label class="ux-label">🐥 Aves encasetadas</label>
-              <input type="number" formControlName="avesEncasetadas" readonly class="ux-input ux-input--readonly"/>
+              <input
+                type="text"
+                inputmode="numeric"
+                appThousandSeparator
+                formControlName="avesEncasetadas"
+                readonly
+                class="ux-input ux-input--readonly"
+                placeholder="0"
+              />
             </div>
           </div>
 
