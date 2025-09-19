@@ -1,3 +1,4 @@
+// src/app/features/lote/pages/lote-list/lote-list.component.ts
 import { Component, OnInit, Directive, ElementRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
@@ -22,9 +23,7 @@ import { UserService, UserDto } from '../../../../core/services/user/user.servic
 import { Company, CompanyService } from '../../../../core/services/company/company.service';
 
 /* ============================================================
-   Directiva standalone para separador de miles (es-CO)
-   Uso en HTML (recomendado para hembrasL, machosL, mixtas):
-   <input type="text" formControlName="hembrasL" appThousandSeparator ... />
+   Directiva standalone: separador de miles (es-CO) y enteros
    ============================================================ */
 @Directive({
   selector: 'input[appThousandSeparator]',
@@ -33,39 +32,33 @@ import { Company, CompanyService } from '../../../../core/services/company/compa
 export class ThousandSeparatorDirective {
   private readonly formatter = new Intl.NumberFormat('es-CO', {
     minimumFractionDigits: 0,
-    maximumFractionDigits: 0 // ← aves/individuos sin decimales
+    maximumFractionDigits: 0
   });
-
-  private decimalSeparator = ',';   // es-CO
-  private thousandSeparator = '.';  // es-CO
+  private decimalSeparator = ',';
+  private thousandSeparator = '.';
 
   constructor(
     private el: ElementRef<HTMLInputElement>,
     private ngControl: NgControl
   ) {}
 
-  // Al enfocar: quitar formato para edición cómoda
   @HostListener('focus')
   onFocus() {
     const raw = this.unformat(this.el.nativeElement.value);
     this.el.nativeElement.value = raw ?? '';
   }
 
-  // Mientras escribe: actualizar el FormControl con número limpio
   @HostListener('input', ['$event'])
   onInput(e: Event) {
     const input = e.target as HTMLInputElement;
     const raw = this.unformat(input.value);
     const numeric = this.toNumber(raw);
-
-    // Enviar valor numérico al control (o null si inválido)
     this.ngControl?.control?.setValue(
-      isNaN(numeric) ? null : Math.round(numeric), // redondeamos a entero
+      isNaN(numeric) ? null : Math.round(numeric),
       { emitEvent: true, emitModelToViewChange: false }
     );
   }
 
-  // Al salir: mostrar con separadores (si hay valor)
   @HostListener('blur')
   onBlur() {
     const controlVal = this.ngControl?.control?.value;
@@ -80,18 +73,15 @@ export class ThousandSeparatorDirective {
   private unformat(val: string): string {
     if (!val) return '';
     return val
-      .replace(new RegExp('\\' + this.thousandSeparator, 'g'), '') // quitar puntos
-      .replace(this.decimalSeparator, '.')                         // coma → punto
-      .replace(/[^\d.-]/g, '');                                    // limpiar
+      .replace(new RegExp('\\' + this.thousandSeparator, 'g'), '')
+      .replace(this.decimalSeparator, '.')
+      .replace(/[^\d.-]/g, '');
   }
-
-  private toNumber(val: string): number {
-    return parseFloat(val);
-  }
+  private toNumber(val: string): number { return parseFloat(val); }
 }
 
 /* ============================================================
-   Componente: LoteListComponent (actualizado con la directiva)
+   Componente
    ============================================================ */
 @Component({
   selector: 'app-lote-list',
@@ -103,7 +93,7 @@ export class ThousandSeparatorDirective {
     SidebarComponent,
     FontAwesomeModule,
     FormsModule,
-    ThousandSeparatorDirective // ← disponible para tu template externo
+    ThousandSeparatorDirective
   ],
   templateUrl: './lote-list.component.html',
   styleUrls: ['./lote-list.component.scss']
@@ -118,10 +108,12 @@ export class LoteListComponent implements OnInit {
   editing: LoteDto | null = null;
   selectedLote: LoteDto | null = null;
 
-  // Búsqueda de texto (lista)
+  // Búsqueda y orden
   filtro = '';
+  sortKey: 'edad' | 'fecha' = 'edad';
+  sortDir: 'asc' | 'desc' = 'desc';
 
-  // Formularios
+  // Form
   form!: FormGroup;
 
   // Datos maestros
@@ -141,21 +133,21 @@ export class LoteListComponent implements OnInit {
   // Lotes
   lotes: LoteDto[] = [];
   viewLotes: LoteDto[] = [];
-  lotesReproductora = [] as any[];
+  lotesReproductora: any[] = [];
 
-  // Filtros en cascada (LISTA)
+  // Filtros en cascada (lista)
   selectedCompanyId: number | null = null;
   selectedFarmId: number | null = null;
   selectedNucleoId: string | null = null;
   selectedGalponId: string | null = null;
 
-  // Filtros en cascada (MODAL)
+  // Filtros (modal)
   nucleosFiltrados:   NucleoDto[] = [];
   galponesFiltrados:  GalponDetailDto[] = [];
   filteredNucleos:    NucleoDto[] = [];
   filteredGalpones:   GalponDetailDto[] = [];
 
-  // Resúmenes de mortalidad
+  // Resúmenes
   resumenMap: Record<string, LoteMortalidadResumenDto> = {};
   resumenSelected: LoteMortalidadResumenDto | null = null;
 
@@ -169,10 +161,10 @@ export class LoteListComponent implements OnInit {
     private companySvc: CompanyService
   ) {}
 
+  // ===================== Ciclo de vida ======================
   ngOnInit(): void {
     this.initForm();
 
-    // Cargar catálogos base en paralelo
     forkJoin({
       farms:     this.farmSvc.getAll(),
       nucleos:   this.nucleoSvc.getAll(),
@@ -180,31 +172,27 @@ export class LoteListComponent implements OnInit {
       tecnicos:  this.userSvc.getAll(),
       companies: this.companySvc.getAll()
     }).subscribe(({ farms, nucleos, galpones, tecnicos, companies }) => {
-      // Farms
+      // Catálogos
       this.farms = farms;
       this.farmById = {};
       farms.forEach(f => { this.farmById[f.id] = f; this.farmMap[f.id] = f.name; });
 
-      // Nucleos
       this.nucleos = nucleos;
       nucleos.forEach(n => this.nucleoMap[n.nucleoId] = n.nucleoNombre);
 
-      // Galpones
       this.galpones = galpones;
       galpones.forEach(g => this.galponMap[g.galponId] = g.galponNombre);
 
-      // Técnicos
       this.tecnicos = tecnicos;
       tecnicos.forEach(u => this.techMap[u.id] = `${u.surName} ${u.firstName}`);
 
-      // Companies
       this.companies = companies;
 
-      // Tras cargar catálogos, cargar lotes
+      // Lotes
       this.loadLotes();
     });
 
-    // ---- CHAIN (MODAL) ----
+    // Chains del modal
     this.form.get('granjaId')!.valueChanges.subscribe(granjaId => {
       this.nucleosFiltrados = this.nucleos.filter(n => n.granjaId === Number(granjaId));
       this.filteredNucleos  = this.nucleosFiltrados;
@@ -232,13 +220,13 @@ export class LoteListComponent implements OnInit {
       }
     });
 
-    // Recalculador de aves encasetadas (MODAL)
+    // Totales (encasetadas)
     this.form.get('hembrasL')!.valueChanges.subscribe(() => this.actualizarEncasetadas());
     this.form.get('machosL')!.valueChanges.subscribe(() => this.actualizarEncasetadas());
     this.form.get('mixtas')!.valueChanges.subscribe(() => this.actualizarEncasetadas());
   }
 
-  // Init
+  // ===================== Init form ==========================
   private initForm(): void {
     this.form = this.fb.group({
       loteId:             ['', Validators.required],
@@ -250,9 +238,9 @@ export class LoteListComponent implements OnInit {
       fechaEncaset:       [null, Validators.required],
       hembrasL:           [null],
       machosL:            [null],
-      pesoInicialH:       [null],
-      pesoInicialM:       [null],
-      pesoMixto:          [null],
+      pesoInicialH:       [null], // gramos
+      pesoInicialM:       [null], // gramos
+      pesoMixto:          [null], // gramos
       unifH:              [null],
       unifM:              [null],
       mortCajaH:          [null],
@@ -270,7 +258,7 @@ export class LoteListComponent implements OnInit {
     });
   }
 
-  // Cargas
+  // ===================== Carga ==============================
   private loadLotes(): void {
     this.loading = true;
     this.loteSvc.getAll()
@@ -279,36 +267,29 @@ export class LoteListComponent implements OnInit {
         this.lotes = list;
         this.recomputeList();
 
-        // Cargar resúmenes de mortalidad en paralelo
         const calls = list.map(l => this.loteSvc.getResumenMortalidad(l.loteId));
         if (calls.length) {
           forkJoin(calls).subscribe({
-            next: (resumenes) => {
-              resumenes.forEach(r => { this.resumenMap[r.loteId] = r; });
-            },
-            error: () => { /* silencioso */ }
+            next: (resumenes) => resumenes.forEach(r => { this.resumenMap[r.loteId] = r; }),
+            error: () => {}
           });
         }
       });
   }
 
-  // FILTROS (LISTA)
+  // ===================== Filtros (lista) ====================
   get farmsFilteredL(): FarmDto[] {
     if (this.selectedCompanyId == null) return this.farms;
     return this.farms.filter(f => f.companyId === this.selectedCompanyId);
   }
-
   get nucleosFilteredL(): NucleoDto[] {
-    if (this.selectedFarmId != null) {
-      return this.nucleos.filter(n => n.granjaId === this.selectedFarmId);
-    }
+    if (this.selectedFarmId != null) return this.nucleos.filter(n => n.granjaId === this.selectedFarmId);
     if (this.selectedCompanyId != null) {
       const ids = new Set(this.farmsFilteredL.map(f => f.id));
       return this.nucleos.filter(n => ids.has(n.granjaId));
     }
     return this.nucleos;
   }
-
   get galponesFilteredL(): GalponDetailDto[] {
     let arr = this.galpones;
     if (this.selectedFarmId != null) {
@@ -317,69 +298,50 @@ export class LoteListComponent implements OnInit {
       const ids = new Set(this.farmsFilteredL.map(f => f.id));
       arr = arr.filter(g => ids.has(g.granjaId));
     }
-    if (this.selectedNucleoId != null) {
-      arr = arr.filter(g => g.nucleoId === this.selectedNucleoId);
-    }
+    if (this.selectedNucleoId != null) arr = arr.filter(g => g.nucleoId === this.selectedNucleoId);
     return arr;
   }
 
   onCompanyChangeList(val: number | null) {
     this.selectedCompanyId = val;
-    if (this.selectedFarmId != null && !this.farmsFilteredL.some(f => f.id === this.selectedFarmId)) {
-      this.selectedFarmId = null;
-    }
-    if (this.selectedNucleoId != null && !this.nucleosFilteredL.some(n => n.nucleoId === this.selectedNucleoId)) {
-      this.selectedNucleoId = null;
-    }
-    if (this.selectedGalponId != null && !this.galponesFilteredL.some(g => g.galponId === this.selectedGalponId)) {
-      this.selectedGalponId = null;
-    }
+    if (this.selectedFarmId != null && !this.farmsFilteredL.some(f => f.id === this.selectedFarmId)) this.selectedFarmId = null;
+    if (this.selectedNucleoId != null && !this.nucleosFilteredL.some(n => n.nucleoId === this.selectedNucleoId)) this.selectedNucleoId = null;
+    if (this.selectedGalponId != null && !this.galponesFilteredL.some(g => g.galponId === this.selectedGalponId)) this.selectedGalponId = null;
     this.recomputeList();
   }
-
   onFarmChangeList(val: number | null) {
     this.selectedFarmId = val;
-    if (this.selectedNucleoId != null && !this.nucleosFilteredL.some(n => n.nucleoId === this.selectedNucleoId)) {
-      this.selectedNucleoId = null;
-    }
-    if (this.selectedGalponId != null && !this.galponesFilteredL.some(g => g.galponId === this.selectedGalponId)) {
-      this.selectedGalponId = null;
-    }
+    if (this.selectedNucleoId != null && !this.nucleosFilteredL.some(n => n.nucleoId === this.selectedNucleoId)) this.selectedNucleoId = null;
+    if (this.selectedGalponId != null && !this.galponesFilteredL.some(g => g.galponId === this.selectedGalponId)) this.selectedGalponId = null;
     this.recomputeList();
   }
-
   onNucleoChangeList(_val: string | null) {
-    if (this.selectedGalponId != null && !this.galponesFilteredL.some(g => g.galponId === this.selectedGalponId)) {
-      this.selectedGalponId = null;
-    }
+    if (this.selectedGalponId != null && !this.galponesFilteredL.some(g => g.galponId === this.selectedGalponId)) this.selectedGalponId = null;
     this.recomputeList();
   }
-
   resetListFilters() {
     this.filtro = '';
     this.selectedCompanyId = null;
-    this.selectedFarmId = null;
+       this.selectedFarmId = null;
     this.selectedNucleoId = null;
     this.selectedGalponId = null;
     this.recomputeList();
   }
 
+  // ===================== Ordenamiento =======================
+  onSortKeyChange(v: 'edad'|'fecha') { this.sortKey = v; this.recomputeList(); }
+  onSortDirChange(v: 'asc'|'desc') { this.sortDir = v; this.recomputeList(); }
+
+  // ===================== Recompute (filtros + orden) ========
   recomputeList() {
     const term = this.normalize(this.filtro);
     let res = [...this.lotes];
 
-    if (this.selectedCompanyId != null) {
-      res = res.filter(l => this.farmById[l.granjaId]?.companyId === this.selectedCompanyId);
-    }
-    if (this.selectedFarmId != null) {
-      res = res.filter(l => l.granjaId === this.selectedFarmId);
-    }
-    if (this.selectedNucleoId != null) {
-      res = res.filter(l => (l.nucleoId ?? null) === this.selectedNucleoId);
-    }
-    if (this.selectedGalponId != null) {
-      res = res.filter(l => (l.galponId ?? null) === this.selectedGalponId);
-    }
+    if (this.selectedCompanyId != null) res = res.filter(l => this.farmById[l.granjaId]?.companyId === this.selectedCompanyId);
+    if (this.selectedFarmId != null)    res = res.filter(l => l.granjaId === this.selectedFarmId);
+    if (this.selectedNucleoId != null)  res = res.filter(l => (l.nucleoId ?? null) === this.selectedNucleoId);
+    if (this.selectedGalponId != null)  res = res.filter(l => (l.galponId ?? null) === this.selectedGalponId);
+
     if (term) {
       res = res.filter(l => {
         const haystack = [
@@ -393,10 +355,30 @@ export class LoteListComponent implements OnInit {
       });
     }
 
+    res = this.sortLotes(res);
     this.viewLotes = res;
   }
 
-  // Acciones UI (DETALLE / MODAL)
+  private sortLotes(arr: LoteDto[]): LoteDto[] {
+    const val = (l: LoteDto): number | null => {
+      if (!l.fechaEncaset) return null;
+      if (this.sortKey === 'edad') return this.calcularEdadSemanas(l.fechaEncaset);
+      const t = new Date(l.fechaEncaset).getTime();
+      return isNaN(t) ? null : t;
+    };
+
+    return [...arr].sort((a, b) => {
+      const av = val(a);
+      const bv = val(b);
+      if (av === null && bv === null) return 0;
+      if (av === null) return 1;
+      if (bv === null) return -1;
+      const cmp = av - bv;
+      return this.sortDir === 'asc' ? cmp : -cmp;
+    });
+  }
+
+  // ===================== Acciones UI ========================
   openDetail(lote: LoteDto): void {
     this.selectedLote = lote;
     this.resumenSelected = null;
@@ -464,8 +446,8 @@ export class LoteListComponent implements OnInit {
         lineaGenetica: ''
       });
 
-      this.nucleosFiltrados  = []; this.filteredNucleos  = [];
-      this.galponesFiltrados = []; this.filteredGalpones = [];
+      this.nucleosFiltrados  = this.filteredNucleos  = [];
+      this.galponesFiltrados = this.filteredGalpones = [];
     }
 
     this.modalOpen = true;
@@ -509,7 +491,7 @@ export class LoteListComponent implements OnInit {
       .subscribe();
   }
 
-  // Helpers de vista
+  // ===================== Helpers ===========================
   calcularEdadSemanas(fechaEncaset?: string | Date | null): number {
     if (!fechaEncaset) return 0;
     const inicio = new Date(fechaEncaset);
@@ -527,11 +509,11 @@ export class LoteListComponent implements OnInit {
     if (value == null) return '0';
     return value.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
   }
-
   formatOrDash(val?: number | null): string {
     return (val === null || val === undefined) ? '—' : this.formatNumber(val);
   }
 
+  // *** Helpers de vivas (faltaban y causaban el error del template) ***
   vivasH(l: LoteDto): number | null {
     const r = this.resumenMap[l.loteId];
     return r ? r.saldoHembras : null;
@@ -544,16 +526,11 @@ export class LoteListComponent implements OnInit {
     const r = this.resumenMap[l.loteId];
     return r ? (r.saldoHembras + r.saldoMachos) : null;
   }
+  // **********************************************************
 
-  getFarmName(id: number): string {
-    return this.farmMap[id] || '–';
-  }
-  getNucleoName(id?: string | null): string {
-    return id ? (this.nucleoMap[id] || '–') : '–';
-  }
-  getGalponName(id?: string | null): string {
-    return id ? (this.galponMap[id] || '–') : '–';
-  }
+  getFarmName(id: number): string { return this.farmMap[id] || '–'; }
+  getNucleoName(id?: string | null): string { return id ? (this.nucleoMap[id] || '–') : '–'; }
+  getGalponName(id?: string | null): string { return id ? (this.galponMap[id] || '–') : '–'; }
 
   actualizarEncasetadas(): void {
     const h = +this.form.get('hembrasL')?.value || 0;
@@ -566,7 +543,7 @@ export class LoteListComponent implements OnInit {
     this.nucleosFiltrados = this.nucleos.filter(n => n.granjaId === Number(granjaId));
     this.filteredNucleos  = this.nucleosFiltrados;
     this.form.get('nucleoId')?.setValue(null);
-    this.galponesFiltrados = []; this.filteredGalpones = [];
+    this.galponesFiltrados = this.filteredGalpones = [];
     this.form.get('galponId')?.setValue(null);
   }
 
@@ -574,12 +551,11 @@ export class LoteListComponent implements OnInit {
     const granjaId = this.form.get('granjaId')?.value;
     if (granjaId && nucleoId) {
       this.galponSvc.getByGranjaAndNucleo(Number(granjaId), nucleoId).subscribe(data => {
-        this.galponesFiltrados = data;
-        this.filteredGalpones = data;
+        this.galponesFiltrados = this.filteredGalpones = data;
         this.form.get('galponId')?.setValue(null);
       });
     } else {
-      this.galponesFiltrados = []; this.filteredGalpones = [];
+      this.galponesFiltrados = this.filteredGalpones = [];
     }
   }
 
@@ -592,7 +568,7 @@ export class LoteListComponent implements OnInit {
 
   trackByLote = (_: number, l: LoteDto) => l.loteId;
 
-  // Mantener enteros (por si llegan decimales desde otra fuente)
+  // Por si llegan decimales desde otra fuente
   formatearnumeroEntero(controlName: string): void {
     const valor = this.form.get(controlName)?.value;
     if (valor != null && valor !== '') {

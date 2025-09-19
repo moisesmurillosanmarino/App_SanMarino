@@ -10,7 +10,7 @@
       </button>
     </div>
 
-    <!-- Filtros en cascada + búsqueda -->
+    <!-- Filtros en cascada + búsqueda + orden -->
     <div class="ux-card p-4 mb-4">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
         <!-- Compañía -->
@@ -58,7 +58,7 @@
         </div>
 
         <!-- Búsqueda -->
-        <div class="lg:col-span-2">
+        <div class="lg:col-span-3">
           <label for="lote-filter" class="ux-label">Buscar</label>
           <div class="ux-search">
             <fa-icon [icon]="['fas','magnifying-glass']" class="ux-search__icon" aria-hidden="true"></fa-icon>
@@ -74,8 +74,30 @@
           </div>
         </div>
 
+        <!-- Ordenar por -->
+        <div class="lg:col-span-2">
+          <label for="l-sort-key" class="ux-label">Ordenar por</label>
+          <select id="l-sort-key" class="ux-select"
+                  [ngModel]="sortKey"
+                  (ngModelChange)="onSortKeyChange($event)">
+            <option [ngValue]="'edad'">Edad (semanas)</option>
+            <option [ngValue]="'fecha'">Fecha de encaset</option>
+          </select>
+        </div>
+
+        <!-- Dirección -->
+        <div class="lg:col-span-2">
+          <label for="l-sort-dir" class="ux-label">Dirección</label>
+          <select id="l-sort-dir" class="ux-select"
+                  [ngModel]="sortDir"
+                  (ngModelChange)="onSortDirChange($event)">
+            <option [ngValue]="'desc'">Descendente</option>
+            <option [ngValue]="'asc'">Ascendente</option>
+          </select>
+        </div>
+
         <!-- Limpiar -->
-        <div class="lg:col-span-1">
+        <div class="lg:col-span-2">
           <button class="btn-ghost w-full" (click)="resetListFilters()">Limpiar</button>
         </div>
       </div>
@@ -114,7 +136,7 @@
               <td>{{ formatOrDash(vivasTotales(l)) }}</td>
 
               <td>{{ formatNumber((l.hembrasL || 0) + (l.machosL || 0)) }}</td>
-              <td>{{ l.fechaEncaset | date:'shortDate' }}</td>
+              <td>{{ l.fechaEncaset ? (l.fechaEncaset | date:'dd/MM/yyyy') : '—' }}</td>
               <td class="text-center">
                 <div class="inline-flex items-center gap-2">
                   <button (click)="openDetail(l)" class="icon-btn" title="Ver detalle">
@@ -219,7 +241,7 @@
               <input formControlName="lineaGenetica" class="ux-input"/>
             </div>
 
-            <!-- Hembras -->
+            <!-- ======= AVES: enteros con separador ======= -->
             <div>
               <label class="ux-label">🐔 # Aves Hembra</label>
               <input
@@ -233,7 +255,6 @@
               />
             </div>
 
-            <!-- Machos -->
             <div>
               <label class="ux-label">🐓 # Aves Macho</label>
               <input
@@ -247,7 +268,6 @@
               />
             </div>
 
-            <!-- Mixtas -->
             <div>
               <label class="ux-label">🐥 # Aves Mixtas</label>
               <input
@@ -261,43 +281,51 @@
               />
             </div>
 
-            <!-- Peso H -->
+            <!-- ======= PESOS: en gramos (g) ======= -->
             <div>
-              <label class="ux-label">📈 Peso prom. llegada H</label>
+              <label class="ux-label">📈 Peso prom. llegada H <span class="muted">(g)</span></label>
               <input
                 type="text"
-                inputmode="decimal"
+                inputmode="numeric"
                 appThousandSeparator
                 formControlName="pesoInicialH"
                 class="ux-input"
-                placeholder="0"
+                placeholder="0 g"
+                aria-description="El peso se registra en gramos"
               />
             </div>
 
-            <!-- Peso M -->
             <div>
-              <label class="ux-label">📈 Peso prom. llegada M</label>
+              <label class="ux-label">📈 Peso prom. llegada M <span class="muted">(g)</span></label>
               <input
                 type="text"
-                inputmode="decimal"
+                inputmode="numeric"
                 appThousandSeparator
                 formControlName="pesoInicialM"
                 class="ux-input"
-                placeholder="0"
+                placeholder="0 g"
+                aria-description="El peso se registra en gramos"
               />
             </div>
 
-            <!-- Peso Mixto -->
             <div>
-              <label class="ux-label">📈 Peso prom. mixto</label>
+              <label class="ux-label">📈 Peso prom. mixto <span class="muted">(g)</span></label>
               <input
                 type="text"
-                inputmode="decimal"
+                inputmode="numeric"
                 appThousandSeparator
                 formControlName="pesoMixto"
                 class="ux-input"
-                placeholder="0"
+                placeholder="0 g"
+                aria-description="El peso se registra en gramos"
               />
+            </div>
+
+            <!-- Ayuda general -->
+            <div class="md:col-span-3">
+              <small class="ux-help text-warm-gray-600">
+                Nota: Todos los <strong>pesos</strong> se registran en <strong>gramos (g)</strong>. Usa números enteros; los separadores de miles se aplican automáticamente.
+              </small>
             </div>
 
             <!-- Aves Encasetadas (readonly) -->
@@ -311,6 +339,7 @@
                 readonly
                 class="ux-input ux-input--readonly"
                 placeholder="0"
+                aria-description="Campo de solo lectura con total de aves"
               />
             </div>
           </div>
@@ -339,7 +368,7 @@
             <div><strong class="text-warm-gray-800">🏚️ Galpón:</strong> {{ getGalponName(selectedLote.galponId) }}</div>
             <div><strong class="text-warm-gray-800">🏠 Granja:</strong> {{ getFarmName(selectedLote.granjaId) }}</div>
             <div><strong class="text-warm-gray-800">📍 Núcleo:</strong> {{ getNucleoName(selectedLote.nucleoId) }}</div>
-            <div><strong class="text-warm-gray-800">📅 Fecha encaset:</strong> {{ selectedLote.fechaEncaset | date:'shortDate' }}</div>
+            <div><strong class="text-warm-gray-800">📅 Fecha encaset:</strong> {{ selectedLote.fechaEncaset ? (selectedLote.fechaEncaset | date:'dd/MM/yyyy') : '—' }}</div>
             <div><strong class="text-warm-gray-800">📊 Fase:</strong> {{ calcularFase(selectedLote.fechaEncaset) }}</div>
             <div><strong class="text-warm-gray-800">⏳ Edad:</strong> {{ calcularEdadSemanas(selectedLote.fechaEncaset) }} sem</div>
             <div><strong class="text-warm-gray-800">📄 Lote ERP:</strong> {{ selectedLote.loteErp || '—' }}</div>
@@ -347,9 +376,9 @@
             <div><strong class="text-warm-gray-800">🐔 Hembras L:</strong> {{ formatNumber(selectedLote.hembrasL || 0) }}</div>
             <div><strong class="text-warm-gray-800">🐓 Machos L:</strong> {{ formatNumber(selectedLote.machosL || 0) }}</div>
             <div><strong class="text-warm-gray-800">🐥 Mixtas:</strong> {{ formatNumber(selectedLote.mixtas || 0) }}</div>
-            <div><strong class="text-warm-gray-800">📈 Peso inicial H:</strong> {{ selectedLote.pesoInicialH || '—' }}</div>
-            <div><strong class="text-warm-gray-800">📈 Peso inicial M:</strong> {{ selectedLote.pesoInicialM || '—' }}</div>
-            <div><strong class="text-warm-gray-800">📈 Peso mixto:</strong> {{ selectedLote.pesoMixto || '—' }}</div>
+            <div><strong class="text-warm-gray-800">📈 Peso inicial H (g):</strong> {{ formatNumber(selectedLote.pesoInicialH || 0) }}</div>
+            <div><strong class="text-warm-gray-800">📈 Peso inicial M (g):</strong> {{ formatNumber(selectedLote.pesoInicialM || 0) }}</div>
+            <div><strong class="text-warm-gray-800">📈 Peso mixto (g):</strong> {{ formatNumber(selectedLote.pesoMixto || 0) }}</div>
             <div><strong class="text-warm-gray-800">🐣 Aves encasetadas:</strong> {{ formatNumber(selectedLote.avesEncasetadas || 0) }}</div>
             <div><strong class="text-warm-gray-800">📦 Total aves:</strong> {{ formatNumber((selectedLote.hembrasL || 0) + (selectedLote.machosL || 0)) }}</div>
           </div>
@@ -402,9 +431,9 @@
                     <th>Machos</th>
                     <th>Hembras</th>
                     <th>Mixtas</th>
-                    <th>Peso M</th>
-                    <th>Peso H</th>
-                    <th>Peso Mixto</th>
+                    <th>Peso M (g)</th>
+                    <th>Peso H (g)</th>
+                    <th>Peso Mixto (g)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -414,9 +443,9 @@
                     <td>{{ formatNumber(r.m || 0) }}</td>
                     <td>{{ formatNumber(r.h || 0) }}</td>
                     <td>{{ formatNumber(r.mixtas || 0) }}</td>
-                    <td>{{ r.pesoInicialM || '—' }}</td>
-                    <td>{{ r.pesoInicialH || '—' }}</td>
-                    <td>{{ r.pesoMixto || '—' }}</td>
+                    <td>{{ formatNumber(r.pesoInicialM || 0) }}</td>
+                    <td>{{ formatNumber(r.pesoInicialH || 0) }}</td>
+                    <td>{{ formatNumber(r.pesoMixto || 0) }}</td>
                   </tr>
                   <tr *ngIf="!lotesReproductora.length">
                     <td colspan="8" class="empty-state">Sin lotes reproductora asignados.</td>
