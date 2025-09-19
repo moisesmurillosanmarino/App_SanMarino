@@ -23,11 +23,11 @@
           </span>
 
           <span class="chip chip--muted" *ngIf="selectedNucleoId">
-            Núcleo: {{ selectedNucleoId }}
+            Núcleo: {{ selectedNucleoNombre || selectedNucleoId }}
           </span>
 
           <span class="chip chip--muted" *ngIf="selectedGalponId">
-            Galpón: {{ selectedGalponId === SIN_GALPON ? '— Sin galpón —' : selectedGalponId }}
+            Galpón: {{ selectedGalponNombre }}
           </span>
 
           <span class="chip chip--info" *ngIf="selectedLoteId">
