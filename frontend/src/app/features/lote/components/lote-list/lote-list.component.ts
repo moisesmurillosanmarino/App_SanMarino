@@ -21,6 +21,7 @@ import { GalponService } from '../../../galpon/services/galpon.service';
 import { GalponDetailDto } from '../../../galpon/models/galpon.models';
 import { UserService, UserDto } from '../../../../core/services/user/user.service';
 import { Company, CompanyService } from '../../../../core/services/company/company.service';
+import { MasterListService } from '../../../../core/services/master-list/master-list.service';
 
 /* ============================================================
    Directiva standalone: separador de miles (es-CO) y enteros
@@ -158,7 +159,8 @@ export class LoteListComponent implements OnInit {
     private nucleoSvc: NucleoService,
     private galponSvc: GalponService,
     private userSvc:   UserService,
-    private companySvc: CompanyService
+    private companySvc: CompanyService,
+    private readonly masterSvc: MasterListService,
   ) {}
 
   // ===================== Ciclo de vida ======================
@@ -170,7 +172,8 @@ export class LoteListComponent implements OnInit {
       nucleos:   this.nucleoSvc.getAll(),
       galpones:  this.galponSvc.getAll(),
       tecnicos:  this.userSvc.getAll(),
-      companies: this.companySvc.getAll()
+      companies: this.companySvc.getAll(),
+      lineagenetica:  this.masterSvc.getByKey('type_linea_genetica'), // regiones
     }).subscribe(({ farms, nucleos, galpones, tecnicos, companies }) => {
       // Catálogos
       this.farms = farms;

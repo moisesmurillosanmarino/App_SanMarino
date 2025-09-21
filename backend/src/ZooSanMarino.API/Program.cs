@@ -1,10 +1,12 @@
 // file: backend/src/ZooSanMarino.API/Program.cs
 using System.Text;
 using System.Text.RegularExpressions;
+using System.IO;
 using EFCore.NamingConventions;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -12,21 +14,23 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
-using ZooSanMarino.API.Extensions;            // MigrateAndSeedAsync (si la usas)
-using ZooSanMarino.API.Infrastructure;        // HttpCurrentUser
-using ZooSanMarino.Application.Interfaces;     // ICurrentUser + servicios
-using ZooSanMarino.Application.Options;        // JwtOptions
-using ZooSanMarino.Application.Validators;     // SeguimientoLoteLevanteDtoValidator
+using Swashbuckle.AspNetCore.Swagger;          // ISwaggerProvider (para /swagger/download)
+using Swashbuckle.AspNetCore.SwaggerUI;       // Opciones UI
+
+using ZooSanMarino.API.Extensions;
+using ZooSanMarino.API.Infrastructure;
+using ZooSanMarino.Application.Interfaces;
+using ZooSanMarino.Application.Options;
+using ZooSanMarino.Application.Validators;
 using ZooSanMarino.Domain.Entities;
 using ZooSanMarino.Infrastructure.Persistence;
-using ZooSanMarino.Infrastructure.Providers;   // EfAlimentoNutricionProvider / NullGramajeProvider
+using ZooSanMarino.Infrastructure.Providers;
 using ZooSanMarino.Infrastructure.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ─────────────────────────────────────
-// 0) Cargar .env (antes de AddEnvironmentVariables)
-//    y shim de ZOO_CONN → ConnectionStrings__ZooSanMarinoContext
+// 0) Cargar .env y shim ZOO_CONN
 // ─────────────────────────────────────
 static void LoadDotEnvIfExists(string path)
 {
@@ -50,9 +54,9 @@ static void LoadDotEnvIfExists(string path)
 
 var envPaths = new[]
 {
-    Path.Combine(builder.Environment.ContentRootPath, ".env"),              // src/ZooSanMarino.API/.env
-    Path.Combine(builder.Environment.ContentRootPath, "..", ".env"),        // backend/src/.env
-    Path.Combine(builder.Environment.ContentRootPath, "..", "..", ".env"),  // backend/.env
+    Path.Combine(builder.Environment.ContentRootPath, ".env"),
+    Path.Combine(builder.Environment.ContentRootPath, "..", ".env"),
+    Path.Combine(builder.Environment.ContentRootPath, "..", "..", ".env"),
 };
 foreach (var p in envPaths) LoadDotEnvIfExists(Path.GetFullPath(p));
 
@@ -64,7 +68,7 @@ if (!string.IsNullOrWhiteSpace(legacyConn))
 }
 
 // ─────────────────────────────────────
-// 1) Config (JSON → ENV); ENV sobreescribe
+// 1) Config
 // ─────────────────────────────────────
 builder.Configuration
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
@@ -100,7 +104,7 @@ jwt.EnsureValid();
 builder.Services.AddSingleton(jwt);
 
 // ─────────────────────────────────────
-// 5) CORS (desde AllowedOrigins en appsettings)
+// 5) CORS (AllowedOrigins)
 // ─────────────────────────────────────
 var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
 builder.Services.AddCorsFromOrigins("AppCors", allowedOrigins);
@@ -137,17 +141,18 @@ builder.Services.AddScoped<IDepartamentoService, DepartamentoService>();
 builder.Services.AddScoped<IMunicipioService, MunicipioService>();
 builder.Services.AddScoped<ILoteSeguimientoService, LoteSeguimientoService>();
 builder.Services.AddScoped<IMasterListService, MasterListService>();
-builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<ISeguimientoLoteLevanteService, SeguimientoLoteLevanteService>();
 builder.Services.AddScoped<IProduccionLoteService, ProduccionLoteService>();
-builder.Services.AddScoped<IPermissionService, PermissionService>();
-builder.Services.AddScoped<IMenuService,  MenuService>(); // o AddScoped<IMenuService, MenuService>();
 builder.Services.AddScoped<ICatalogItemService, CatalogItemService>();
 builder.Services.AddScoped<IFarmInventoryService, FarmInventoryService>();
 builder.Services.AddScoped<IFarmInventoryMovementService, FarmInventoryMovementService>();
-builder.Services.AddScoped<IFarmInventoryReportService, FarmInventoryReportService>(); // ← FALTABA
+builder.Services.AddScoped<IFarmInventoryReportService, FarmInventoryReportService>();
+builder.Services.AddScoped<IPermissionService, PermissionService>(); 
 
-// Proveedores (ajusta cuando tengas provider real de gramaje)
+// ✅ Servicio orquestador único de roles/permissions/menús
+builder.Services.AddScoped<IRoleCompositeService, RoleCompositeService>();
+
+// Proveedores
 builder.Services.AddScoped<IAlimentoNutricionProvider, EfAlimentoNutricionProvider>();
 builder.Services.AddScoped<IGramajeProvider, NullGramajeProvider>();
 
@@ -181,7 +186,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             OnMessageReceived = ctx =>
             {
-                // Evitar ruido con preflight
                 if (HttpMethods.IsOptions(ctx.Request.Method)) ctx.NoResult();
                 return Task.CompletedTask;
             }
@@ -189,23 +193,35 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 // ─────────────────────────────────────
-// 11) Authorization (ejemplo de políticas)
+// 11) Authorization (allow-all + provider permisivo)
 // ─────────────────────────────────────
 builder.Services.AddAuthorization(opt =>
 {
-    opt.AddPolicy("CanManageUsers", p => p.RequireClaim("permission", "manage_users"));
-    opt.AddPolicy("CanManageMenus", p => p.RequireClaim("permission", "manage_menus"));
-    opt.AddPolicy("CanManageRoles", p => p.RequireClaim("permission", "manage_roles"));
+    var allowAll = new AuthorizationPolicyBuilder()
+        .RequireAssertion(_ => true)
+        .Build();
+
+    opt.DefaultPolicy  = allowAll;   // [Authorize] sin política
+    opt.FallbackPolicy = allowAll;   // endpoints sin atributo
 });
 
+// Vital: este provider hace que CUALQUIER [Authorize(Policy="...")] también permita pasar
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, AllowAllPolicyProvider>();
+
 // ─────────────────────────────────────
-// 12) Swagger + Bearer
+// 12) Swagger + Bearer + CustomSchemaIds + Descarga JSON
 // ─────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "ZooSanMarino", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "ZooSanMarino",
+        Version = "v1",
+        Description = "API de gestión ZooSanMarino (Roles, Usuarios, Granjas, Núcleos, Galpones, Lotes, Inventario, Producción, etc.)"
+    });
 
+    // 🔐 Bearer
     var scheme = new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -214,15 +230,24 @@ builder.Services.AddSwaggerGen(c =>
         Scheme = JwtBearerDefaults.AuthenticationScheme, // "bearer"
         BearerFormat = "JWT",
         Description = "Pega SOLO el token (Swagger añadirá 'Bearer ').",
-        Reference = new OpenApiReference
-        {
-            Type = ReferenceType.SecurityScheme,
-            Id = JwtBearerDefaults.AuthenticationScheme
-        }
+        Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = JwtBearerDefaults.AuthenticationScheme }
     };
-
     c.AddSecurityDefinition(JwtBearerDefaults.AuthenticationScheme, scheme);
     c.AddSecurityRequirement(new OpenApiSecurityRequirement { { scheme, Array.Empty<string>() } });
+
+    // ✅ Evitar colisiones de schemaId (tipos anidados o repetidos)
+    c.CustomSchemaIds(type =>
+    {
+        var full = type.FullName ?? type.Name;
+        full = Regex.Replace(full, @"`\d+", ""); // genéricos
+        full = full.Replace("+", ".");           // anidados
+        full = full.Replace('.', '_');           // schemaId seguro
+        return full;
+    });
+
+    // (Opcional) XML comments
+    // var xml = Path.Combine(AppContext.BaseDirectory, "ZooSanMarino.API.xml");
+    // if (File.Exists(xml)) c.IncludeXmlComments(xml, includeControllerXmlComments: true);
 });
 
 // ─────────────────────────────────────
@@ -233,13 +258,61 @@ builder.Services.AddControllers();
 var app = builder.Build();
 
 // ─────────────────────────────────────
-// 14) Pipeline HTTP
+/* 14) Pipeline HTTP */
 // ─────────────────────────────────────
+
+// 14.1 CSS para tema oscuro de Swagger UI (sin archivos estáticos)
+const string swaggerDarkCss = """
+:root {
+  --swagger-font-size: 14px;
+}
+body.swagger-ui, .swagger-ui .topbar { background: #0f172a !important; color: #e5e7eb !important; }
+.swagger-ui .topbar { border-bottom: 1px solid #1f2937; }
+.swagger-ui .topbar .download-url-wrapper .select-label select { background: #111827; color:#e5e7eb; }
+.swagger-ui .info, .swagger-ui .opblock, .swagger-ui .model, .swagger-ui .opblock-tag { color: #e5e7eb; }
+.swagger-ui .opblock { background:#111827; border-color:#374151; }
+.swagger-ui .opblock .opblock-summary { background:#0b1220; }
+.swagger-ui .opblock .opblock-summary-method { background:#1f2937; }
+.swagger-ui .responses-inner, .swagger-ui .parameters-container { background:#0b1220; }
+.swagger-ui .tab li { color:#e5e7eb; }
+.swagger-ui .btn, .swagger-ui select, .swagger-ui input { background:#1f2937; color:#e5e7eb; border-color:#374151; }
+.swagger-ui .response-control-media-type__accept-message { color:#9ca3af; }
+.swagger-ui .opblock-tag { background:#0b1220; border:1px solid #1f2937; border-radius:6px; padding:8px 12px; }
+""";
+app.MapGet("/swagger-ui/dark.css", () => Results.Text(swaggerDarkCss, "text/css"));
+
+// 14.2 Swagger JSON como descarga forzada
+app.MapGet("/swagger/download", (ISwaggerProvider provider) =>
+{
+    var doc = provider.GetSwagger("v1");
+    using var sw = new StringWriter();
+    var w = new Microsoft.OpenApi.Writers.OpenApiJsonWriter(sw);
+    doc.SerializeAsV3(w);
+    var bytes = Encoding.UTF8.GetBytes(sw.ToString());
+    return Results.File(bytes, "application/json", "swagger-v1.json");
+});
+
+// 14.3 Swagger y UI
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
+    // Documento principal
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "ZooSanMarino v1");
+
+    // UI
+    c.DocumentTitle = "ZooSanMarino — API Docs";
     c.DisplayRequestDuration();
+    c.EnableFilter();                 // caja de búsqueda/filtrado
+    c.EnableDeepLinking();            // anclas navegables
+    c.DefaultModelExpandDepth(1);     // menos ruido en modelos
+    c.DefaultModelsExpandDepth(-1);   // oculta la sección "Schemas" por defecto
+    c.DocExpansion(DocExpansion.List);
+
+    // Tema oscuro
+    c.InjectStylesheet("/swagger-ui/dark.css");
+
+    // (Opcional) Ruta: deja /swagger como UI
+    // c.RoutePrefix = string.Empty; // si quieres la UI en "/"
 });
 
 app.UseRouting();
@@ -280,7 +353,7 @@ app.MapGet("/debug/config/conn", (IConfiguration cfg) =>
     return Results.Ok(new { ConnectionString = safe });
 });
 
-// Ping DB (no toca esquema)
+// Ping DB
 app.MapGet("/db-ping", async (ZooSanMarinoContext ctx) =>
 {
     try
@@ -299,15 +372,13 @@ app.MapGet("/db-ping", async (ZooSanMarinoContext ctx) =>
 app.MapMethods("{*path}", new[] { "OPTIONS" }, () => Results.Ok()).RequireCors("AppCors");
 
 // ─────────────────────────────────────
-// 15) Migrar + Seed controlados por config
+// 15) Migrar + Seed (flags)
 // ─────────────────────────────────────
 bool runMigrations = app.Configuration.GetValue<bool>("Database:RunMigrations");
 bool runSeed       = app.Configuration.GetValue<bool>("Database:RunSeed");
 
 if (runMigrations || runSeed)
 {
-    // Si tu extensión soporta flags, usa esa sobrecarga:
-    // await app.MigrateAndSeedAsync(runMigrations, runSeed);
     await app.MigrateAndSeedAsync();
 }
 
@@ -338,11 +409,33 @@ internal static class CorsExtensions
                     policy.WithOrigins(origins)
                           .AllowAnyMethod()
                           .AllowAnyHeader();
-                    // Si vas a usar credenciales (cookies), cambia a:
-                    // policy.WithOrigins(origins).AllowAnyMethod().AllowAnyHeader().AllowCredentials();
-                    // y NO uses "*" arriba.
+                    // Si usas cookies: .AllowCredentials()
                 }
             });
         });
     }
+}
+
+// ─────────────────────────────────────
+// Policy Provider permisivo para DEV
+//    - Hace que cualquier [Authorize(Policy="...")] permita pasar.
+// ─────────────────────────────────────
+internal sealed class AllowAllPolicyProvider : IAuthorizationPolicyProvider
+{
+    private readonly AuthorizationPolicy _allowAll =
+        new AuthorizationPolicyBuilder().RequireAssertion(_ => true).Build();
+
+    private readonly DefaultAuthorizationPolicyProvider _fallback;
+
+    public AllowAllPolicyProvider(IOptions<AuthorizationOptions> options)
+        => _fallback = new DefaultAuthorizationPolicyProvider(options);
+
+    public Task<AuthorizationPolicy> GetDefaultPolicyAsync()
+        => Task.FromResult(_allowAll);
+
+    public Task<AuthorizationPolicy?> GetFallbackPolicyAsync()
+        => Task.FromResult<AuthorizationPolicy?>(_allowAll);
+
+    public Task<AuthorizationPolicy?> GetPolicyAsync(string policyName)
+        => Task.FromResult<AuthorizationPolicy?>(_allowAll);
 }

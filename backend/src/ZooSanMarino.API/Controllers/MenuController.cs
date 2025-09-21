@@ -1,8 +1,7 @@
 // src/ZooSanMarino.API/Controllers/MenuController.cs
-using System;
 using System.Security.Claims;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using ZooSanMarino.Application.DTOs;
 using ZooSanMarino.Application.Interfaces;
@@ -18,64 +17,55 @@ public class MenuController : ControllerBase
 
     public MenuController(IMenuService svc) => _svc = svc;
 
-    /// <summary>
-    /// Obtiene el árbol completo de menús (sin filtrar por permisos). Útil para administración.
-    /// </summary>
-    [HttpGet]
-    [Authorize(Policy = "CanManageMenus")] // quita esta línea si no usas policies
-    [ProducesResponseType(typeof(MenuItemDto[]), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetTree() =>
-        Ok(await _svc.GetTreeAsync());
+    /// <summary>Árbol completo de menús (sin filtrar). Útil para administración.</summary>
+    [HttpGet("tree")]
+    [Authorize(Policy = "CanManageMenus")] // quítalo si no usas policies
+    [ProducesResponseType(typeof(IEnumerable<MenuItemDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetTree() => Ok(await _svc.GetTreeAsync());
 
-    /// <summary>
-    /// Obtiene el menú filtrado por los permisos del usuario autenticado.
-    /// </summary>
+    /// <summary>Menú filtrado por permisos del usuario autenticado. Acepta companyId opcional.</summary>
     [HttpGet("me")]
     [Authorize]
-    [ProducesResponseType(typeof(MenuItemDto[]), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(IEnumerable<MenuItemDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> GetForCurrentUser()
+    public async Task<IActionResult> GetForCurrentUser([FromQuery] int? companyId = null)
     {
-        // intenta claims comunes: NameIdentifier / sub / uid
         var idStr = User.FindFirstValue(ClaimTypes.NameIdentifier)
                   ?? User.FindFirstValue("sub")
                   ?? User.FindFirstValue("uid");
 
         if (!Guid.TryParse(idStr, out var userId))
-            return Unauthorized("No se pudo determinar el GUID del usuario.");
+            return Unauthorized(new { message = "No se pudo determinar el GUID del usuario." });
 
-        var data = await _svc.GetForUserAsync(userId);
+        var data = await _svc.GetForUserAsync(userId, companyId);
         return Ok(data);
     }
 
-    /// <summary>
-    /// Obtiene el menú filtrado por permisos para un usuario específico (administración).
-    /// </summary>
+    /// <summary>Menú filtrado por permisos para un usuario específico (administración).</summary>
     [HttpGet("user/{userId:guid}")]
-    [Authorize(Policy = "CanManageUsers")] // quita esta línea si no usas policies
-    [ProducesResponseType(typeof(MenuItemDto[]), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetForUser(Guid userId) =>
-        Ok(await _svc.GetForUserAsync(userId));
+    [Authorize(Policy = "CanManageUsers")]
+    [ProducesResponseType(typeof(IEnumerable<MenuItemDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetForUser(Guid userId, [FromQuery] int? companyId = null)
+        => Ok(await _svc.GetForUserAsync(userId, companyId));
 
-    /// <summary>
-    /// Crea un ítem de menú (ABM).
-    /// </summary>
+    /// <summary>Crea un ítem de menú.</summary>
     [HttpPost]
     [Authorize(Policy = "CanManageMenus")]
+    [Consumes("application/json")]
     [ProducesResponseType(typeof(MenuItemDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] CreateMenuDto dto)
     {
         if (!ModelState.IsValid) return ValidationProblem(ModelState);
         var created = await _svc.CreateAsync(dto);
-        return CreatedAtAction(nameof(GetTree), new { id = created.Id }, created);
+        // No hay endpoint "get by id"; devolvemos Created con Location genérica del recurso
+        return Created($"/api/menu/tree", created);
     }
 
-    /// <summary>
-    /// Actualiza un ítem de menú (ABM).
-    /// </summary>
+    /// <summary>Actualiza un ítem de menú.</summary>
     [HttpPut("{id:int}")]
     [Authorize(Policy = "CanManageMenus")]
+    [Consumes("application/json")]
     [ProducesResponseType(typeof(MenuItemDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -88,13 +78,11 @@ public class MenuController : ControllerBase
         return upd is null ? NotFound() : Ok(upd);
     }
 
-    /// <summary>
-    /// Elimina un ítem de menú (ABM). No permite eliminar si tiene hijos.
-    /// </summary>
+    /// <summary>Elimina un ítem de menú. No permite eliminar si tiene hijos.</summary>
     [HttpDelete("{id:int}")]
     [Authorize(Policy = "CanManageMenus")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Delete(int id) =>
-        (await _svc.DeleteAsync(id)) ? NoContent() : NotFound();
+    public async Task<IActionResult> Delete(int id)
+        => (await _svc.DeleteAsync(id)) ? NoContent() : NotFound();
 }

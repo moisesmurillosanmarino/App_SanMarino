@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using ZooSanMarino.Domain.Entities;
+using ZooSanMarino.Infrastructure.Persistence.Configurations;
 
 namespace ZooSanMarino.Infrastructure.Persistence
 {
@@ -47,10 +48,12 @@ namespace ZooSanMarino.Infrastructure.Persistence
         public DbSet<FarmProductInventory> FarmProductInventory => Set<FarmProductInventory>();
         public DbSet<FarmInventoryMovement> FarmInventoryMovements => Set<FarmInventoryMovement>();
         public DbSet<ProduccionResultadoLevante> ProduccionResultadoLevante => Set<ProduccionResultadoLevante>();
+        public DbSet<RoleMenu> RoleMenus => Set<RoleMenu>();
 
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
+            builder.ApplyConfiguration(new RoleMenuConfiguration());
             // Aplica todas las configuraciones IEntityTypeConfiguration<T> automáticamente
             builder.ApplyConfigurationsFromAssembly(typeof(ZooSanMarinoContext).Assembly);
             base.OnModelCreating(builder);

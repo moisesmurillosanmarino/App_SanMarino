@@ -7,43 +7,18 @@ import { environment } from '../../../../environments/environment';
 export interface Permission {
   id: number;
   key: string;
-  description?: string | null;
+  description?: string;
 }
-
-export interface CreatePermissionDto {
-  key: string;
-  description?: string | null;
-}
-
-export interface UpdatePermissionDto extends CreatePermissionDto {
-  id: number;
-}
+export interface CreatePermissionDto { key: string; description?: string; }
+export interface UpdatePermissionDto { id: number; key: string; description?: string; }
 
 @Injectable({ providedIn: 'root' })
 export class PermissionService {
   private readonly baseUrl = `${environment.apiUrl}/Permission`;
-
   constructor(private http: HttpClient) {}
 
-  getAll(): Observable<Permission[]> {
-    return this.http.get<Permission[]>(this.baseUrl);
-  }
-
-  getKeys(): Observable<string[]> {
-    return this.http.get<string[]>(`${this.baseUrl}/keys`);
-  }
-
-  create(dto: CreatePermissionDto): Observable<Permission> {
-    const payload = { ...dto, key: dto.key.trim().toLowerCase() };
-    return this.http.post<Permission>(this.baseUrl, payload);
-  }
-
-  update(dto: UpdatePermissionDto): Observable<Permission> {
-    const payload = { ...dto, key: dto.key.trim().toLowerCase() };
-    return this.http.put<Permission>(`${this.baseUrl}/${dto.id}`, payload);
-  }
-
-  delete(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/${id}`);
-  }
+  getAll(): Observable<Permission[]> { return this.http.get<Permission[]>(this.baseUrl); }
+  create(dto: CreatePermissionDto): Observable<Permission> { return this.http.post<Permission>(this.baseUrl, dto); }
+  update(dto: UpdatePermissionDto): Observable<Permission> { return this.http.put<Permission>(`${this.baseUrl}/${dto.id}`, dto); }
+  delete(id: number) { return this.http.delete<void>(`${this.baseUrl}/${id}`); }
 }

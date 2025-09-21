@@ -38,8 +38,14 @@ public class MenuService : IMenuService
         var all = await _ctx.Menus
             .AsNoTracking()
             .Where(m => m.IsActive)
-            .Select(m => new {
-                m.Id, m.Label, m.Icon, m.Route, m.Order, m.ParentId,
+            .Select(m => new
+            {
+                m.Id,
+                m.Label,
+                m.Icon,
+                m.Route,
+                m.Order,
+                m.ParentId,
                 RequiredKeys = m.MenuPermissions.Select(mp => mp.Permission.Key).ToArray()
             })
             .ToListAsync();
@@ -74,7 +80,8 @@ public class MenuService : IMenuService
     }
     public async Task<MenuItemDto> CreateAsync(CreateMenuDto dto)
     {
-        var m = new Menu {
+        var m = new Menu
+        {
             Label = dto.Label,
             Icon = dto.Icon,
             Route = dto.Route,
@@ -178,4 +185,57 @@ public class MenuService : IMenuService
         var roots = ordered.Where(n => n.ParentId is null).Select(n => nodes[(int)n.Id]).OrderBy(r => r.Order);
         return roots.ToArray();
     }
+    
+    // ZooSanMarino.Infrastructure/Services/MenuService.cs (añadir sobrecarga)
+    public async Task<IEnumerable<MenuItemDto>> GetForUserAsync(Guid userId, int? companyId)
+    {
+        // 1) Roles del usuario (si hay companyId, filtrar por esa compañía)
+        var roleIdsQuery = _ctx.UserRoles.AsNoTracking().Where(ur => ur.UserId == userId);
+        if (companyId is int cid) roleIdsQuery = roleIdsQuery.Where(ur => ur.CompanyId == cid);
+
+        var roleIds = await roleIdsQuery.Select(ur => ur.RoleId).Distinct().ToListAsync();
+
+        // 2) Permisos desde roles
+        var userPermKeys = await _ctx.RolePermissions
+            .AsNoTracking()
+            .Where(rp => roleIds.Contains(rp.RoleId))
+            .Select(rp => rp.Permission.Key)
+            .Distinct()
+            .ToListAsync();
+
+        // 3) Menús activos + permisos requeridos
+        var all = await _ctx.Menus
+            .AsNoTracking()
+            .Where(m => m.IsActive)
+            .Select(m => new {
+                m.Id, m.Label, m.Icon, m.Route, m.Order, m.ParentId,
+                RequiredKeys = m.MenuPermissions.Select(mp => mp.Permission.Key).ToArray()
+            })
+            .ToListAsync();
+
+        // 4) Filtrar
+        var allowed = all.Where(m => m.RequiredKeys.Length == 0 ||
+                                    m.RequiredKeys.Intersect(userPermKeys, StringComparer.OrdinalIgnoreCase).Any())
+                        .ToList();
+        if (allowed.Count == 0) return Array.Empty<MenuItemDto>();
+
+        // 5) Incluir ancestros y construir árbol (reutiliza tu BuildTree)
+        var allDict = all.ToDictionary(x => x.Id, x => x);
+        var include = new HashSet<int>(allowed.Select(x => x.Id));
+        foreach (var node in allowed)
+        {
+            var parentId = node.ParentId;
+            while (parentId.HasValue && include.Add(parentId.Value))
+                parentId = allDict[parentId.Value].ParentId;
+        }
+
+        var filtered = all.Where(x => include.Contains(x.Id))
+                        .OrderBy(x => x.ParentId)
+                        .ThenBy(x => x.Order)
+                        .Select(x => new { x.Id, x.Label, x.Icon, x.Route, x.Order, x.ParentId })
+                        .ToList();
+
+        return BuildTree(filtered);
+    }
+
 }

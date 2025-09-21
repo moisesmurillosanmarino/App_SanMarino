@@ -16,11 +16,13 @@ public class RoleService : IRoleService
             .AsNoTracking()
             .Include(r => r.RolePermissions).ThenInclude(rp => rp.Permission)
             .Include(r => r.RoleCompanies)
+            .Include(r => r.RoleMenus) // 👈 incluir menús
             .Select(r => new RoleDto(
                 r.Id,
                 r.Name,
                 r.RolePermissions.Select(rp => rp.Permission.Key).ToArray(),
-                r.RoleCompanies.Select(rc => rc.CompanyId).ToArray()
+                r.RoleCompanies.Select(rc => rc.CompanyId).ToArray(),
+                r.RoleMenus.Select(rm => rm.MenuId).ToArray() // 👈 proyectar MenuIds
             ))
             .ToListAsync();
 
@@ -29,12 +31,14 @@ public class RoleService : IRoleService
             .AsNoTracking()
             .Include(r => r.RolePermissions).ThenInclude(rp => rp.Permission)
             .Include(r => r.RoleCompanies)
+            .Include(r => r.RoleMenus) // 👈 incluir menús
             .Where(r => r.Id == id)
             .Select(r => new RoleDto(
                 r.Id,
                 r.Name,
                 r.RolePermissions.Select(rp => rp.Permission.Key).ToArray(),
-                r.RoleCompanies.Select(rc => rc.CompanyId).ToArray()
+                r.RoleCompanies.Select(rc => rc.CompanyId).ToArray(),
+                r.RoleMenus.Select(rm => rm.MenuId).ToArray() // 👈 proyectar MenuIds
             ))
             .SingleOrDefaultAsync();
 
@@ -114,6 +118,7 @@ public class RoleService : IRoleService
         var role = await _ctx.Roles
             .Include(r => r.RolePermissions)
             .Include(r => r.RoleCompanies)
+            .Include(r => r.RoleMenus) // 👈 mantener cargado (aunque no se editen aquí)
             .SingleOrDefaultAsync(r => r.Id == dto.Id);
 
         if (role is null) return null;
@@ -198,49 +203,51 @@ public class RoleService : IRoleService
     }
 
     public async Task<RoleDto?> AddPermissionsAsync(int roleId, string[] permissionKeys)
-{
-    var role = await _ctx.Roles
-        .Include(r => r.RolePermissions)
-        .SingleOrDefaultAsync(r => r.Id == roleId);
-    if (role is null) return null;
+    {
+        var role = await _ctx.Roles
+            .Include(r => r.RolePermissions)
+            .Include(r => r.RoleMenus) // 👈 por si luego proyectamos
+            .SingleOrDefaultAsync(r => r.Id == roleId);
+        if (role is null) return null;
 
-    var keys = (permissionKeys ?? Array.Empty<string>())
-        .Select(k => k?.Trim())
-        .Where(k => !string.IsNullOrWhiteSpace(k))
-        .Select(k => k!) // non-null
-        .Select(k => k.ToLowerInvariant())
-        .Distinct()
-        .ToArray();
+        var keys = (permissionKeys ?? Array.Empty<string>())
+            .Select(k => k?.Trim())
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .Select(k => k!) // non-null
+            .Select(k => k.ToLowerInvariant())
+            .Distinct()
+            .ToArray();
 
-    var permMap = await _ctx.Permissions
-        .AsNoTracking()
-        .Where(p => keys.Contains(p.Key))
-        .ToDictionaryAsync(p => p.Key, p => p.Id);
+        var permMap = await _ctx.Permissions
+            .AsNoTracking()
+            .Where(p => keys.Contains(p.Key))
+            .ToDictionaryAsync(p => p.Key, p => p.Id);
 
-    var missing = keys.Where(k => !permMap.ContainsKey(k)).ToArray();
-    if (missing.Length > 0)
-        throw new InvalidOperationException($"Permisos inexistentes: {string.Join(", ", missing)}");
+        var missing = keys.Where(k => !permMap.ContainsKey(k)).ToArray();
+        if (missing.Length > 0)
+            throw new InvalidOperationException($"Permisos inexistentes: {string.Join(", ", missing)}");
 
-    using var tx = await _ctx.Database.BeginTransactionAsync();
+        using var tx = await _ctx.Database.BeginTransactionAsync();
 
-    // Agregar solo los que no estén
-    var currentSet = role.RolePermissions.Select(rp => rp.PermissionId).ToHashSet();
-    var toAdd = keys
-        .Select(k => permMap[k])
-        .Where(pid => !currentSet.Contains(pid))
-        .Select(pid => new RolePermission { RoleId = role.Id, PermissionId = pid });
+        // Agregar solo los que no estén
+        var currentSet = role.RolePermissions.Select(rp => rp.PermissionId).ToHashSet();
+        var toAdd = keys
+            .Select(k => permMap[k])
+            .Where(pid => !currentSet.Contains(pid))
+            .Select(pid => new RolePermission { RoleId = role.Id, PermissionId = pid });
 
-    _ctx.RolePermissions.AddRange(toAdd);
-    await _ctx.SaveChangesAsync();
-    await tx.CommitAsync();
+        _ctx.RolePermissions.AddRange(toAdd);
+        await _ctx.SaveChangesAsync();
+        await tx.CommitAsync();
 
-    return await GetByIdAsync(role.Id);
-}
+        return await GetByIdAsync(role.Id);
+    }
 
     public async Task<RoleDto?> RemovePermissionsAsync(int roleId, string[] permissionKeys)
     {
         var role = await _ctx.Roles
             .Include(r => r.RolePermissions).ThenInclude(rp => rp.Permission)
+            .Include(r => r.RoleMenus) // 👈 por si luego proyectamos
             .SingleOrDefaultAsync(r => r.Id == roleId);
         if (role is null) return null;
 
@@ -272,6 +279,7 @@ public class RoleService : IRoleService
     {
         var role = await _ctx.Roles
             .Include(r => r.RolePermissions)
+            .Include(r => r.RoleMenus) // 👈 por si luego proyectamos
             .SingleOrDefaultAsync(r => r.Id == roleId);
         if (role is null) return null;
 
@@ -308,5 +316,4 @@ public class RoleService : IRoleService
 
         return await GetByIdAsync(role.Id);
     }
-
 }

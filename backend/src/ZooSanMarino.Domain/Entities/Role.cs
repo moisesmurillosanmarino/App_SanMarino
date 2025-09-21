@@ -15,5 +15,8 @@ namespace ZooSanMarino.Domain.Entities
 
         // N:M con compañías
         public ICollection<RoleCompany> RoleCompanies { get; set; } = new List<RoleCompany>();
+        // Role.cs
+        public ICollection<RoleMenu> RoleMenus { get; set; } = new List<RoleMenu>();
+
     }
 }

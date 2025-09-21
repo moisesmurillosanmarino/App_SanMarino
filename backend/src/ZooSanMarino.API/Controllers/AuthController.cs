@@ -1,7 +1,8 @@
 // src/ZooSanMarino.API/Controllers/AuthController.cs
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using ZooSanMarino.Application.DTOs;
 using ZooSanMarino.Application.Interfaces;
 
@@ -30,10 +31,9 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-    public async Task<IActionResult> Login([FromBody] LoginDto dto, CancellationToken ct)
+    public async Task<IActionResult> Login([FromBody] LoginDto dto, CancellationToken ct = default)
     {
-        if (!ModelState.IsValid)
-            return ValidationProblem(ModelState);
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
 
         try
         {
@@ -52,7 +52,7 @@ public class AuthController : ControllerBase
         }
     }
 
-    /// <summary>Registro por email/password (opcional).</summary>
+    /// <summary>Registro por email/password.</summary>
     [AllowAnonymous]
     [HttpPost("register")]
     [Consumes("application/json")]
@@ -60,10 +60,9 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status409Conflict)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> Register([FromBody] RegisterDto dto, CancellationToken ct)
+    public async Task<IActionResult> Register([FromBody] RegisterDto dto, CancellationToken ct = default)
     {
-        if (!ModelState.IsValid)
-            return ValidationProblem(ModelState);
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
 
         try
         {
@@ -89,18 +88,15 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto, CancellationToken ct)
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto, CancellationToken ct = default)
     {
-        if (!ModelState.IsValid)
-            return ValidationProblem(ModelState);
-
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userIdStr, out var userId))
-            return Unauthorized(new { message = "Usuario no autenticado" });
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+        var userId = GetUserIdOrUnauthorized(out var unauthorized);
+        if (unauthorized is not null) return unauthorized;
 
         try
         {
-            await _auth.ChangePasswordAsync(userId, dto);
+            await _auth.ChangePasswordAsync(userId!.Value, dto);
             return NoContent();
         }
         catch (InvalidOperationException ex)
@@ -117,18 +113,15 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(object), StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> ChangeEmail([FromBody] ChangeEmailDto dto, CancellationToken ct)
+    public async Task<IActionResult> ChangeEmail([FromBody] ChangeEmailDto dto, CancellationToken ct = default)
     {
-        if (!ModelState.IsValid)
-            return ValidationProblem(ModelState);
-
-        var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (!Guid.TryParse(userIdStr, out var userId))
-            return Unauthorized(new { message = "Usuario no autenticado" });
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+        var userId = GetUserIdOrUnauthorized(out var unauthorized);
+        if (unauthorized is not null) return unauthorized;
 
         try
         {
-            await _auth.ChangeEmailAsync(userId, dto);
+            await _auth.ChangeEmailAsync(userId!.Value, dto);
             return NoContent();
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("ya está en uso", StringComparison.OrdinalIgnoreCase))
@@ -141,7 +134,21 @@ public class AuthController : ControllerBase
         }
     }
 
-    /// <summary>Perfil básico del usuario autenticado.</summary>
+    /// <summary>Bootstrap de sesión: perfil, compañías, roles, permisos y menú.</summary>
+    [Authorize]
+    [HttpGet("session")]
+    [ProducesResponseType(typeof(SessionBootstrapDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Session([FromQuery] int? companyId = null, CancellationToken ct = default)
+    {
+        var userId = GetUserIdOrUnauthorized(out var unauthorized);
+        if (unauthorized is not null) return unauthorized;
+
+        var dto = await _auth.GetSessionAsync(userId!.Value, companyId);
+        return Ok(dto);
+    }
+
+    /// <summary>Perfil básico del usuario autenticado (desde claims).</summary>
     [Authorize]
     [HttpGet("profile")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -177,4 +184,20 @@ public class AuthController : ControllerBase
     [Authorize]
     [HttpGet("ping")]
     public IActionResult Ping() => Ok(new { ok = true, at = DateTime.UtcNow });
+
+    // === Helpers ===
+    private Guid? GetUserIdOrUnauthorized(out IActionResult? unauthorized)
+    {
+        unauthorized = null;
+        var idStr = User.FindFirstValue(ClaimTypes.NameIdentifier)
+                  ?? User.FindFirstValue("sub")
+                  ?? User.FindFirstValue("uid");
+
+        if (!Guid.TryParse(idStr, out var guid))
+        {
+            unauthorized = Unauthorized(new { message = "Usuario no autenticado" });
+            return null;
+        }
+        return guid;
+    }
 }

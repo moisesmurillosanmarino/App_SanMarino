@@ -14,4 +14,8 @@ public class Menu
     public ICollection<Menu> Children { get; set; } = new List<Menu>();
 
     public ICollection<MenuPermission> MenuPermissions { get; set; } = new List<MenuPermission>();
+    // Menu.cs
+    public ICollection<RoleMenu> RoleMenus { get; set; } = new List<RoleMenu>();
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 }

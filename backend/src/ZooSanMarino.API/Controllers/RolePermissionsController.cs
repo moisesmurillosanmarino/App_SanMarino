@@ -3,6 +3,7 @@ using ZooSanMarino.Application.Interfaces;
 
 namespace ZooSanMarino.API.Controllers;
 
+
 [ApiController]
 [Route("api/Role/{roleId:int}/[controller]")]
 public class PermissionsController : ControllerBase

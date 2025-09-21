@@ -6,22 +6,22 @@ namespace ZooSanMarino.Infrastructure.Persistence.Configurations;
 
 public class MenuConfiguration : IEntityTypeConfiguration<Menu>
 {
-    public void Configure(EntityTypeBuilder<Menu> e)
+    public void Configure(EntityTypeBuilder<Menu> b)
     {
-        e.ToTable("menus");
-        e.HasKey(m => m.Id);
+        b.ToTable("menus");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Label).IsRequired().HasMaxLength(120);
+        b.Property(x => x.Icon).HasMaxLength(60);
+        b.Property(x => x.Route).HasMaxLength(200);
 
-        e.Property(m => m.Label).IsRequired().HasMaxLength(120);
-        e.Property(m => m.Icon).HasMaxLength(80);
-        e.Property(m => m.Route).HasMaxLength(200);
-        e.Property(m => m.IsActive).HasDefaultValue(true);
-
-        e.HasOne(m => m.Parent)
-         .WithMany(p => p.Children)
-         .HasForeignKey(m => m.ParentId)
+        b.HasOne(x => x.Parent)
+         .WithMany(x => x.Children)
+         .HasForeignKey(x => x.ParentId)
          .OnDelete(DeleteBehavior.Restrict);
 
-        e.HasMany(m => m.MenuPermissions)
+        b.HasIndex(x => new { x.ParentId, x.Order });
+
+        b.HasMany(x => x.MenuPermissions)
          .WithOne(mp => mp.Menu)
          .HasForeignKey(mp => mp.MenuId);
     }

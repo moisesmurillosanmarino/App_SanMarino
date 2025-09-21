@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using ZooSanMarino.Application.DTOs;
+using ZooSanMarino.Application.DTOs.Shared;
 using ZooSanMarino.Application.Interfaces;
 using ZooSanMarino.Application.Options;
 using ZooSanMarino.Domain.Entities;
@@ -18,20 +19,22 @@ public class AuthService : IAuthService
     private readonly ZooSanMarinoContext _ctx;
     private readonly IPasswordHasher<Login> _hasher;
     private readonly JwtOptions _jwt;
+    private readonly IRoleCompositeService _acl; // ← reemplaza a IMenuService
 
-    public AuthService(ZooSanMarinoContext ctx, IPasswordHasher<Login> hasher, JwtOptions jwt)
+    public AuthService(
+        ZooSanMarinoContext ctx,
+        IPasswordHasher<Login> hasher,
+        JwtOptions jwt,
+        IRoleCompositeService acl) // ← inyectamos el orquestador
     {
         _ctx = ctx;
         _hasher = hasher;
         _jwt = jwt;
+        _acl = acl;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Registro
-    // ─────────────────────────────────────────────────────────────────────
     public async Task<AuthResponseDto> RegisterAsync(RegisterDto dto)
     {
-        // email único
         if (await _ctx.Logins.AnyAsync(l => l.email == dto.Email))
             throw new InvalidOperationException("El correo ya está registrado");
 
@@ -56,11 +59,9 @@ public class AuthService : IAuthService
             CreatedAt = DateTime.UtcNow
         };
 
-        var userLogin = new UserLogin { UserId = user.Id, LoginId = login.Id };
-
         _ctx.Users.Add(user);
         _ctx.Logins.Add(login);
-        _ctx.UserLogins.Add(userLogin);
+        _ctx.UserLogins.Add(new UserLogin { UserId = user.Id, LoginId = login.Id });
 
         foreach (var companyId in dto.CompanyIds.Distinct())
             _ctx.UserCompanies.Add(new UserCompany { UserId = user.Id, CompanyId = companyId });
@@ -80,26 +81,19 @@ public class AuthService : IAuthService
         }
 
         await _ctx.SaveChangesAsync();
-
         return await GenerateResponseAsync(user, login);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Login
-    // ─────────────────────────────────────────────────────────────────────
     public async Task<AuthResponseDto> LoginAsync(LoginDto dto)
     {
         var login = await _ctx.Logins
-            .Include(l => l.UserLogins)
-                .ThenInclude(ul => ul.User)
+            .Include(l => l.UserLogins).ThenInclude(ul => ul.User)
             .FirstOrDefaultAsync(l => l.email == dto.Email && !l.IsDeleted);
 
-        if (login is null)
-            throw new InvalidOperationException("Credenciales inválidas");
+        if (login is null) throw new InvalidOperationException("Credenciales inválidas");
 
-        var userLogin = login.UserLogins.FirstOrDefault();
-        if (userLogin is null)
-            throw new InvalidOperationException("Usuario no relacionado");
+        var userLogin = login.UserLogins.FirstOrDefault()
+            ?? throw new InvalidOperationException("Usuario no relacionado");
 
         var user = userLogin.User;
 
@@ -126,19 +120,14 @@ public class AuthService : IAuthService
         return await GenerateResponseAsync(user, login);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Cambiar contraseña
-    // ─────────────────────────────────────────────────────────────────────
     public async Task ChangePasswordAsync(Guid userId, ChangePasswordDto dto)
     {
         var login = await _ctx.UserLogins
             .Include(ul => ul.Login)
             .Where(ul => ul.UserId == userId)
             .Select(ul => ul.Login)
-            .FirstOrDefaultAsync();
-
-        if (login is null)
-            throw new InvalidOperationException("Login no encontrado");
+            .FirstOrDefaultAsync()
+            ?? throw new InvalidOperationException("Login no encontrado");
 
         var check = _hasher.VerifyHashedPassword(login, login.PasswordHash, dto.CurrentPassword);
         if (check == PasswordVerificationResult.Failed)
@@ -151,15 +140,11 @@ public class AuthService : IAuthService
         await _ctx.SaveChangesAsync();
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Cambiar email (requiere contraseña actual)
-    // ─────────────────────────────────────────────────────────────────────
     public async Task ChangeEmailAsync(Guid userId, ChangeEmailDto dto)
     {
         if (string.IsNullOrWhiteSpace(dto.NewEmail))
             throw new InvalidOperationException("El correo nuevo es obligatorio");
 
-        // nuevo único
         if (await _ctx.Logins.AnyAsync(l => l.email == dto.NewEmail))
             throw new InvalidOperationException("El correo nuevo ya está en uso");
 
@@ -167,10 +152,8 @@ public class AuthService : IAuthService
             .Include(ul => ul.Login)
             .Where(ul => ul.UserId == userId)
             .Select(ul => ul.Login)
-            .FirstOrDefaultAsync();
-
-        if (login is null)
-            throw new InvalidOperationException("Login no encontrado");
+            .FirstOrDefaultAsync()
+            ?? throw new InvalidOperationException("Login no encontrado");
 
         var check = _hasher.VerifyHashedPassword(login, login.PasswordHash, dto.CurrentPassword);
         if (check == PasswordVerificationResult.Failed)
@@ -180,29 +163,20 @@ public class AuthService : IAuthService
         await _ctx.SaveChangesAsync();
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Helpers
-    // ─────────────────────────────────────────────────────────────────────
     private async Task<AuthResponseDto> GenerateResponseAsync(User user, Login login)
     {
-        // compañías
         var userCompanies = await _ctx.UserCompanies
             .Include(uc => uc.Company)
             .Where(uc => uc.UserId == user.Id)
             .ToListAsync();
 
-        // roles
         var userRoles = await _ctx.UserRoles
             .Include(ur => ur.Role)
             .Where(ur => ur.UserId == user.Id)
             .ToListAsync();
 
-        var roleIds = userRoles
-            .Select(r => r.RoleId)
-            .Distinct()
-            .ToList();
+        var roleIds = userRoles.Select(r => r.RoleId).Distinct().ToList();
 
-        // permisos desde roles
         var permissions = await _ctx.RolePermissions
             .Include(rp => rp.Permission)
             .Where(rp => roleIds.Contains(rp.RoleId))
@@ -210,26 +184,23 @@ public class AuthService : IAuthService
             .Distinct()
             .ToListAsync();
 
-        // claims
         var claims = new List<Claim>
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-
             new Claim(JwtRegisteredClaimNames.UniqueName, login.email),
-            new Claim(JwtRegisteredClaimNames.Email,      login.email),
-
+            new Claim(JwtRegisteredClaimNames.Email, login.email),
             new Claim("firstName", user.firstName ?? string.Empty),
-            new Claim("surName",   user.surName   ?? string.Empty),
+            new Claim("surName",  user.surName   ?? string.Empty),
         };
 
-        // roles
         foreach (var roleName in userRoles.Select(r => r.Role?.Name)
                                           .Where(n => !string.IsNullOrWhiteSpace(n))
                                           .Distinct())
+        {
             claims.Add(new Claim(ClaimTypes.Role, roleName!));
+        }
 
-        // empresas
         foreach (var c in userCompanies)
         {
             claims.Add(new Claim("company_id", c.CompanyId.ToString()));
@@ -238,20 +209,18 @@ public class AuthService : IAuthService
                 claims.Add(new Claim("company", name!));
         }
 
-        // permisos (los que usan tus policies)
         foreach (var p in permissions.Where(p => !string.IsNullOrWhiteSpace(p)).Distinct())
             claims.Add(new Claim("permission", p));
 
-        // token
         var key     = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwt.Key));
         var creds   = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var expires = DateTime.UtcNow.AddMinutes(_jwt.DurationInMinutes > 0 ? _jwt.DurationInMinutes : 120);
 
         var token = new JwtSecurityToken(
-            issuer:            _jwt.Issuer,
-            audience:          _jwt.Audience,
-            claims:            claims,
-            expires:           expires,
+            issuer: _jwt.Issuer,
+            audience: _jwt.Audience,
+            claims: claims,
+            expires: expires,
             signingCredentials: creds
         );
 
@@ -265,5 +234,71 @@ public class AuthService : IAuthService
             Empresas = userCompanies.Select(c => c.Company?.Name).Where(n => !string.IsNullOrWhiteSpace(n)).Distinct().ToList()!,
             Permisos = permissions
         };
+    }
+
+    // Bootstrap de sesión (usa el orquestador para menú)
+    public async Task<SessionBootstrapDto> GetSessionAsync(Guid userId, int? companyId = null)
+    {
+        var user = await _ctx.Users.AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == userId)
+            ?? throw new InvalidOperationException("Usuario no encontrado");
+
+        var email = await _ctx.UserLogins
+            .Include(ul => ul.Login)
+            .Where(ul => ul.UserId == userId)
+            .Select(ul => ul.Login.email)
+            .FirstOrDefaultAsync() ?? string.Empty;
+
+        var companies = await _ctx.UserCompanies
+            .Include(uc => uc.Company)
+            .Where(uc => uc.UserId == user.Id)
+            .Select(uc => new CompanyLiteDto(
+                uc.CompanyId,
+                uc.Company.Name,
+                uc.Company.VisualPermissions ?? Array.Empty<string>(),
+                uc.Company.MobileAccess,
+                uc.Company.Identifier
+            ))
+            .ToListAsync();
+
+        var rolesQuery = _ctx.UserRoles
+            .Include(ur => ur.Role)
+            .Where(ur => ur.UserId == userId);
+
+        if (companyId is int cid)
+            rolesQuery = rolesQuery.Where(ur => ur.CompanyId == cid);
+
+        var roles = await rolesQuery
+            .Select(ur => ur.Role.Name)
+            .Where(n => n != null && n != "")
+            .Distinct()
+            .ToListAsync();
+
+        var roleIds = await rolesQuery.Select(ur => ur.RoleId).Distinct().ToListAsync();
+
+        var permissions = await _ctx.RolePermissions
+            .Include(rp => rp.Permission)
+            .Where(rp => roleIds.Contains(rp.RoleId))
+            .Select(rp => rp.Permission.Key)
+            .Distinct()
+            .ToListAsync();
+
+        // Menú desde el orquestador (antes venía de IMenuService)
+        var menu = await _acl.Menus_GetForUserAsync(userId, companyId);
+        var menuList = menu.ToList();
+
+        return new SessionBootstrapDto(
+            user.Id,
+            email,
+            $"{user.firstName} {user.surName}".Trim(),
+            user.IsActive,
+            user.IsLocked,
+            user.LastLoginAt,
+            companyId,
+            companies,
+            roles,
+            permissions,
+            menuList
+        );
     }
 }
