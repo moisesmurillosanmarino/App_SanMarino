@@ -1,4 +1,9 @@
+// src/ZooSanMarino.Infrastructure/Services/RoleCompositeService.cs
+using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using ZooSanMarino.Application.DTOs;
 using ZooSanMarino.Application.Interfaces;
@@ -106,10 +111,12 @@ public class RoleCompositeService : IRoleCompositeService
                 childrenMap[pid].Add(nodes[n.Id]);
         }
 
-        foreach (var (pid, kids) in childrenMap)
+        foreach (var kvp in childrenMap)
         {
+            var pid = kvp.Key;
+            var kids = kvp.Value.OrderBy(c => c.Order).ToArray();
             if (nodes.TryGetValue(pid, out var parent))
-                nodes[pid] = parent with { Children = kids.OrderBy(c => c.Order).ToArray() };
+                nodes[pid] = parent with { Children = kids };
         }
 
         return ordered
@@ -183,56 +190,55 @@ public class RoleCompositeService : IRoleCompositeService
     }
 
     public async Task<RoleDto> Roles_CreateAsync(CreateRoleDto dto)
-{
-    if (dto is null) throw new ArgumentNullException(nameof(dto));
-    var name = dto.Name?.Trim();
-    if (string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("El nombre del rol es requerido.");
-
-    var permKeys   = NormalizeKeys(dto.Permissions);
-    var companyIds = (dto.CompanyIds ?? Array.Empty<int>()).Distinct().ToArray();
-    var menuIds    = (dto.MenuIds    ?? Array.Empty<int>()).Distinct().ToArray();
-
-    if (await _ctx.Roles.AsNoTracking().AnyAsync(r => r.Name == name))
-        throw new InvalidOperationException($"Ya existe un rol con el nombre '{name}'.");
-
-    await EnsureCompaniesExist(companyIds);
-    var permMap = await EnsurePermissionsExistAndMap(permKeys);
-
-    // Validar menús si vinieron
-    if (menuIds.Length > 0)
     {
-        var existingMenuIds = await _ctx.Menus.AsNoTracking()
-            .Where(m => menuIds.Contains(m.Id))
-            .Select(m => m.Id)
-            .ToListAsync();
-        var missing = menuIds.Except(existingMenuIds).ToArray();
-        if (missing.Length > 0)
-            throw new InvalidOperationException($"Menús inexistentes: {string.Join(", ", missing)}");
-    }
+        if (dto is null) throw new ArgumentNullException(nameof(dto));
+        var name = dto.Name?.Trim();
+        if (string.IsNullOrWhiteSpace(name)) throw new InvalidOperationException("El nombre del rol es requerido.");
 
-    return await ExecInTxAsync(async () =>
-    {
-        var role = new Role { Name = name! };
-        _ctx.Roles.Add(role);
-        await _ctx.SaveChangesAsync();
+        var permKeys   = NormalizeKeys(dto.Permissions);
+        var companyIds = (dto.CompanyIds ?? Array.Empty<int>()).Distinct().ToArray();
+        var menuIds    = (dto.MenuIds    ?? Array.Empty<int>()).Distinct().ToArray();
 
-        if (permKeys.Length > 0)
-            _ctx.RolePermissions.AddRange(permKeys.Select(k => new RolePermission { RoleId = role.Id, PermissionId = permMap[k] }));
+        if (await _ctx.Roles.AsNoTracking().AnyAsync(r => r.Name == name))
+            throw new InvalidOperationException($"Ya existe un rol con el nombre '{name}'.");
 
-        if (companyIds.Length > 0)
-            _ctx.RoleCompanies.AddRange(companyIds.Select(cid => new RoleCompany { RoleId = role.Id, CompanyId = cid }));
+        await EnsureCompaniesExist(companyIds);
+        var permMap = await EnsurePermissionsExistAndMap(permKeys);
 
+        // Validar menús si vinieron
         if (menuIds.Length > 0)
-            _ctx.RoleMenus.AddRange(menuIds.Select(id => new RoleMenu { RoleId = role.Id, MenuId = id }));
+        {
+            var existingMenuIds = await _ctx.Menus.AsNoTracking()
+                .Where(m => menuIds.Contains(m.Id))
+                .Select(m => m.Id)
+                .ToListAsync();
+            var missing = menuIds.Except(existingMenuIds).ToArray();
+            if (missing.Length > 0)
+                throw new InvalidOperationException($"Menús inexistentes: {string.Join(", ", missing)}");
+        }
 
-        await _ctx.SaveChangesAsync();
+        return await ExecInTxAsync(async () =>
+        {
+            var role = new Role { Name = name! };
+            _ctx.Roles.Add(role);
+            await _ctx.SaveChangesAsync();
 
-        var created = await Roles_GetByIdAsync(role.Id);
-        if (created is null) throw new InvalidOperationException("No se pudo recuperar el rol tras crearlo.");
-        return created;
-    });
-}
+            if (permKeys.Length > 0)
+                _ctx.RolePermissions.AddRange(permKeys.Select(k => new RolePermission { RoleId = role.Id, PermissionId = permMap[k] }));
 
+            if (companyIds.Length > 0)
+                _ctx.RoleCompanies.AddRange(companyIds.Select(cid => new RoleCompany { RoleId = role.Id, CompanyId = cid }));
+
+            if (menuIds.Length > 0)
+                _ctx.RoleMenus.AddRange(menuIds.Select(id => new RoleMenu { RoleId = role.Id, MenuId = id }));
+
+            await _ctx.SaveChangesAsync();
+
+            var created = await Roles_GetByIdAsync(role.Id);
+            if (created is null) throw new InvalidOperationException("No se pudo recuperar el rol tras crearlo.");
+            return created;
+        });
+    }
 
     public async Task<RoleDto?> Roles_UpdateAsync(UpdateRoleDto dto)
     {
@@ -325,9 +331,6 @@ public class RoleCompositeService : IRoleCompositeService
             return await Roles_GetByIdAsync(role.Id);
         });
     }
-
-
-
 
     public async Task<bool> Roles_DeleteAsync(int id)
     {
@@ -460,12 +463,12 @@ public class RoleCompositeService : IRoleCompositeService
 
     public async Task<IEnumerable<MenuItemDto>> Menus_GetForUserAsync(Guid userId, int? companyId)
     {
-        // Roles del usuario (por compañía si aplica)
+        // Roles del usuario (scoped por compañía si aplica)
         var roleIdsQuery = _ctx.UserRoles.AsNoTracking().Where(ur => ur.UserId == userId);
         if (companyId is int cid) roleIdsQuery = roleIdsQuery.Where(ur => ur.CompanyId == cid);
         var roleIds = await roleIdsQuery.Select(ur => ur.RoleId).Distinct().ToListAsync();
 
-        // Permisos del usuario (desde roles)
+        // Permisos agregados del usuario (por si el menú requiere keys)
         var userPermKeys = await _ctx.RolePermissions
             .AsNoTracking()
             .Where(rp => roleIds.Contains(rp.RoleId))
@@ -473,7 +476,7 @@ public class RoleCompositeService : IRoleCompositeService
             .Distinct()
             .ToListAsync();
 
-        // Menús activos + permisos requeridos
+        // Catálogo completo de menús activos
         var all = await _ctx.Menus
             .AsNoTracking()
             .Where(m => m.IsActive)
@@ -484,29 +487,78 @@ public class RoleCompositeService : IRoleCompositeService
             })
             .ToListAsync();
 
-        var allowed = all.Where(m =>
-                m.RequiredKeys.Length == 0 ||
-                m.RequiredKeys.Intersect(userPermKeys, StringComparer.OrdinalIgnoreCase).Any())
-            .ToList();
+        if (all.Count == 0) return Array.Empty<MenuItemDto>();
 
-        if (allowed.Count == 0) return Array.Empty<MenuItemDto>();
+        var allById = all.ToDictionary(x => x.Id);
 
-        // Incluir ancestros
-        var allDict = all.ToDictionary(x => x.Id, x => x);
-        var include = new HashSet<int>(allowed.Select(x => x.Id));
-        foreach (var node in allowed)
+        // IDs de menús asignados a los roles del usuario
+        var assignedIds = await _ctx.RoleMenus
+            .AsNoTracking()
+            .Where(rm => roleIds.Contains(rm.RoleId))
+            .Select(rm => rm.MenuId)
+            .Distinct()
+            .ToListAsync();
+
+        List<FlatMenu> toTree;
+
+        if (assignedIds.Count > 0)
         {
-            var pid = node.ParentId;
-            while (pid.HasValue && include.Add(pid.Value))
-                pid = allDict[pid.Value].ParentId;
+            // === MODO "por IDs de menú asignados": incluye ancestros de cada ID permitido ===
+            var include = new HashSet<int>();
+            foreach (var id in assignedIds)
+            {
+                if (!allById.TryGetValue(id, out var node)) continue;
+                include.Add(id);
+
+                // subir por la cadena de padres
+                var pid = node.ParentId;
+                while (pid.HasValue && allById.TryGetValue(pid.Value, out var parent))
+                {
+                    include.Add(parent.Id);
+                    pid = parent.ParentId;
+                }
+            }
+
+            // (Opcional) validar permissions de cada menú
+            bool PassesPerm(dynamic m) =>
+                m.RequiredKeys.Length == 0 ||
+                m.RequiredKeys.Intersect(userPermKeys, StringComparer.OrdinalIgnoreCase).Any();
+
+            var filtered = all
+                .Where(m => include.Contains(m.Id) && PassesPerm(m))
+                .OrderBy(m => m.ParentId).ThenBy(m => m.Order)
+                .Select(m => new FlatMenu(m.Id, m.Label, m.Icon, m.Route, m.Order, m.ParentId))
+                .ToList();
+
+            toTree = filtered;
+        }
+        else
+        {
+            // === Fallback: si no hay role_menus, filtra por permissions (como lo tenías) e incluye ancestros ===
+            var allowedByPerm = all.Where(m =>
+                m.RequiredKeys.Length == 0 ||
+                m.RequiredKeys.Intersect(userPermKeys, StringComparer.OrdinalIgnoreCase).Any()
+            ).ToList();
+
+            var include = new HashSet<int>(allowedByPerm.Select(x => x.Id));
+            foreach (var node in allowedByPerm)
+            {
+                var pid = node.ParentId;
+                while (pid.HasValue && allById.TryGetValue(pid.Value, out var parent))
+                {
+                    include.Add(parent.Id);
+                    pid = parent.ParentId;
+                }
+            }
+
+            toTree = all
+                .Where(x => include.Contains(x.Id))
+                .OrderBy(x => x.ParentId).ThenBy(x => x.Order)
+                .Select(x => new FlatMenu(x.Id, x.Label, x.Icon, x.Route, x.Order, x.ParentId))
+                .ToList();
         }
 
-        var filtered = all
-            .Where(x => include.Contains(x.Id))
-            .Select(x => new FlatMenu(x.Id, x.Label, x.Icon, x.Route, x.Order, x.ParentId))
-            .ToList();
-
-        return BuildTree(filtered);
+        return BuildTree(toTree);
     }
 
     public async Task<MenuItemDto> Menus_CreateAsync(CreateMenuDto dto)

@@ -1,36 +1,16 @@
-// src/app/shared/components/sidebar/sidebar.component.ts
-import { Component } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { FontAwesomeModule, FaIconLibrary } from '@fortawesome/angular-fontawesome';
 import {
-  faTachometerAlt,
-  faClipboardList,
-  faCalendarDay,
-  faChartBar,
-  faHeartbeat,
-  faCog,
-  faUsers,
-  faChevronDown,
-  faSignOutAlt,
-  faList,
-  faBuilding,
-  faGlobe,
-  faMapMarkerAlt,
-  faCity,
-  faBoxesAlt,
-  faWarehouse
+  faTachometerAlt, faClipboardList, faCalendarDay, faChartBar, faHeartbeat,
+  faCog, faUsers, faChevronDown, faSignOutAlt, faList, faBuilding,
+  faGlobe, faMapMarkerAlt, faCity, faBoxesAlt, faWarehouse
 } from '@fortawesome/free-solid-svg-icons';
 import { map } from 'rxjs/operators';
+import { Observable } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
-
-interface MenuItem {
-  label:     string;
-  icon:      any;
-  link?:     string[];
-  children?: MenuItem[];
-  expanded?: boolean;
-}
+import { MenuService, UiMenuItem } from '../../services/menu.service';
 
 @Component({
   selector: 'app-sidebar',
@@ -39,62 +19,17 @@ interface MenuItem {
   templateUrl: './sidebar.component.html',
   styleUrls: ['./sidebar.component.scss']
 })
-export class SidebarComponent {
-  // Íconos
-  faChevronDown   = faChevronDown;
-  faSignOutAlt    = faSignOutAlt;
-  faTachometerAlt = faTachometerAlt;
-  faClipboardList = faClipboardList;
-  faCalendarDay   = faCalendarDay;
-  faChartBar      = faChartBar;
-  faHeartbeat     = faHeartbeat;
-  faCog           = faCog;
-  faUsers         = faUsers;
-  faList          = faList;
-  faBuilding      = faBuilding;
-  faGlobe         = faGlobe;
-  faMapMarkerAlt  = faMapMarkerAlt;
-  faCity          = faCity;
-  faWarehouse     = faWarehouse;
-  faBoxesAlt      = faBoxesAlt;
+export class SidebarComponent implements OnInit {
+  private readonly auth = inject(AuthService);
+  private readonly menuSvc = inject(MenuService);
+  private readonly router = inject(Router);
 
-  /** Menú principal */
-  public menuItems: MenuItem[] = [
-    { label: 'Dashboard', icon: this.faTachometerAlt, link: ['/dashboard'] },
+  // Íconos sueltos (para botones)
+  faChevronDown = faChevronDown;
+  faSignOutAlt  = faSignOutAlt;
 
-    // Elementos fuera de configuración
-    // Después (apunta al contenedor con tabs)
-    { label: 'Gestion de Granjas',   icon: this.faBuilding,  link: ['/config','farm-management'] },
-    { label: 'Gestion de Lotes',   icon: this.faBuilding,  link: ['/config','lote-management'] },
-    //{ label: 'Lotes',     icon: this.faBoxesAlt,  link: ['/config','lotes'] },
-
-    {
-      label: 'Registros Diarios',
-      icon: this.faCalendarDay,
-      expanded: false,
-      children: [
-        { label: 'Seguimiento Diario de Levante',    icon: this.faBoxesAlt, link: ['/daily-log','seguimiento'] },
-        { label: 'Seguimiento Diario de Producción', icon: this.faBoxesAlt, link: ['/daily-log','produccion'] },
-       { label: 'Seguimiento Diario Lote Reproductora', icon: this.faBoxesAlt, link: ['/daily-log','seguimiento-diario-lote-reproductora'] }
-      ]
-    },
-     { label: 'Gestion de Inventario',             icon: this.faWarehouse, link: ['/config','inventario-management'] },
-
-    {
-      label: 'Configuración',
-      icon: this.faCog,
-      children: [  
-        { label: 'Listas maestras',        icon: this.faList,     link: ['/config','master-lists'] },
-        { label: 'Usuarios',               icon: this.faUsers,    link: ['/config','users'] },
-        { label: 'Roles y permisos',       icon: this.faUsers,    link: ['/config','role-management'] },
-        { label: 'Geografía',              icon: this.faGlobe,    link: ['/config','countries'] },
-        { label: 'Empresas',               icon: this.faBuilding, link: ['/config','companies'] },
-       /** { label: 'Catálogo de alimentos',  icon: this.faList,     link: ['/config','catalogo-alimentos'] }*/
-
-
-      ]
-    }
-  ];
+  // Stream del árbol de menú listo para pintar
+  menu$: Observable<UiMenuItem[]> = this.menuSvc.menu$;
 
   /** Banner Bienvenida */
   userBanner$ = this.auth.session$.pipe(
@@ -102,46 +37,37 @@ export class SidebarComponent {
       fullName: s?.user?.fullName ?? s?.user?.username ?? 'Usuario',
       company:  s?.activeCompany ?? (s?.companies?.[0] ?? '—'),
       initials: (s?.user?.fullName ?? s?.user?.username ?? 'U')
-                  .trim()
-                  .split(/\s+/)
-                  .map(w => w[0])
-                  .join('')
-                  .slice(0, 2)
-                  .toUpperCase()
+        .trim()
+        .split(/\s+/)
+        .map(w => w[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase()
     }))
   );
 
-  constructor(
-    library: FaIconLibrary,
-    private router: Router,
-    private auth: AuthService
-  ) {
+  constructor(library: FaIconLibrary) {
     library.addIcons(
-      faTachometerAlt,
-      faClipboardList,
-      faCalendarDay,
-      faChartBar,
-      faHeartbeat,
-      faCog,
-      faUsers,
-      faChevronDown,
-      faSignOutAlt,
-      faList,
-      faBuilding,
-      faGlobe,
-      faMapMarkerAlt,
-      faCity,
-      faWarehouse,
-      faBoxesAlt
+      faTachometerAlt, faClipboardList, faCalendarDay, faChartBar, faHeartbeat,
+      faCog, faUsers, faChevronDown, faSignOutAlt, faList, faBuilding,
+      faGlobe, faMapMarkerAlt, faCity, faWarehouse, faBoxesAlt
     );
   }
 
-  toggle(item: MenuItem) {
+  ngOnInit(): void {
+    // Asegura que haya menú cargado (lee storage y, si no hay, va a la API)
+    this.menuSvc.ensureLoaded().subscribe();
+  }
+
+  toggle(item: UiMenuItem) {
     item.expanded = !item.expanded;
   }
 
   logout() {
-    this.auth.logout();
-    this.router.navigate(['/login']);
+    // Vacía el menú en memoria
+    this.menuSvc.reset();
+    // Limpia todo lo temporal del storage y devuelve al login
+    this.auth.logout({ hard: true });
+    this.router.navigate(['/login'], { replaceUrl: true });
   }
 }

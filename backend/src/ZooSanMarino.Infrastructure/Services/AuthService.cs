@@ -163,78 +163,131 @@ public class AuthService : IAuthService
         await _ctx.SaveChangesAsync();
     }
 
+    // Genera el JWT y arma la respuesta
     private async Task<AuthResponseDto> GenerateResponseAsync(User user, Login login)
+{
+    // Empresas del usuario
+    var userCompanies = await _ctx.UserCompanies
+        .Include(uc => uc.Company)
+        .Where(uc => uc.UserId == user.Id)
+        .ToListAsync();
+
+    // Roles del usuario (con CompanyId por si te interesa más tarde)
+    var userRoles = await _ctx.UserRoles
+        .Include(ur => ur.Role)
+        .Where(ur => ur.UserId == user.Id)
+        .ToListAsync();
+
+    var roleIds = userRoles.Select(r => r.RoleId).Distinct().ToList();
+
+    // Permisos agregados del usuario (desde sus roles)
+    var permissions = await _ctx.RolePermissions
+        .Include(rp => rp.Permission)
+        .Where(rp => roleIds.Contains(rp.RoleId))
+        .Select(rp => rp.Permission.Key)
+        .Distinct()
+        .ToListAsync();
+
+    // ===== NUEVO: Menús asignados por rol (ids) =====
+    // Emparejamos RoleId -> Nombre para acompañar el listado
+    var rolesById = userRoles
+        .Where(ur => ur.Role != null)
+        .Select(ur => new { ur.RoleId, RoleName = ur.Role!.Name })
+        .Distinct()
+        .ToList();
+
+    var rawMenusByRole = await _ctx.RoleMenus
+        .AsNoTracking()
+        .Where(rm => roleIds.Contains(rm.RoleId))
+        .GroupBy(rm => rm.RoleId)
+        .Select(g => new
+        {
+            RoleId = g.Key,
+            MenuIds = g.Select(x => x.MenuId).Distinct().OrderBy(x => x).ToArray()
+        })
+        .ToListAsync();
+
+    var menusByRole = rawMenusByRole
+        .Select(x => new RoleMenusLiteDto(
+            x.RoleId,
+            rolesById.FirstOrDefault(r => r.RoleId == x.RoleId)?.RoleName ?? string.Empty,
+            x.MenuIds
+        ))
+        .OrderBy(x => x.RoleName) // opcional: por orden alfabético
+        .ToList();
+
+    // ===== NUEVO: Menú efectivo del usuario (árbol) =====
+    // Usa el orquestador para calcular el árbol según permisos del usuario.
+    // Si quieres que dependa de una empresa concreta, pásala como companyId.
+    var effectiveMenu = await _acl.Menus_GetForUserAsync(user.Id, companyId: null);
+    var effectiveMenuList = effectiveMenu.ToList();
+
+    // ===== Claims para el JWT =====
+    var claims = new List<Claim>
     {
-        var userCompanies = await _ctx.UserCompanies
-            .Include(uc => uc.Company)
-            .Where(uc => uc.UserId == user.Id)
-            .ToListAsync();
+        new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+        new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+        new Claim(JwtRegisteredClaimNames.UniqueName, login.email),
+        new Claim(JwtRegisteredClaimNames.Email, login.email),
+        new Claim("firstName", user.firstName ?? string.Empty),
+        new Claim("surName",  user.surName   ?? string.Empty),
+    };
 
-        var userRoles = await _ctx.UserRoles
-            .Include(ur => ur.Role)
-            .Where(ur => ur.UserId == user.Id)
-            .ToListAsync();
-
-        var roleIds = userRoles.Select(r => r.RoleId).Distinct().ToList();
-
-        var permissions = await _ctx.RolePermissions
-            .Include(rp => rp.Permission)
-            .Where(rp => roleIds.Contains(rp.RoleId))
-            .Select(rp => rp.Permission.Key)
-            .Distinct()
-            .ToListAsync();
-
-        var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new Claim(JwtRegisteredClaimNames.UniqueName, login.email),
-            new Claim(JwtRegisteredClaimNames.Email, login.email),
-            new Claim("firstName", user.firstName ?? string.Empty),
-            new Claim("surName",  user.surName   ?? string.Empty),
-        };
-
-        foreach (var roleName in userRoles.Select(r => r.Role?.Name)
-                                          .Where(n => !string.IsNullOrWhiteSpace(n))
-                                          .Distinct())
-        {
-            claims.Add(new Claim(ClaimTypes.Role, roleName!));
-        }
-
-        foreach (var c in userCompanies)
-        {
-            claims.Add(new Claim("company_id", c.CompanyId.ToString()));
-            var name = c.Company?.Name;
-            if (!string.IsNullOrWhiteSpace(name))
-                claims.Add(new Claim("company", name!));
-        }
-
-        foreach (var p in permissions.Where(p => !string.IsNullOrWhiteSpace(p)).Distinct())
-            claims.Add(new Claim("permission", p));
-
-        var key     = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwt.Key));
-        var creds   = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-        var expires = DateTime.UtcNow.AddMinutes(_jwt.DurationInMinutes > 0 ? _jwt.DurationInMinutes : 120);
-
-        var token = new JwtSecurityToken(
-            issuer: _jwt.Issuer,
-            audience: _jwt.Audience,
-            claims: claims,
-            expires: expires,
-            signingCredentials: creds
-        );
-
-        return new AuthResponseDto
-        {
-            Username = login.email,
-            FullName = $"{user.firstName} {user.surName}".Trim(),
-            UserId   = user.Id,
-            Token    = new JwtSecurityTokenHandler().WriteToken(token),
-            Roles    = userRoles.Select(r => r.Role?.Name).Where(n => !string.IsNullOrWhiteSpace(n)).Distinct().ToList()!,
-            Empresas = userCompanies.Select(c => c.Company?.Name).Where(n => !string.IsNullOrWhiteSpace(n)).Distinct().ToList()!,
-            Permisos = permissions
-        };
+    foreach (var roleName in userRoles.Select(r => r.Role?.Name)
+                                      .Where(n => !string.IsNullOrWhiteSpace(n))
+                                      .Distinct())
+    {
+        claims.Add(new Claim(ClaimTypes.Role, roleName!));
     }
+
+    foreach (var c in userCompanies)
+    {
+        claims.Add(new Claim("company_id", c.CompanyId.ToString()));
+        var name = c.Company?.Name;
+        if (!string.IsNullOrWhiteSpace(name))
+            claims.Add(new Claim("company", name!));
+    }
+
+    foreach (var p in permissions.Where(p => !string.IsNullOrWhiteSpace(p)).Distinct())
+        claims.Add(new Claim("permission", p));
+
+    // JWT
+    var key     = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwt.Key));
+    var creds   = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+    var expires = DateTime.UtcNow.AddMinutes(_jwt.DurationInMinutes > 0 ? _jwt.DurationInMinutes : 120);
+
+    var token = new JwtSecurityToken(
+        issuer: _jwt.Issuer,
+        audience: _jwt.Audience,
+        claims: claims,
+        expires: expires,
+        signingCredentials: creds
+    );
+
+    // ===== Respuesta enriquecida =====
+    return new AuthResponseDto
+    {
+        Username = login.email,
+        FullName = $"{user.firstName} {user.surName}".Trim(),
+        UserId   = user.Id,
+        Token    = new JwtSecurityTokenHandler().WriteToken(token),
+
+        Roles    = userRoles.Select(r => r.Role?.Name)
+                            .Where(n => !string.IsNullOrWhiteSpace(n))
+                            .Distinct()
+                            .ToList()!,
+        Empresas = userCompanies.Select(c => c.Company?.Name)
+                                .Where(n => !string.IsNullOrWhiteSpace(n))
+                                .Distinct()
+                                .ToList()!,
+        Permisos = permissions,
+
+        // NUEVO
+        MenusByRole = menusByRole,
+        Menu        = effectiveMenuList
+    };
+}
+
 
     // Bootstrap de sesión (usa el orquestador para menú)
     public async Task<SessionBootstrapDto> GetSessionAsync(Guid userId, int? companyId = null)
