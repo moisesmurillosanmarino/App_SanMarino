@@ -1,4 +1,5 @@
 // file: src/ZooSanMarino.Application/DTOs/Nucleos/NucleoDetailDto.cs
+using ZooSanMarino.Application.DTOs.Farms;
 using ZooSanMarino.Application.DTOs.Shared;
 
 namespace ZooSanMarino.Application.DTOs.Nucleos;

@@ -1,8 +1,6 @@
 <div class="flex h-screen" [attr.aria-busy]="loading ? 'true' : null">
-
-
   <div class="flex-1 p-6 bg-warm-gray-100 overflow-auto ux-page">
-    <!-- Header con línea amarilla -->
+    <!-- Header -->
     <div class="ux-header">
       <button (click)="openModal()" class="btn-primary">
         <fa-icon [icon]="faPlus" aria-hidden="true"></fa-icon>
@@ -130,10 +128,16 @@
         </div>
 
         <form [formGroup]="form" (ngSubmit)="save()" class="grid grid-cols-1 md:grid-cols-2 gap-4" novalidate>
-          <!-- ID (solo lectura en edición) -->
+          <!-- ID (solo lectura; consecutivo sugerido por el front) -->
           <div>
-            <label class="ux-label">ID</label>
-            <input formControlName="id" class="ux-input" [readonly]="!!editing" />
+            <label class="ux-label">ID (sugerido)</label>
+            <input formControlName="id"
+                   class="ux-input"
+                   [readonly]="true"
+                   [attr.aria-readonly]="true" />
+            <p class="ux-help">
+              Número sugerido (máximo ID actual + 1). No es editable por el usuario.
+            </p>
           </div>
 
           <!-- Compañía -->
@@ -141,8 +145,8 @@
             <label class="ux-label">Compañía <span class="req">*</span></label>
             <select formControlName="companyId" class="ux-input"
                     [class.is-invalid]="form.get('companyId')?.invalid && form.get('companyId')?.touched">
-              <option value="">Seleccione…</option>
-              <option *ngFor="let c of companies" [value]="c.id">{{ c.name }}</option>
+              <option [ngValue]="null">Seleccione…</option>
+              <option *ngFor="let c of companies" [ngValue]="c.id">{{ c.name }}</option>
             </select>
           </div>
 
@@ -150,15 +154,16 @@
           <div class="md:col-span-2">
             <label class="ux-label">Nombre <span class="req">*</span></label>
             <input formControlName="name" class="ux-input"
+                   placeholder="Ej. Granja Central"
                    [class.is-invalid]="form.get('name')?.invalid && form.get('name')?.touched" />
           </div>
 
-          <!-- Regional (string) -->
+          <!-- Regional (texto) -->
           <div>
             <label class="ux-label">Regional</label>
             <select formControlName="regional" class="ux-input">
-              <option value="">Seleccione…</option>
-              <option *ngFor="let r of regionales" [value]="r">{{ r }}</option>
+              <option [ngValue]="''">Seleccione…</option>
+              <option *ngFor="let r of regionales" [ngValue]="r">{{ r }}</option>
             </select>
           </div>
 
@@ -166,12 +171,25 @@
           <div>
             <label class="ux-label">Estado</label>
             <select formControlName="status" class="ux-input">
-              <option value="A">Activa</option>
-              <option value="I">Inactiva</option>
+              <option [ngValue]="'A'">Activa</option>
+              <option [ngValue]="'I'">Inactiva</option>
             </select>
           </div>
 
-          <!-- Departamento (ID) -->
+          <!-- ====== Cascada País → Departamento → Ciudad ====== -->
+          <!-- País (UI; carga Departamentos) -->
+          <div>
+            <label class="ux-label">País</label>
+            <select formControlName="paisId" class="ux-input" (change)="onPaisChange()">
+              <option [ngValue]="null">Seleccione…</option>
+              <option *ngFor="let p of paises" [ngValue]="p.paisId">
+                {{ p.paisNombre }}
+              </option>
+            </select>
+            <p class="ux-help">Al seleccionar un país, se cargarán sus Departamentos.</p>
+          </div>
+
+          <!-- Departamento -->
           <div>
             <label class="ux-label">Departamento</label>
             <select formControlName="departamentoId" class="ux-input" (change)="onDepartamentoChange()">
@@ -182,7 +200,7 @@
             </select>
           </div>
 
-          <!-- Ciudad (ID dependiente de Departamento) -->
+          <!-- Ciudad -->
           <div>
             <label class="ux-label">Ciudad</label>
             <select formControlName="ciudadId" class="ux-input">
@@ -193,15 +211,17 @@
             </select>
           </div>
 
-          <!-- Meta (opcional si backend expone fechas) -->
-          <div *ngIf="editing?.createdAt || editing?.updatedAt" class="md:col-span-2 ux-meta">
+
+          <!-- Meta (si edición) -->
+          <div class="md:col-span-2 ux-meta" *ngIf="editing?.createdAt || editing?.updatedAt">
             <div class="ux-meta__item" *ngIf="editing?.createdAt"><strong>Creado:</strong> {{ editing?.createdAt | date:'short' }}</div>
             <div class="ux-meta__item" *ngIf="editing?.updatedAt"><strong>Actualizado:</strong> {{ editing?.updatedAt | date:'short' }}</div>
           </div>
 
+          <!-- Acciones -->
           <div class="md:col-span-2 ux-actions">
             <button type="button" class="btn-muted" (click)="cancel()">Cancelar</button>
-            <button type="submit" class="btn-primary" [disabled]="form.invalid">
+            <button type="submit" class="btn-primary" [disabled]="form.invalid || loading">
               {{ editing ? 'Actualizar' : 'Guardar' }}
             </button>
           </div>

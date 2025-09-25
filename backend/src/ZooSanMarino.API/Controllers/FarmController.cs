@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using ZooSanMarino.Application.Interfaces;
 using ZooSanMarino.Application.DTOs;                     // FarmDto, CreateFarmDto, UpdateFarmDto
 using CommonDtos = ZooSanMarino.Application.DTOs.Common; // PagedResult<T>
-using FarmDtos   = ZooSanMarino.Application.DTOs.Farms;  // FarmDetailDto, FarmSearchRequest, FarmTreeDto
+using ZooSanMarino.Application.DTOs.Farms;  // FarmDetailDto, FarmSearchRequest, FarmTreeDto
 
 namespace ZooSanMarino.API.Controllers;
 
@@ -36,8 +36,8 @@ public class FarmController : ControllerBase
     // /Farm/search (alias opcional por compatibilidad)
     [HttpGet("search")]
     [HttpGet("/Farm/search")]
-    [ProducesResponseType(typeof(CommonDtos.PagedResult<FarmDtos.FarmDetailDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<CommonDtos.PagedResult<FarmDtos.FarmDetailDto>>> Search([FromQuery] FarmDtos.FarmSearchRequest req)
+    [ProducesResponseType(typeof(CommonDtos.PagedResult<FarmDetailDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<CommonDtos.PagedResult<FarmDetailDto>>> Search([FromQuery] FarmSearchRequest req)
     {
         var res = await _svc.SearchAsync(req);
         return Ok(res);
@@ -48,9 +48,9 @@ public class FarmController : ControllerBase
     // ===========================
     // /api/Farm/{id}
     [HttpGet("{id:int}")]
-    [ProducesResponseType(typeof(FarmDtos.FarmDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(FarmDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<FarmDtos.FarmDetailDto>> GetDetail(int id)
+    public async Task<ActionResult<FarmDetailDto>> GetDetail(int id)
     {
         var res = await _svc.GetDetailByIdAsync(id);
         if (res is null) return NotFound();
@@ -74,9 +74,9 @@ public class FarmController : ControllerBase
     // ===========================
     // /api/Farm/{id}/tree
     [HttpGet("{id:int}/tree")]
-    [ProducesResponseType(typeof(FarmDtos.FarmTreeDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(FarmTreeDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<FarmDtos.FarmTreeDto>> GetTree(int id, [FromQuery] bool soloActivos = true)
+    public async Task<ActionResult<FarmTreeDto>> GetTree(int id, [FromQuery] bool soloActivos = true)
     {
         var res = await _svc.GetTreeByIdAsync(id, soloActivos);
         if (res is null) return NotFound();

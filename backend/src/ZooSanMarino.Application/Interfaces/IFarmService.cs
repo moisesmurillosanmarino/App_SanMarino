@@ -1,7 +1,8 @@
 // file: src/ZooSanMarino.Application/Interfaces/IFarmService.cs
 using ZooSanMarino.Application.DTOs;               // FarmDto, Create/Update
-using FarmDtos  = ZooSanMarino.Application.DTOs.Farms;   // FarmDetailDto, FarmSearchRequest, FarmTreeDto
-using CommonDtos = ZooSanMarino.Application.DTOs.Common; // ⟵ alias para PagedResult<>
+
+using CommonDtos = ZooSanMarino.Application.DTOs.Common;
+using ZooSanMarino.Application.DTOs.Farms; // ⟵ alias para PagedResult<>
 
 namespace ZooSanMarino.Application.Interfaces;
 
@@ -13,8 +14,8 @@ public interface IFarmService
     Task<FarmDto?>             UpdateAsync(UpdateFarmDto dto);
     Task<bool>                 DeleteAsync(int id);
 
-    Task<CommonDtos.PagedResult<FarmDtos.FarmDetailDto>> SearchAsync(FarmDtos.FarmSearchRequest req);
-    Task<FarmDtos.FarmDetailDto?>                        GetDetailByIdAsync(int id);
-    Task<FarmDtos.FarmTreeDto?>                          GetTreeByIdAsync(int farmId, bool soloActivos = true);
+    Task<CommonDtos.PagedResult<FarmDetailDto>> SearchAsync(FarmSearchRequest req);
+    Task<FarmDetailDto?>                        GetDetailByIdAsync(int id);
+    Task<FarmTreeDto?>                          GetTreeByIdAsync(int farmId, bool soloActivos = true);
     Task<bool>                                           HardDeleteAsync(int id);
 }

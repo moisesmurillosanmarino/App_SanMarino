@@ -17,8 +17,10 @@ import { faPlus, faPen, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { FarmService, FarmDto, UpdateFarmDto } from '../../services/farm.service';
 import { Company, CompanyService } from '../../../../core/services/company/company.service';
 import { MasterListService } from '../../../../core/services/master-list/master-list.service';
+
 import { DepartamentoService, DepartamentoDto } from '../../services/departamento.service';
 import { CiudadService, CiudadDto } from '../../services/ciudad.service';
+import { PaisService, PaisDto } from '../..//services/pais.service';
 
 @Component({
   selector: 'app-farm-list',
@@ -46,7 +48,8 @@ export class FarmListComponent implements OnInit {
   // Datos base
   farms: FarmDto[] = [];
   companies: Company[] = [];
-  regionales: string[] = [];    // opciones de regional como texto
+  regionales: string[] = [];         // opciones de regional (texto)
+  paises: PaisDto[] = [];            // País → raíz de la cascada
   departamentos: DepartamentoDto[] = [];
   ciudades: CiudadDto[] = [];
 
@@ -70,54 +73,63 @@ export class FarmListComponent implements OnInit {
     private readonly companySvc: CompanyService,
     private readonly masterSvc: MasterListService,
     private readonly dptoSvc: DepartamentoService,
-    private readonly ciudadSvc: CiudadService
+    private readonly ciudadSvc: CiudadService,
+    private readonly paisSvc: PaisService
   ) {}
 
+  // ================
+  // Ciclo de vida
+  // ================
   ngOnInit(): void {
     this.buildForm();
     this.loadAll();
   }
 
-  // ---------------------------
-  // Init
-  // ---------------------------
+  // ==================
+  // Inicialización
+  // ==================
   private buildForm(): void {
     this.form = this.fb.group({
+      // ID sugerido (solo lectura en el HTML)
       id:             [null],
+
+      // Requeridos
       companyId:      [null, Validators.required],
       name:           ['', [Validators.required, Validators.maxLength(200)]],
-      regional:       [''], // guardamos texto; si usas ID, puedes mapear antes de enviar
-      status:         ['A', Validators.required], // A/I
-      department:     [''],
-      city:           [''],
+      status:         ['A', Validators.required], // 'A'|'I'
 
-      // si tu API exige IDs:
+      // Regional como texto (si luego pasa a ID, mapear)
+      regional:       [''],
+
+      // Cascada País → Departamento → Ciudad
+      paisId:         [null],          // solo UI; backend infiere país vía departamento
       departamentoId: [null],
       ciudadId:       [null],
+
+      // (Opcional) visibles en tu tabla
+      department:     [''],
+      city:           [''],
     });
   }
 
   private loadAll(): void {
     this.loading = true;
     forkJoin({
-      farms:     this.farmSvc.getAll(),                 // lista granjas
-      companies: this.companySvc.getAll(),              // compañías
-      statusMl:  this.masterSvc.getByKey('status'),     // estados (A/I)
-      regionMl:  this.masterSvc.getByKey('region_option_key'), // regiones
-      dptos:     this.dptoSvc.getAll(),                 // departamentos
+      farms:     this.farmSvc.getAll(),
+      companies: this.companySvc.getAll(),
+      regionMl:  this.masterSvc.getByKey('region_option_key'),
+      paises:    this.paisSvc.getAll(),
     })
     .pipe(finalize(() => (this.loading = false)))
-    .subscribe(({ farms, companies, regionMl, dptos }) => {
-      this.farms     = farms ?? [];
-      this.companies = companies ?? [];
+    .subscribe(({ farms, companies, regionMl, paises }) => {
+      this.farms      = farms ?? [];
+      this.companies  = companies ?? [];
       this.regionales = this.normalizeRegionStrings(regionMl);
-      this.departamentos = dptos ?? [];
-
+      this.paises     = paises ?? [];
       this.recomputeList();
     });
   }
 
-  // Normaliza lista de regiones a string[]
   private normalizeRegionStrings(src: any): string[] {
     const raw = src?.options ?? src ?? [];
     if (!Array.isArray(raw)) return [];
@@ -127,9 +139,9 @@ export class FarmListComponent implements OnInit {
     return raw.map((x: any) => String(x));
   }
 
-  // ---------------------------
-  // Filtros / vista
-  // ---------------------------
+  // =========================
+  // Filtros / Vista tabla
+  // =========================
   recomputeList(): void {
     const nameFilter = (this.filtroNombre || '').trim().toLowerCase();
     const text = (this.filtroTexto || '').trim().toLowerCase();
@@ -138,18 +150,21 @@ export class FarmListComponent implements OnInit {
 
     this.viewFarms = (this.farms ?? []).filter((f) => {
       const regionalTxt = (f.regional ?? '').toLowerCase();
-      const nombreTxt = (f.name ?? '').toLowerCase();
-      const companyTxt = (this.companyName(f.companyId) ?? '').toLowerCase();
-      const deptTxt = (f.department ?? '').toLowerCase();
-      const cityTxt = (f.city ?? '').toLowerCase();
+      const nombreTxt   = (f.name ?? '').toLowerCase();
+      const companyTxt  = (this.companyName(f.companyId) ?? '').toLowerCase();
+      const deptTxt     = (f.department ?? '').toLowerCase();
+      const cityTxt     = (f.city ?? '').toLowerCase();
 
       const okRegional = selectedRegional ? regionalTxt === selectedRegional : true;
-      const okNombre = nameFilter ? nombreTxt.includes(nameFilter) : true;
-      const okEstado = estado ? f.status === estado : true;
+      const okNombre   = nameFilter ? nombreTxt.includes(nameFilter) : true;
+      const okEstado   = estado ? f.status === estado : true;
 
-      // búsqueda libre
-      const okText = text
-        ? (nombreTxt.includes(text) || regionalTxt.includes(text) || companyTxt.includes(text) || deptTxt.includes(text) || cityTxt.includes(text))
+      const okText     = text
+        ? (nombreTxt.includes(text)
+          || regionalTxt.includes(text)
+          || companyTxt.includes(text)
+          || deptTxt.includes(text)
+          || cityTxt.includes(text))
         : true;
 
       return okRegional && okNombre && okEstado && okText;
@@ -164,45 +179,73 @@ export class FarmListComponent implements OnInit {
     this.recomputeList();
   }
 
-  // ---------------------------
+  // =============
   // Modal
-  // ---------------------------
+  // =============
   openModal(farm?: FarmDto): void {
     this.editing = farm ?? null;
 
     if (farm) {
-      // Edición
+      // ----- EDICIÓN -----
       this.form.reset({
-        id: farm.id ?? null,
+        id: farm.id ?? null,                 // mostrado solo lectura
         companyId: farm.companyId ?? null,
         name: farm.name ?? '',
         regional: farm.regional ?? '',
         status: farm.status ?? 'A',
-        department: farm.department ?? '',
-        city: farm.city ?? '',
+
+        // inferimos país desde el dpto
+        paisId: null,
         departamentoId: farm.departamentoId ?? null,
         ciudadId: farm.ciudadId ?? null,
+
+        department: farm.department ?? '',
+        city: farm.city ?? '',
       });
 
-      // Cargar ciudades si hay dptoId
+      // Cargar la cascada existente
       if (farm.departamentoId) {
-        this.ciudadSvc.getByDepartamentoId(farm.departamentoId).subscribe((cs) => (this.ciudades = cs));
+        // 1) obtener dpto para saber paisId
+        this.dptoSvc.getById(farm.departamentoId).subscribe(d => {
+          const paisId = (d as any)?.paisId ?? null;
+          this.form.patchValue({ paisId });
+
+          // 2) cargar dptos del país
+          if (paisId != null) {
+            this.dptoSvc.getByPaisId(paisId).subscribe(ds => {
+              this.departamentos = ds ?? [];
+
+              // 3) cargar ciudades del dpto actual
+              this.ciudadSvc.getByDepartamentoId(farm.departamentoId!).subscribe(cs => {
+                this.ciudades = cs ?? [];
+              });
+            });
+          } else {
+            this.departamentos = [];
+            this.ciudades = [];
+          }
+        });
       } else {
+        this.departamentos = [];
         this.ciudades = [];
       }
     } else {
-      // Nuevo
+      // ----- NUEVO -----
+      const nextId = this.getNextFarmId();  // consecutivo sugerido (máx + 1)
+
       this.form.reset({
-        id: null,
+        id: nextId,                          // se muestra, no se envía
         companyId: null,
         name: '',
         regional: '',
         status: 'A',
-        department: '',
-        city: '',
+        paisId: null,
         departamentoId: null,
         ciudadId: null,
+        department: '',
+        city: '',
       });
+      this.departamentos = [];
       this.ciudades = [];
     }
 
@@ -214,59 +257,81 @@ export class FarmListComponent implements OnInit {
     this.form.reset();
   }
 
+  // =========================
+  // Cascada País → Dpto → Ciudad
+  // =========================
+  onPaisChange(): void {
+    const paisId = this.form.get('paisId')?.value;
+    // limpiar descendientes
+    this.form.patchValue({ departamentoId: null, ciudadId: null });
+    this.departamentos = [];
+    this.ciudades = [];
+    if (paisId != null) {
+      this.dptoSvc.getByPaisId(+paisId).subscribe(ds => this.departamentos = ds ?? []);
+    }
+  }
+
   onDepartamentoChange(): void {
     const dptoId = this.form.get('departamentoId')?.value;
     this.form.patchValue({ ciudadId: null, city: '' });
     this.ciudades = [];
     if (dptoId != null) {
-      this.ciudadSvc.getByDepartamentoId(+dptoId).subscribe((cs) => (this.ciudades = cs));
+      this.ciudadSvc.getByDepartamentoId(+dptoId).subscribe(cs => this.ciudades = cs ?? []);
     }
   }
 
-  // ---------------------------
+  // =============
   // Persistencia
-  // ---------------------------
-  // dentro de FarmListComponent
-save(): void {
-  if (this.form.invalid) {
-    this.form.markAllAsTouched();
-    return;
+  // =============
+  save(): void {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
+    const raw = this.form.getRawValue(); // incluye controles disabled
+
+    // Resuelve regionalId numérico con fallback a 1
+    const regionalId: number =
+      raw?.regionalId !== undefined && raw?.regionalId !== null && raw?.regionalId !== ''
+        ? Number(raw.regionalId)
+        : (typeof raw?.regional === 'string' && /^\d+$/.test(raw.regional.trim()))
+          ? Number(raw.regional.trim())
+          : 1;
+
+    // Normaliza status a 'A' | 'I'
+    const status: 'A' | 'I' = (String(raw.status ?? 'A').toUpperCase() === 'I' ? 'I' : 'A');
+
+    // Construye DTO base para API (sin campos sólo-UI)
+    const dtoBase = {
+      name: (raw.name ?? '').trim(),
+      companyId: Number(raw.companyId ?? 1),
+      status,
+      regionalId, // 👈 siempre entero
+      departamentoId: raw?.departamentoId != null && raw?.departamentoId !== '' ? Number(raw.departamentoId) : null,
+      ciudadId:       raw?.ciudadId       != null && raw?.ciudadId       !== '' ? Number(raw.ciudadId)       : null,
+    };
+
+    this.loading = true;
+
+    if (this.editing) {
+      const dto = { id: this.editing.id, ...dtoBase }; // UpdateFarmDto
+      this.farmSvc.update(dto)
+        .pipe(finalize(() => (this.loading = false)))
+        .subscribe(() => {
+          this.modalOpen = false;
+          this.loadAll();
+        });
+    } else {
+      // CreateFarmDto
+      this.farmSvc.create(dtoBase)
+        .pipe(finalize(() => (this.loading = false)))
+        .subscribe(() => {
+          this.modalOpen = false;
+          this.loadAll();
+        });
+    }
   }
-
-  const raw = this.form.value;
-
-  const base = {
-    name: (raw.name ?? '').trim(),
-    companyId: Number(raw.companyId),
-    status: (raw.status ?? 'A') as 'A' | 'I',
-    regional: (raw.regional ?? '') || null,
-    regionalId: raw.regionalId ?? null,  // si algún día lo usas
-    departamentoId: raw.departamentoId != null ? Number(raw.departamentoId) : null,
-    ciudadId: raw.ciudadId != null ? Number(raw.ciudadId) : null,
-    department: raw.department ?? null,
-    city: raw.city ?? null,
-  };
-
-  this.loading = true;
-
-  if (this.editing) {
-    const dto = { id: this.editing.id, ...base };
-    this.farmSvc.update(dto)
-      .pipe(finalize(() => (this.loading = false)))
-      .subscribe(() => {
-        this.modalOpen = false;
-        this.loadAll();
-      });
-  } else {
-    const dto = { ...base };
-    this.farmSvc.create(dto)
-      .pipe(finalize(() => (this.loading = false)))
-      .subscribe(() => {
-        this.modalOpen = false;
-        this.loadAll();
-      });
-  }
-}
 
 
   delete(id: number): void {
@@ -278,9 +343,17 @@ save(): void {
       .subscribe(() => this.loadAll());
   }
 
-  // ---------------------------
+  // =============
   // Helpers
-  // ---------------------------
+  // =============
+  /** Calcula el siguiente ID consecutivo a partir de la lista cargada (máximo + 1). */
+  private getNextFarmId(): number {
+    const ids = (this.farms ?? []).map(f => Number(f.id)).filter(n => Number.isFinite(n));
+    if (!ids.length) return 1;
+    return Math.max(...ids) + 1;
+    // Si quieres evitar “huecos”, aquí podrías buscar el menor entero no usado.
+  }
+
   companyName(id: number | null | undefined): string {
     if (id == null) return '';
     return this.companies.find((c) => c.id === id)?.name ?? '';

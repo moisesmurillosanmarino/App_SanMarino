@@ -1,6 +1,6 @@
 namespace ZooSanMarino.Application.DTOs.Lotes;
 
-using FarmLiteDto   = ZooSanMarino.Application.DTOs.Shared.FarmLiteDto;
+using FarmLiteDto   = ZooSanMarino.Application.DTOs.Farms.FarmLiteDto;
 using NucleoLiteDto = ZooSanMarino.Application.DTOs.Shared.NucleoLiteDto;
 using GalponLiteDto = ZooSanMarino.Application.DTOs.Shared.GalponLiteDto;
 

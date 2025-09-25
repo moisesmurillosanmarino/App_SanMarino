@@ -7,7 +7,7 @@ using ZooSanMarino.Application.DTOs.Lotes;     // LoteDetailDto, LoteSearchReque
 using CommonDtos = ZooSanMarino.Application.DTOs.Common;
 using AppInterfaces = ZooSanMarino.Application.Interfaces;
 
-using FarmLiteDto   = ZooSanMarino.Application.DTOs.Shared.FarmLiteDto;
+using FarmLiteDto   = ZooSanMarino.Application.DTOs.Farms.FarmLiteDto;
 using NucleoLiteDto = ZooSanMarino.Application.DTOs.Shared.NucleoLiteDto;
 using GalponLiteDto = ZooSanMarino.Application.DTOs.Shared.GalponLiteDto;
 

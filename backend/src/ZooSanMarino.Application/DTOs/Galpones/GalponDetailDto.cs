@@ -1,26 +1,25 @@
 // file: src/ZooSanMarino.Application/DTOs/Galpones/GalponDetailDto.cs
-using ZooSanMarino.Application.DTOs.Shared;
-
+using System;
 namespace ZooSanMarino.Application.DTOs.Galpones;
 
+// Alias para evitar conflictos de nombres
+using FarmLite = ZooSanMarino.Application.DTOs.Farms.FarmLiteDto;
+using Shared  = ZooSanMarino.Application.DTOs.Shared;
+
 public sealed record GalponDetailDto(
-    string GalponId,
-    string GalponNombre,
-    string NucleoId,
-    int GranjaId,
-    string? Ancho,
-    string? Largo,
-    string? TipoGalpon,
-    int CompanyId,
-    int? CreatedByUserId,
+    string   GalponId,
+    string   GalponNombre,
+    string   NucleoId,
+    int      GranjaId,
+    string?  Ancho,
+    string?  Largo,
+    string?  TipoGalpon,
+    int      CompanyId,
+    int?     CreatedByUserId,
     DateTime? CreatedAt,
-    int? UpdatedByUserId,
+    int?     UpdatedByUserId,
     DateTime? UpdatedAt,
-    FarmLiteDto Farm,
-    NucleoLiteDto Nucleo,
-    CompanyLiteDto Company  // 👈 NUEVO
-
+    FarmLite                 Farm,    // ← Farms.FarmLiteDto (int? RegionalId)
+    Shared.NucleoLiteDto     Nucleo,  // ← Shared
+    Shared.CompanyLiteDto    Company  // ← Shared
 );
-
-
-

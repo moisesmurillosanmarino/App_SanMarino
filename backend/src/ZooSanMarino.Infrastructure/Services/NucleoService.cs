@@ -4,12 +4,13 @@ using System.Linq.Expressions;
 
 using ZooSanMarino.Application.DTOs;                    // NucleoDto, Create/Update
 using NucleoDtos   = ZooSanMarino.Application.DTOs.Nucleos;
-using SharedDtos   = ZooSanMarino.Application.DTOs.Shared;
 using AppInterfaces = ZooSanMarino.Application.Interfaces; // INucleoService, ICurrentUser
 using CommonDtos   = ZooSanMarino.Application.DTOs.Common; // PagedResult<>
 
 using ZooSanMarino.Domain.Entities;
 using ZooSanMarino.Infrastructure.Persistence;
+using ZooSanMarino.Application.DTOs.Farms;
+using ZooSanMarino.Application.DTOs.Nucleos;
 
 namespace ZooSanMarino.Infrastructure.Services
 {
@@ -27,7 +28,7 @@ namespace ZooSanMarino.Infrastructure.Services
         // ===========================
         // BÚSQUEDA AVANZADA
         // ===========================
-        public async Task<CommonDtos.PagedResult<NucleoDtos.NucleoDetailDto>> SearchAsync(NucleoDtos.NucleoSearchRequest req)
+        public async Task<CommonDtos.PagedResult<NucleoDetailDto>> SearchAsync(NucleoSearchRequest req)
         {
             var q = _ctx.Nucleos.AsNoTracking()
                 .Where(n => n.CompanyId == _current.CompanyId);
@@ -52,7 +53,7 @@ namespace ZooSanMarino.Infrastructure.Services
                 .Take(req.PageSize)
                 .ToListAsync();
 
-            return new CommonDtos.PagedResult<NucleoDtos.NucleoDetailDto>
+            return new CommonDtos.PagedResult<NucleoDetailDto>
             {
                 Page = req.Page,
                 PageSize = req.PageSize,
@@ -64,7 +65,7 @@ namespace ZooSanMarino.Infrastructure.Services
         // ===========================
         // DETALLE POR PK COMPUESTA
         // ===========================
-        public async Task<NucleoDtos.NucleoDetailDto?> GetDetailByIdAsync(string nucleoId, int granjaId)
+        public async Task<NucleoDetailDto?> GetDetailByIdAsync(string nucleoId, int granjaId)
         {
             var q = _ctx.Nucleos.AsNoTracking()
                 .Where(n => n.CompanyId == _current.CompanyId &&
@@ -184,11 +185,11 @@ namespace ZooSanMarino.Infrastructure.Services
         }
 
         // Nota: método de instancia (no static) para poder usar _ctx en subconsultas
-        private IQueryable<NucleoDtos.NucleoDetailDto> ProjectToDetail(IQueryable<Nucleo> q)
+        private IQueryable<NucleoDetailDto> ProjectToDetail(IQueryable<Nucleo> q)
         {
             return q
                 .Include(n => n.Farm)
-                .Select(n => new NucleoDtos.NucleoDetailDto(
+                .Select(n => new NucleoDetailDto(
                     n.NucleoId,
                     n.GranjaId,
                     n.NucleoNombre,
@@ -197,7 +198,7 @@ namespace ZooSanMarino.Infrastructure.Services
                     n.CreatedAt,
                     n.UpdatedByUserId,
                     n.UpdatedAt,
-                    new SharedDtos.FarmLiteDto(n.Farm.Id, n.Farm.Name, n.Farm.RegionalId, n.Farm.DepartamentoId,n.Farm.MunicipioId),
+                    new FarmLiteDto(n.Farm.Id, n.Farm.Name, n.Farm.RegionalId, n.Farm.DepartamentoId,n.Farm.MunicipioId),
                     // Contadores posicionales (sin argumentos nombrados)
                     n.Galpones.Count(), // requiere Nucleo.Galpones
                     _ctx.Lotes.Count(l =>                // si Nucleo no tiene Lotes, usamos subconsulta

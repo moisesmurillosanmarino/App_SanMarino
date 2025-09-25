@@ -28,7 +28,7 @@ export interface CreateFarmDto {
   companyId: number;
   status: 'A' | 'I';
   // opcionales
-  regional?: string | null;
+  regional?: string | '1';
   regionalId?: number | null;
   departamentoId?: number | null;
   ciudadId?: number | null;
