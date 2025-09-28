@@ -12,7 +12,7 @@ import { finalize, forkJoin } from 'rxjs';
 
 import { SidebarComponent } from '../../../../shared/components/sidebar/sidebar.component';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import { faPlus, faPen, faTrash } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faPen, faTrash,faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
 
 import { FarmService, FarmDto, UpdateFarmDto } from '../../services/farm.service';
 import { Company, CompanyService } from '../../../../core/services/company/company.service';
@@ -40,6 +40,7 @@ export class FarmListComponent implements OnInit {
   faPlus = faPlus;
   faPen  = faPen;
   faTrash = faTrash;
+   faMagnifyingGlass = faMagnifyingGlass;
 
   // Estado general
   loading = false;
@@ -66,6 +67,11 @@ export class FarmListComponent implements OnInit {
   modalOpen = false;
   form!: FormGroup;
   editing: FarmDto | null = null;
+
+
+  // índices rápidos por ID
+  private dptoById = new Map<number, DepartamentoDto>();
+  private ciudadById = new Map<number, CiudadDto>();
 
   constructor(
     private readonly fb: FormBuilder,
@@ -119,14 +125,34 @@ export class FarmListComponent implements OnInit {
       companies: this.companySvc.getAll(),
       regionMl:  this.masterSvc.getByKey('region_option_key'),
       paises:    this.paisSvc.getAll(),
+      dptos:     this.dptoSvc.getAll(),     // ⬅️ ahora cargamos todos los dptos
+      ciudades:  this.ciudadSvc.getAll(),   // ⬅️ y todas las ciudades
     })
     .pipe(finalize(() => (this.loading = false)))
-    .subscribe(({ farms, companies, regionMl, paises }) => {
+    .subscribe(({ farms, companies, regionMl, paises, dptos, ciudades }) => {
       this.farms      = farms ?? [];
       this.companies  = companies ?? [];
       this.regionales = this.normalizeRegionStrings(regionMl);
       this.paises     = paises ?? [];
+      this.departamentos = dptos ?? [];
+      this.ciudades      = ciudades ?? [];
+      // Construir índices rápidos
+       this.dptoById.clear();
+       this.ciudadById.clear();
+        (this.departamentos ?? []).forEach(d => this.dptoById.set(d.departamentoId, d));
+        (this.ciudades ?? []).forEach(c => this.ciudadById.set(c.municipioId, c));
+      // Rellenar nombres de dpto/ciudad en las granjas
+      this.farms.forEach(f => {
+        if (f.departamentoId != null) {
+          f.department = this.dptoById.get(f.departamentoId)?.departamentoNombre ?? '';
+        }
+        if (f.ciudadId != null) {
+          f.city = this.ciudadById.get(f.ciudadId)?.municipioNombre ?? '';
+        }
+      });
+
       this.recomputeList();
+
     });
   }
 
@@ -202,6 +228,10 @@ export class FarmListComponent implements OnInit {
         department: farm.department ?? '',
         city: farm.city ?? '',
       });
+      // Filtrar dptos/ciudades al dpto/ciudad de la granja (si tiene)
+      if (farm.departamentoId) {
+        this.ciudades = this.ciudades.filter(c => c.departamentoId === farm.departamentoId);
+      }
 
       // Cargar la cascada existente
       if (farm.departamentoId) {

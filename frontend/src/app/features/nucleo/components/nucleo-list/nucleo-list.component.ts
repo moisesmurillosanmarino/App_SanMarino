@@ -1,25 +1,39 @@
-import { Component, OnInit, Input } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  Input,
+  OnDestroy,
+  OnInit
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
-  ReactiveFormsModule,
   FormBuilder,
   FormGroup,
-  Validators,
-  FormsModule
+  FormsModule,
+  ReactiveFormsModule,
+  Validators
 } from '@angular/forms';
-import { finalize } from 'rxjs/operators';
+import { Subject, of } from 'rxjs';
+import { catchError, finalize, takeUntil, tap } from 'rxjs/operators';
 import { SidebarComponent } from '../../../../shared/components/sidebar/sidebar.component';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import { faPlus, faPen, faTrash } from '@fortawesome/free-solid-svg-icons';
+import { faPen, faPlus, faTrash, faSearch } from '@fortawesome/free-solid-svg-icons';
 
 import {
-  NucleoService,
-  NucleoDto,
   CreateNucleoDto,
+  NucleoDto,
+  NucleoService,
   UpdateNucleoDto
 } from '../../services/nucleo.service';
-import { FarmService, FarmDto } from '../../../farm/services/farm.service';
+import { FarmDto, FarmService } from '../../../farm/services/farm.service';
 import { Company, CompanyService } from '../../../../core/services/company/company.service';
+
+type NucleoForm = {
+  nucleoId: string | number;
+  granjaId: number | null;
+  nucleoNombre: string;
+};
 
 @Component({
   selector: 'app-nucleo-list',
@@ -33,92 +47,291 @@ import { Company, CompanyService } from '../../../../core/services/company/compa
   ],
   templateUrl: './nucleo-list.component.html',
   styleUrls: ['./nucleo-list.component.scss'],
-  // Opcional: añade la clase 'embedded' al host cuando embedded=true (para tus estilos)
+  changeDetection: ChangeDetectionStrategy.OnPush,
   host: { '[class.embedded]': 'embedded' }
 })
-export class NucleoListComponent implements OnInit {
-  faPlus  = faPlus;
-  faPen   = faPen;
-  faTrash = faTrash;
+export class NucleoListComponent implements OnInit, OnDestroy {
+  // Icons
+  protected readonly faPlus = faPlus;
+  protected readonly faSearch = faSearch;
+  protected readonly faPen = faPen;
+  protected readonly faTrash = faTrash;
 
   @Input() embedded = false;
 
-  // Filtros
+  // Filtros (modelo de UI)
   filtro = '';
   selectedCompanyId: number | null = null;
   selectedFarmId: number | null = null;
 
-  // Datos
+  // Datos (estado local)
   nucleos: NucleoDto[] = [];
   viewNucleos: NucleoDto[] = [];
   farms: FarmDto[] = [];
   companies: Company[] = [];
 
-  // Mapas auxiliares
+  // Mapas auxiliares para lookups
   farmMap: Record<number, string> = {};
   companyMap: Record<number, string> = {};
 
+  // UI state
   loading = false;
   modalOpen = false;
   editing: NucleoDto | null = null;
+
+  // Formulario
   form!: FormGroup;
 
+  // lifecycle
+  private readonly destroy$ = new Subject<void>();
+
   constructor(
-    private fb: FormBuilder,
-    private nucleoSvc: NucleoService,
-    private farmSvc: FarmService,
-    private companySvc: CompanyService
+    private readonly fb: FormBuilder,
+    private readonly nucleoSvc: NucleoService,
+    private readonly farmSvc: FarmService,
+    private readonly companySvc: CompanyService,
+    private readonly cdr: ChangeDetectorRef
   ) {}
 
-  ngOnInit() {
-    // Formulario
-    this.form = this.fb.group({
+  // ======== Lifecycle ========
+  ngOnInit(): void {
+    this.buildForm();
+
+    // Cargar granjas y compañías en paralelo y luego recomputar
+    this.loading = true;
+
+    this.farmSvc
+      .getAll()
+      .pipe(
+        tap(list => {
+          this.farms = list ?? [];
+          this.farmMap = {};
+          this.farms.forEach(f => (this.farmMap[f.id] = f.name));
+        }),
+        catchError(err => {
+          console.error('[Farms] load error', err);
+          this.farms = [];
+          this.farmMap = {};
+          return of([]);
+        })
+      )
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        // Luego compañías
+        this.companySvc
+          .getAll()
+          .pipe(
+            tap(clist => {
+              this.companies = clist ?? [];
+              this.companyMap = {};
+              this.companies.forEach(c => {
+                if (c.id !== undefined && c.id !== null) {
+                  this.companyMap[c.id] = c.name ?? '';
+                }
+              });
+            }),
+            catchError(err => {
+              console.error('[Companies] load error', err);
+              this.companies = [];
+              this.companyMap = {};
+              return of([]);
+            }),
+            finalize(() => {
+              // Cuando ya hay farms + companies, carga núcleos
+              this.loadNucleos();
+            }),
+            takeUntil(this.destroy$)
+          )
+          .subscribe();
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  // ======== Form ========
+  private buildForm(): void {
+    this.form = this.fb.group<NucleoForm>({
       nucleoId: ['', Validators.required],
       granjaId: [null, Validators.required],
       nucleoNombre: ['', Validators.required]
-    });
-
-    // Cargar granjas y companies
-    this.farmSvc.getAll().subscribe(list => {
-      this.farms = list;
-      list.forEach(f => (this.farmMap[f.id] = f.name));
-      this.recompute();
-
-      this.companySvc.getAll().subscribe(clist => {
-        this.companies = clist;
-        clist.forEach(c => {
-          if (c.id !== undefined) this.companyMap[c.id] = c.name;
-        });
-        this.recompute();
-      });
-    });
-
-    // Carga inicial de núcleos
-    this.loadNucleos();
+    } as any);
   }
 
-  // ===== NEW: trackBy para *ngFor
+  // ======== UI helpers ========
   trackByNucleo = (_: number, n: NucleoDto) => `${n.nucleoId}|${n.granjaId}`;
 
-  // Granja filtrada por compañía (para el combo)
   get farmsFiltered(): FarmDto[] {
     if (this.selectedCompanyId == null) return this.farms;
     return this.farms.filter(f => f.companyId === this.selectedCompanyId);
   }
 
-  private loadNucleos() {
+  onCompanyChange(val: number | null): void {
+    this.selectedCompanyId = val;
+
+    // Si la granja seleccionada no pertenece a la compañía actual, limpiar
+    if (
+      this.selectedFarmId != null &&
+      !this.farmsFiltered.some(f => f.id === this.selectedFarmId)
+    ) {
+      this.selectedFarmId = null;
+    }
+    this.recompute();
+  }
+
+  resetFilters(): void {
+    this.filtro = '';
+    this.selectedCompanyId = null;
+    this.selectedFarmId = null;
+    this.recompute();
+  }
+
+  // ======== Data load ========
+  private loadNucleos(): void {
     this.loading = true;
     this.nucleoSvc
       .getAll()
-      .pipe(finalize(() => (this.loading = false)))
-      .subscribe(list => {
-        this.nucleos = list;
-        this.recompute();
-      });
+      .pipe(
+        tap(list => {
+          this.nucleos = list ?? [];
+          this.recompute();
+        }),
+        catchError(err => {
+          console.error('[Nucleos] load error', err);
+          this.nucleos = [];
+          this.viewNucleos = [];
+          return of([]);
+        }),
+        finalize(() => {
+          this.loading = false;
+          this.cdr.markForCheck();
+        }),
+        takeUntil(this.destroy$)
+      )
+      .subscribe();
   }
 
-  // Recalcular la vista en base a filtros
-  recompute() {
+  // ======== CRUD modal ========
+  openModal(n?: NucleoDto): void {
+    this.editing = n ?? null;
+
+    if (n) {
+      // Editar
+      this.form.reset({
+        nucleoId: n.nucleoId,
+        granjaId: n.granjaId,
+        nucleoNombre: n.nucleoNombre
+      });
+    } else {
+      // Crear: generar ID de 6 dígitos único basado en lo cargado
+      const newId = this.generateUniqueId6(this.nucleos);
+      this.form.reset({
+        nucleoId: newId,
+        granjaId: null,
+        nucleoNombre: ''
+      });
+    }
+
+    this.modalOpen = true;
+    this.cdr.markForCheck();
+  }
+
+  closeModal(): void {
+    this.modalOpen = false;
+    this.editing = null;
+    this.cdr.markForCheck();
+  }
+
+  save(): void {
+    if (this.form.invalid) return;
+
+    // Verificación rápida de unicidad (solo al crear)
+    if (!this.editing) {
+      const id = String(this.form.value['nucleoId']);
+      if (this.nucleos.some(n => String(n.nucleoId) === id)) {
+        const newId = this.generateUniqueId6(this.nucleos);
+        this.form.get('nucleoId')?.setValue(newId);
+      }
+    }
+
+    const payload = this.form.value as NucleoDto;
+    const req$ = this.editing
+      ? this.nucleoSvc.update(payload as UpdateNucleoDto)
+      : this.nucleoSvc.create(payload as CreateNucleoDto);
+
+    this.loading = true;
+    req$
+      .pipe(
+        tap(saved => {
+          // Mantener estado local sin recargar
+          this.upsertNucleo(saved);
+          this.recompute();
+          this.closeModal();
+        }),
+        catchError(err => {
+          console.error('[Nucleo] save error', err);
+          // Aquí podrías emitir una notificación/toast
+          return of(null);
+        }),
+        finalize(() => {
+          this.loading = false;
+          this.cdr.markForCheck();
+        }),
+        takeUntil(this.destroy$)
+      )
+      .subscribe();
+  }
+
+  delete(n: NucleoDto): void {
+    if (!confirm(`¿Eliminar el núcleo “${n.nucleoNombre}”?`)) return;
+
+    this.loading = true;
+    this.nucleoSvc
+      .delete(n.nucleoId, n.granjaId)
+      .pipe(
+        tap(() => {
+          this.removeNucleo(n);
+          this.recompute();
+        }),
+        catchError(err => {
+          console.error('[Nucleo] delete error', err);
+          return of(null);
+        }),
+        finalize(() => {
+          this.loading = false;
+          this.cdr.markForCheck();
+        }),
+        takeUntil(this.destroy$)
+      )
+      .subscribe();
+  }
+
+  // ======== Estado local ========
+  private upsertNucleo(n: NucleoDto): void {
+    const i = this.nucleos.findIndex(
+      x => String(x.nucleoId) === String(n.nucleoId) && x.granjaId === n.granjaId
+    );
+    if (i >= 0) {
+      // Reemplazo inmutable para que OnPush detecte el cambio
+      this.nucleos = [
+        ...this.nucleos.slice(0, i),
+        n,
+        ...this.nucleos.slice(i + 1)
+      ];
+    } else {
+      this.nucleos = [n, ...this.nucleos];
+    }
+  }
+
+  private removeNucleo(n: NucleoDto): void {
+    this.nucleos = this.nucleos.filter(
+      x => !(String(x.nucleoId) === String(n.nucleoId) && x.granjaId === n.granjaId)
+    );
+  }
+
+  recompute(): void {
     const term = this.normalize(this.filtro);
     let res = [...this.nucleos];
 
@@ -150,47 +363,10 @@ export class NucleoListComponent implements OnInit {
     }
 
     this.viewNucleos = res;
+    this.cdr.markForCheck();
   }
 
-  onCompanyChange(val: number | null) {
-    this.selectedCompanyId = val;
-
-    // Si la granja seleccionada no pertenece a la compañía actual, limpiar
-    if (
-      this.selectedFarmId != null &&
-      !this.farmsFiltered.some(f => f.id === this.selectedFarmId)
-    ) {
-      this.selectedFarmId = null;
-    }
-    this.recompute();
-  }
-
-  resetFilters() {
-    this.filtro = '';
-    this.selectedCompanyId = null;
-    this.selectedFarmId = null;
-    this.recompute();
-  }
-
-  // ② openModal: asigna el ID al crear
-  openModal(n?: NucleoDto) {
-    this.editing = n ?? null;
-    if (n) {
-      // Editar: usamos los valores existentes (incluye el ID)
-      this.form.patchValue(n);
-    } else {
-      // Crear: generamos un ID de 6 dígitos único basado en lo que ya cargó la tabla
-      const newId = this.generateUniqueId6(this.nucleos);
-      this.form.reset({
-        nucleoId: newId,       // ← asignado automáticamente
-        granjaId: null,
-        nucleoNombre: ''
-      });
-    }
-    this.modalOpen = true;
-  }
-
-  // ① Generador de ID de 6 dígitos que no colisiona con los existentes
+  // ======== Utils ========
   private generateUniqueId6(existing: Array<NucleoDto>): string {
     const used = new Set(existing.map(x => String(x.nucleoId)));
     let tries = 0;
@@ -200,56 +376,12 @@ export class NucleoListComponent implements OnInit {
       if (!used.has(id)) return id;
       tries++;
     }
-    // Fallback improbable: añade sufijo incremental
+    // Fallback improbable: sufijo incremental
     let seq = 100000;
     while (used.has(String(seq)) && seq <= 999999) seq++;
     return String(seq);
   }
 
-  save() {
-    if (this.form.invalid) return;
-
-    // Verificación rápida de unicidad (solo en crear)
-    if (!this.editing) {
-      const id = String(this.form.value.nucleoId);
-      if (this.nucleos.some(n => String(n.nucleoId) === id)) {
-        // Reintenta generar y asigna
-        const newId = this.generateUniqueId6(this.nucleos);
-        this.form.get('nucleoId')?.setValue(newId);
-      }
-    }
-
-    const v = this.form.value as NucleoDto;
-    const op$ = this.editing
-      ? this.nucleoSvc.update(v as UpdateNucleoDto)
-      : this.nucleoSvc.create(v as CreateNucleoDto);
-
-    this.loading = true;
-    op$
-      .pipe(finalize(() => {
-        this.loading = false;
-        this.modalOpen = false;
-        this.loadNucleos();
-      }))
-      .subscribe();
-  }
-
-
-  delete(n: NucleoDto) {
-    if (!confirm(`¿Eliminar el núcleo “${n.nucleoNombre}”?`)) return;
-    this.loading = true;
-    this.nucleoSvc
-      .delete(n.nucleoId, n.granjaId)
-      .pipe(
-        finalize(() => {
-          this.loading = false;
-          this.loadNucleos();
-        })
-      )
-      .subscribe();
-  }
-
-  // Aux
   getFarmName(granjaId: number): string {
     return this.farmMap[granjaId] || '–';
   }
@@ -266,7 +398,7 @@ export class NucleoListComponent implements OnInit {
       .replace(/[\u0300-\u036f]/g, '');
   }
 
-  private safe(s: any): string {
+  private safe(s: unknown): string {
     return s == null ? '' : String(s);
   }
 }

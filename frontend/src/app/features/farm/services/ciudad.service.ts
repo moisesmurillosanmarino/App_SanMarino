@@ -24,4 +24,8 @@ export class CiudadService {
   getById(id: number): Observable<CiudadDto> {
     return this.http.get<CiudadDto>(`${this.baseUrl}/${id}`);
   }
+
+  getAll(): Observable<CiudadDto[]> {
+    return this.http.get<CiudadDto[]>(this.baseUrl);
+  }
 }
