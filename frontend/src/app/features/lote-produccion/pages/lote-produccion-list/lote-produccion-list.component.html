@@ -9,23 +9,36 @@
       <div class="ux-header__title">
         <h1>Diario de Producción</h1>
 
-        <div class="ux-header__meta" *ngIf="selectedLoteId; else noLoteMsg">
-          <span class="chip chip--info">
-            <span class="chip__dot" aria-hidden="true"></span>
-            Lote: {{ selectedLoteNombre }}
-          </span>
-          <span class="chip chip--muted">{{ selectedLoteSemanas }} sem</span>
-          <span class="chip chip--muted">{{ registros.length || 0 }} registro(s)</span>
-        </div>
-
-        <ng-template #noLoteMsg>
-          <div class="ux-header__meta">
+        <div class="ux-header__meta">
+          <ng-template #noGranjaChip>
             <span class="chip chip--warning">
               <span class="chip__dot" aria-hidden="true"></span>
-              Selecciona un lote para gestionar registros
+              Selecciona una granja
             </span>
-          </div>
-        </ng-template>
+          </ng-template>
+
+          <span class="chip chip--info" *ngIf="selectedGranjaId; else noGranjaChip">
+            <span class="chip__dot" aria-hidden="true"></span>
+            Granja: {{ selectedGranjaName }}
+          </span>
+
+          <span class="chip chip--muted" *ngIf="selectedNucleoId">
+            Núcleo: {{ selectedNucleoNombre }}
+          </span>
+
+          <span class="chip chip--muted" *ngIf="selectedGalponId">
+            Galpón: {{ selectedGalponNombre }}
+          </span>
+
+          <ng-container *ngIf="selectedLoteId">
+            <span class="chip chip--info">
+              <span class="chip__dot" aria-hidden="true"></span>
+              Lote: {{ selectedLoteNombre || selectedLoteId }}
+            </span>
+            <span class="chip chip--muted">{{ selectedLoteSemanas }} sem</span>
+            <span class="chip chip--muted">{{ registros?.length || 0 }} registro(s)</span>
+          </ng-container>
+        </div>
       </div>
 
       <button
@@ -39,20 +52,72 @@
       </button>
     </header>
 
-    <!-- Toolbar / Filtro -->
-    <section class="ux-toolbar">
-      <label for="lote-select" class="ux-label">Selecciona Lote</label>
-      <div class="ux-select">
-        <select
-          id="lote-select"
-          [(ngModel)]="selectedLoteId"
-          (change)="onLoteChange()"
-          aria-label="Selecciona lote">
-          <option [ngValue]="null" disabled>— Selecciona un lote —</option>
-          <option *ngFor="let l of lotes; trackBy: trackByLoteId" [ngValue]="l.loteId">
-            {{ l.loteNombre }} ({{ l.edadSemanas }} sem)
-          </option>
-        </select>
+    <!-- Filtros en cascada -->
+    <section class="ux-card" role="group" aria-label="Filtros">
+      <div class="ux-toolbar">
+        <!-- Granja -->
+        <div class="ux-field">
+          <label class="ux-label" for="granja-select">Granja</label>
+          <div class="ux-select">
+            <select
+              id="granja-select"
+              [ngModel]="selectedGranjaId"
+              (ngModelChange)="selectedGranjaId = $event; onGranjaChange()">
+              <option [ngValue]="null">— Seleccione —</option>
+              <option *ngFor="let g of granjas" [ngValue]="g.id">{{ g.name }}</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Núcleo -->
+        <div class="ux-field">
+          <label class="ux-label" for="nucleo-select">Núcleo</label>
+          <div class="ux-select">
+            <select
+              id="nucleo-select"
+              [disabled]="!selectedGranjaId || nucleos.length === 0"
+              [ngModel]="selectedNucleoId"
+              (ngModelChange)="selectedNucleoId = $event; onNucleoChange()">
+              <option [ngValue]="null">— Todos —</option>
+              <option *ngFor="let n of nucleos; trackBy: trackByNucleo" [ngValue]="n.nucleoId">
+                {{ n.nucleoNombre }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Galpón -->
+        <div class="ux-field">
+          <label class="ux-label" for="galpon-select">Galpón</label>
+          <div class="ux-select">
+            <select
+              id="galpon-select"
+              [disabled]="!selectedGranjaId || galpones.length === 0"
+              [ngModel]="selectedGalponId"
+              (ngModelChange)="selectedGalponId = $event; onGalponChange()">
+              <option [ngValue]="null">— Todos —</option>
+              <option *ngFor="let g of galpones" [ngValue]="g.id">{{ g.label }}</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Lote -->
+        <div class="ux-field">
+          <label class="ux-label" for="lote-select">Lote</label>
+          <div class="ux-select">
+            <select
+              id="lote-select"
+              [disabled]="!selectedGranjaId || lotes.length === 0"
+              [(ngModel)]="selectedLoteId"
+              (ngModelChange)="onLoteChange()"
+              aria-label="Selecciona lote">
+              <option [ngValue]="null" disabled>— Seleccione —</option>
+              <option *ngFor="let l of lotes; trackBy: trackByLoteId" [ngValue]="l.loteId">
+                {{ l.loteNombre || l.loteId }} ({{ l.edadSemanas }} sem)
+              </option>
+            </select>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -116,7 +181,8 @@
             <tr *ngIf="!loading && (!registros || registros.length === 0)">
               <td colspan="11" class="empty-state">
                 <div class="empty-illustration" aria-hidden="true">📄</div>
-                <p>No hay registros disponibles.</p>
+                <p *ngIf="!selectedLoteId">Selecciona un lote para ver/crear registros.</p>
+                <p *ngIf="selectedLoteId">Sin registros para este lote.</p>
                 <button
                   type="button"
                   class="btn btn--outline"
