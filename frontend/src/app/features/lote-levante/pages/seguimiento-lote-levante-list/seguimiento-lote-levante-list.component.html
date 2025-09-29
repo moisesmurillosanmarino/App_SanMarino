@@ -249,6 +249,7 @@
           <thead>
             <tr>
               <th scope="col">Fecha</th>
+              <th scope="col">Edad</th>
               <th scope="col">Mort. H</th>
               <th scope="col">Mort. M</th>
               <th scope="col">Sel H</th>
@@ -270,7 +271,8 @@
 
           <tbody>
             <tr *ngIf="!loading && (!seguimientos || seguimientos.length === 0)">
-              <td colspan="17" class="empty-state">
+              <!-- 18 columnas (se agregó 'Semana') -->
+              <td colspan="18" class="empty-state">
                 <div class="empty-illustration" aria-hidden="true">📄</div>
                 <p *ngIf="!selectedLoteId">Selecciona un lote para ver/crear registros.</p>
                 <p *ngIf="selectedLoteId">Sin registros para este lote.</p>
@@ -282,6 +284,7 @@
 
             <tr *ngFor="let s of seguimientos; trackBy: trackById" class="ux-row">
               <td>{{ s.fechaRegistro | date:'shortDate' }}</td>
+              <td>{{ edadSemanaDe(s) }}</td>
               <td>{{ s.mortalidadHembras }}</td>
               <td>{{ s.mortalidadMachos }}</td>
               <td>{{ s.selH }}</td>

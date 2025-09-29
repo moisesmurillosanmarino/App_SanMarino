@@ -1,4 +1,3 @@
-// src/app/features/lote-levante/pages/seguimiento-lote-levante-list/seguimiento-lote-levante-list.component.ts
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -23,11 +22,11 @@ type Sexo = 'H' | 'M' | 'A';  // H = hembras, M = machos, A = ambos
 type Raza = 'RA' | 'ITAL' | 'PAVA' | 'GENERICA';
 
 interface AlimentoOpt {
-  id: string;        // código o slug interno
-  nombre: string;    // etiqueta a mostrar
-  sexo: Sexo;        // a quién aplica
-  raza: Raza;        // línea/raza para filtrados futuros
-  activo?: boolean;  // por si luego quieres desactivar alguno
+  id: string;
+  nombre: string;
+  sexo: Sexo;
+  raza: Raza;
+  activo?: boolean;
 }
 
 @Component({
@@ -42,12 +41,7 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
   readonly SIN_GALPON = '__SIN_GALPON__';
 
   // ================== CATÁLOGO LOCAL: Alimentos ==================
-  // Notas:
-  // - sexo: 'H' hembras, 'M' machos, 'A' ambos
-  // - raza: tomada del screenshot/convención. Si no hubo dato claro, se usa 'GENERICA'.
-  // - Puedes extender libremente esta lista o moverla a un servicio cuando tengas API.
   readonly alimentos: AlimentoOpt[] = [
-    // ====== Genéricos de levante/producción (ambos) ======
     { id: 'preiniciador',           nombre: 'Preiniciador',             sexo: 'A', raza: 'GENERICA' },
     { id: 'iniciador-h',            nombre: 'Iniciador H',              sexo: 'H', raza: 'GENERICA' },
     { id: 'iniciador-m',            nombre: 'Iniciador M',              sexo: 'M', raza: 'GENERICA' },
@@ -57,28 +51,22 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     { id: 'prepostura-h',           nombre: 'Prepostura H',             sexo: 'H', raza: 'GENERICA' },
     { id: 'mantenimiento',          nombre: 'Mantenimiento',            sexo: 'A', raza: 'GENERICA' },
 
-    // ====== Basados en tu imagen (códigos/etiquetas abreviadas) ======
-    // GR PRODUCCIÓN I / II (Reproductoras) – parecen Hembras
     { id: 'gr-prod-i-reprod',       nombre: 'GR Producción I Reprod',   sexo: 'H', raza: 'RA' },
     { id: 'gr-prod-ii-reprod',      nombre: 'GR Producción II Reprod',  sexo: 'H', raza: 'RA' },
 
-    // Huevo "prepico" / Fase III (mantengo genérico; ajusta cuando definas exactamente)
     { id: 'huevo-prepico-reprod',   nombre: 'Huevo Prepico Reprod',     sexo: 'H', raza: 'GENERICA' },
     { id: 'huevo-prepico-f3',       nombre: 'Huevo Prepico Fase III',   sexo: 'H', raza: 'GENERICA' },
 
-    // ITAL (línea italiana) – Hembras (pollita/polla reproducciones)
     { id: 'ital-polla-levante-rep', nombre: 'ITAL Polla Levante Reprod', sexo: 'H', raza: 'ITAL' },
     { id: 'ital-pollita-prein',     nombre: 'ITAL Pollita Prein Reprod', sexo: 'H', raza: 'ITAL' },
     { id: 'ital-pollita-inic',      nombre: 'ITAL Pollita Inici Reprod', sexo: 'H', raza: 'ITAL' },
     { id: 'ital-prepico-reprod',    nombre: 'ITAL Prepico Reproductor',  sexo: 'H', raza: 'ITAL' },
     { id: 'ital-prepostura-reprod', nombre: 'ITAL Prepostura Reproductor', sexo: 'H', raza: 'ITAL' },
 
-    // MACHOS REPRODUCTORES (varias “líneas” A / N / S según se alcanza a leer)
     { id: 'machos-reprod-a',        nombre: 'Machos Reproductores A',   sexo: 'M', raza: 'RA' },
     { id: 'machos-reprod-n',        nombre: 'Machos Reproductores N',   sexo: 'M', raza: 'RA' },
     { id: 'machos-reprod-s',        nombre: 'Machos Reproductores S',   sexo: 'M', raza: 'RA' },
 
-    // PAVA (turquía) – los dejo como “ambos” para no frenar el flujo (puedes ocultarlos si no aplica)
     { id: 'pava-mantenimiento-pll', nombre: 'Pava Mantenimiento PLL',    sexo: 'A', raza: 'PAVA' },
     { id: 'pava-reprod-crec-1',     nombre: 'Pava Reprod Crecimiento 1', sexo: 'A', raza: 'PAVA' },
     { id: 'pava-reprod-crec-2',     nombre: 'Pava Reprod Crecimiento 2', sexo: 'A', raza: 'PAVA' },
@@ -132,7 +120,7 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     private nucleoSvc: NucleoService,
     private loteSvc: LoteService,
     private segSvc: SeguimientoLoteLevanteService,
-     private galponSvc: GalponService,
+    private galponSvc: GalponService,
   ) {}
 
   ngOnInit(): void {
@@ -150,14 +138,9 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       selM:               [0, [Validators.required, Validators.min(0)]],
       errorSexajeHembras: [0, [Validators.required, Validators.min(0)]],
       errorSexajeMachos:  [0, [Validators.required, Validators.min(0)]],
-
-      // legacy (por compatibilidad con back)
       tipoAlimento:       [''],
-
       consumoKgHembras:   [0, [Validators.required, Validators.min(0)]],
       observaciones:      [''],
-
-      // Nuevos opcionales
       consumoKgMachos: [null, [Validators.min(0)]],
       pesoPromH:       [null, [Validators.min(0)]],
       pesoPromM:       [null, [Validators.min(0)]],
@@ -165,11 +148,8 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       uniformidadM:    [null, [Validators.min(0), Validators.max(100)]],
       cvH:             [null, [Validators.min(0)]],
       cvM:             [null, [Validators.min(0)]],
-
-      // Selects por sexo (los que verás en los tabs)
       tipoAlimentoHembras: [''],
       tipoAlimentoMachos:  [''],
-
       consumoAlimentoHembras: [null],
       consumoAlimentoMachos:  [null],
       ciclo: ['Normal'],
@@ -181,7 +161,6 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
 
     if (!this.selectedGranjaId) return;
 
-    // Preferir por Granja+Núcleo si hay núcleo elegido
     if (this.selectedNucleoId) {
       this.galponSvc.getByGranjaAndNucleo(this.selectedGranjaId, this.selectedNucleoId).subscribe({
         next: rows => this.fillGalponMap(rows),
@@ -190,12 +169,11 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       return;
     }
 
-    // Si no hay núcleo, traer por granja (vía search con pageSize alto)
     this.galponSvc.search({ granjaId: this.selectedGranjaId, page: 1, pageSize: 1000, soloActivos: true })
-        .subscribe({
-          next: res => this.fillGalponMap(res?.items || []),
-          error: () => this.galponNameById.clear(),
-        });
+      .subscribe({
+        next: res => this.fillGalponMap(res?.items || []),
+        error: () => this.galponNameById.clear(),
+      });
   }
 
   private fillGalponMap(rows: GalponDetailDto[] | null | undefined): void {
@@ -204,10 +182,8 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       if (!id) continue;
       this.galponNameById.set(id, (g.galponNombre || id).trim());
     }
-    // Reetiquetar el combo con nombres si ya estaba armado
     this.buildGalponesFromLotes();
   }
-
 
   // ================== cascada de filtros ==================
   onGranjaChange(): void {
@@ -230,7 +206,7 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     });
 
     this.reloadLotesThenApplyFilters();
-    this.loadGalponCatalog();    
+    this.loadGalponCatalog();
   }
 
   onNucleoChange(): void {
@@ -240,7 +216,7 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     this.selectedLote = undefined;
     this.resumenSelected = null;
     this.applyFiltersToLotes();
-    this.loadGalponCatalog();  
+    this.loadGalponCatalog();
   }
 
   onGalponChange(): void {
@@ -330,10 +306,10 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
   }
 
   private buildGalponesFromLotes(): void {
-    if (!this.selectedGranjaId) { 
-      this.galpones = []; 
-      this.hasSinGalpon = false; 
-      return; 
+    if (!this.selectedGranjaId) {
+      this.galpones = [];
+      this.hasSinGalpon = false;
+      return;
     }
 
     const gid = String(this.selectedGranjaId);
@@ -352,8 +328,6 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       if (!id) continue;
       if (seen.has(id)) continue;
       seen.add(id);
-
-      // ← usa el nombre si está en el catálogo; si no, muestra el id
       const label = this.galponNameById.get(id) || id;
       result.push({ id, label });
     }
@@ -363,12 +337,10 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       result.unshift({ id: this.SIN_GALPON, label: '— Sin galpón —' });
     }
 
-    // opcional: ordenar por nombre
     this.galpones = result.sort((a, b) =>
       a.label.localeCompare(b.label, 'es', { numeric: true, sensitivity: 'base' })
     );
   }
-
 
   // ================== CRUD modal ==================
   create(): void {
@@ -383,14 +355,10 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       selM: 0,
       errorSexajeHembras: 0,
       errorSexajeMachos: 0,
-
-      // legacy
       tipoAlimento: '',
-
       consumoKgHembras: 0,
       observaciones: '',
       ciclo: 'Normal',
-
       consumoKgMachos: null,
       pesoPromH: null,
       pesoPromM: null,
@@ -398,11 +366,8 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       uniformidadM: null,
       cvH: null,
       cvM: null,
-
-      // nuevos selects
       tipoAlimentoHembras: '',
       tipoAlimentoMachos:  '',
-
       consumoAlimentoHembras: null,
       consumoAlimentoMachos:  null,
     });
@@ -420,14 +385,10 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       selM: seg.selM,
       errorSexajeHembras: seg.errorSexajeHembras,
       errorSexajeMachos: seg.errorSexajeMachos,
-
-      // legacy si llegó
       tipoAlimento: seg.tipoAlimento ?? '',
-
       consumoKgHembras: seg.consumoKgHembras,
       observaciones: seg.observaciones || '',
       ciclo: seg.ciclo || 'Normal',
-
       consumoKgMachos: seg.consumoKgMachos ?? null,
       pesoPromH: seg.pesoPromH ?? null,
       pesoPromM: seg.pesoPromM ?? null,
@@ -435,8 +396,6 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       uniformidadM: seg.uniformidadM ?? null,
       cvH: seg.cvH ?? null,
       cvM: seg.cvM ?? null,
-
-      // nuevos
       tipoAlimentoHembras: seg.tipoAlimentoHembras ?? '',
       tipoAlimentoMachos:  seg.tipoAlimentoMachos ?? '',
     });
@@ -469,19 +428,14 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     const dto: CreateSeguimientoLoteLevanteDto = {
       fechaRegistro: new Date(raw.fechaRegistro).toISOString(),
       loteId: raw.loteId,
-
       mortalidadHembras: Number(raw.mortalidadHembras) || 0,
       mortalidadMachos: Number(raw.mortalidadMachos) || 0,
       selH: Number(raw.selH) || 0,
       selM: Number(raw.selM) || 0,
       errorSexajeHembras: Number(raw.errorSexajeHembras) || 0,
       errorSexajeMachos: Number(raw.errorSexajeMachos) || 0,
-
-      // compat: mantenemos "tipoAlimento"
       tipoAlimento: raw.tipoAlimento || tipoAlH || tipoAlM || '',
-
       consumoKgHembras: Number(raw.consumoKgHembras) || 0,
-
       consumoKgMachos: this.toNumOrNull(raw.consumoKgMachos),
       pesoPromH:       this.toNumOrNull(raw.pesoPromH),
       pesoPromM:       this.toNumOrNull(raw.pesoPromM),
@@ -489,15 +443,12 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       uniformidadM:    this.toNumOrNull(raw.uniformidadM),
       cvH:             this.toNumOrNull(raw.cvH),
       cvM:             this.toNumOrNull(raw.cvM),
-
       observaciones: raw.observaciones,
       kcalAlH: null,
       protAlH: null,
       kcalAveH: null,
       protAveH: null,
       ciclo: raw.ciclo,
-
-      // nuevos
       tipoAlimentoHembras: tipoAlH || null,
       tipoAlimentoMachos:  tipoAlM || null,
     };
@@ -543,20 +494,40 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     return this.galponNameById.get(id) || id;
   }
 
-
+  /** Edad (en semanas) a HOY desde fecha de encasetamiento (mínimo 1). */
   calcularEdadSemanas(fechaEncaset?: string | Date | null): number {
     if (!fechaEncaset) return 0;
     const d = typeof fechaEncaset === 'string' ? new Date(fechaEncaset) : fechaEncaset;
     if (isNaN(d.getTime())) return 0;
     const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
-    return Math.floor((Date.now() - d.getTime()) / MS_WEEK) + 1;
+    return Math.max(1, Math.floor((Date.now() - d.getTime()) / MS_WEEK) + 1);
+  }
+
+  /**
+   * NUEVO: Edad (en semanas) del pollito AL MOMENTO DEL REGISTRO.
+   * Calcula semanas desde fechaEncaset hasta fechaRegistro (mínimo 1).
+   */
+  calcularEdadSemanasDesde(fechaEncaset?: string | Date | null, fechaReferencia?: string | Date | null): number {
+    if (!fechaEncaset || !fechaReferencia) return 0;
+    const enc = typeof fechaEncaset === 'string' ? new Date(fechaEncaset) : fechaEncaset;
+    const ref = typeof fechaReferencia === 'string' ? new Date(fechaReferencia) : fechaReferencia;
+    if (isNaN(enc.getTime()) || isNaN(ref.getTime())) return 0;
+    const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
+    const diff = ref.getTime() - enc.getTime();
+    if (diff < 0) return 0;
+    return Math.max(1, Math.floor(diff / MS_WEEK) + 1);
+  }
+
+  /** Atajo para la tabla: edad semana del registro s usando el encaset del lote seleccionado. */
+  edadSemanaDe(s: SeguimientoLoteLevanteDto): number {
+    return this.calcularEdadSemanasDesde(this.selectedLote?.fechaEncaset ?? null, s?.fechaRegistro ?? null);
   }
 
   private hasValue(v: unknown): boolean {
     if (v === null || v === undefined) return false;
     const s = String(v).trim().toLowerCase();
     return !(s === '' || s === '0' || s === 'null' || s === 'undefined');
-    }
+  }
 
   private normalizeId(v: unknown): string {
     if (v === null || v === undefined) return '';
