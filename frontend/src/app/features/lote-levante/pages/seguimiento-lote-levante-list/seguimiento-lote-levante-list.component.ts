@@ -1,33 +1,35 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { finalize } from 'rxjs/operators';
-import { GalponService } from '../../../galpon/services/galpon.service';
-import { GalponDetailDto } from '../../../galpon/models/galpon.models';
+import { expand, finalize, map, reduce } from 'rxjs/operators';
 
 import { SidebarComponent } from '../../../../shared/components/sidebar/sidebar.component';
 
+import { GalponService } from '../../../galpon/services/galpon.service';
+import { GalponDetailDto } from '../../../galpon/models/galpon.models';
+
 import { LoteService, LoteDto, LoteMortalidadResumenDto } from '../../../lote/services/lote.service';
+
 import {
   SeguimientoLoteLevanteService,
   SeguimientoLoteLevanteDto,
   CreateSeguimientoLoteLevanteDto,
   UpdateSeguimientoLoteLevanteDto
 } from '../../services/seguimiento-lote-levante.service';
+
 import { FarmService, FarmDto } from '../../../farm/services/farm.service';
 import { NucleoService, NucleoDto } from '../../services/nucleo.service';
 import { SeguimientoCalculosComponent } from "../../seguimiento-calculos/seguimiento-calculos.component";
 
-type Sexo = 'H' | 'M' | 'A';  // H = hembras, M = machos, A = ambos
-type Raza = 'RA' | 'ITAL' | 'PAVA' | 'GENERICA';
+// ===== Importa el servicio del catálogo =====
+import {
+  CatalogoAlimentosService,
+  CatalogItemDto,
+  PagedResult
+} from '../../../catalogo-alimentos/services/catalogo-alimentos.service';
+import { EMPTY } from 'rxjs';
 
-interface AlimentoOpt {
-  id: string;
-  nombre: string;
-  sexo: Sexo;
-  raza: Raza;
-  activo?: boolean;
-}
+  
 
 @Component({
   selector: 'app-seguimiento-lote-levante-list',
@@ -40,48 +42,15 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
   // ================== constantes / sentinelas ==================
   readonly SIN_GALPON = '__SIN_GALPON__';
 
-  // ================== CATÁLOGO LOCAL: Alimentos ==================
-  readonly alimentos: AlimentoOpt[] = [
-    { id: 'preiniciador',           nombre: 'Preiniciador',             sexo: 'A', raza: 'GENERICA' },
-    { id: 'iniciador-h',            nombre: 'Iniciador H',              sexo: 'H', raza: 'GENERICA' },
-    { id: 'iniciador-m',            nombre: 'Iniciador M',              sexo: 'M', raza: 'GENERICA' },
-    { id: 'crecimiento',            nombre: 'Crecimiento',              sexo: 'A', raza: 'GENERICA' },
-    { id: 'desarrollo-h',           nombre: 'Desarrollo H',             sexo: 'H', raza: 'GENERICA' },
-    { id: 'desarrollo-m',           nombre: 'Desarrollo M',             sexo: 'M', raza: 'GENERICA' },
-    { id: 'prepostura-h',           nombre: 'Prepostura H',             sexo: 'H', raza: 'GENERICA' },
-    { id: 'mantenimiento',          nombre: 'Mantenimiento',            sexo: 'A', raza: 'GENERICA' },
+  // ================== catálogos (BACKEND) ==================
+  alimentosCatalog: CatalogItemDto[] = [];
+  private alimentosByCode = new Map<string, CatalogItemDto>();
+  private alimentosById = new Map<number, CatalogItemDto>();
 
-    { id: 'gr-prod-i-reprod',       nombre: 'GR Producción I Reprod',   sexo: 'H', raza: 'RA' },
-    { id: 'gr-prod-ii-reprod',      nombre: 'GR Producción II Reprod',  sexo: 'H', raza: 'RA' },
+  private alimentosByName = new Map<string, CatalogItemDto>(); // nombre en minúsculas
 
-    { id: 'huevo-prepico-reprod',   nombre: 'Huevo Prepico Reprod',     sexo: 'H', raza: 'GENERICA' },
-    { id: 'huevo-prepico-f3',       nombre: 'Huevo Prepico Fase III',   sexo: 'H', raza: 'GENERICA' },
 
-    { id: 'ital-polla-levante-rep', nombre: 'ITAL Polla Levante Reprod', sexo: 'H', raza: 'ITAL' },
-    { id: 'ital-pollita-prein',     nombre: 'ITAL Pollita Prein Reprod', sexo: 'H', raza: 'ITAL' },
-    { id: 'ital-pollita-inic',      nombre: 'ITAL Pollita Inici Reprod', sexo: 'H', raza: 'ITAL' },
-    { id: 'ital-prepico-reprod',    nombre: 'ITAL Prepico Reproductor',  sexo: 'H', raza: 'ITAL' },
-    { id: 'ital-prepostura-reprod', nombre: 'ITAL Prepostura Reproductor', sexo: 'H', raza: 'ITAL' },
-
-    { id: 'machos-reprod-a',        nombre: 'Machos Reproductores A',   sexo: 'M', raza: 'RA' },
-    { id: 'machos-reprod-n',        nombre: 'Machos Reproductores N',   sexo: 'M', raza: 'RA' },
-    { id: 'machos-reprod-s',        nombre: 'Machos Reproductores S',   sexo: 'M', raza: 'RA' },
-
-    { id: 'pava-mantenimiento-pll', nombre: 'Pava Mantenimiento PLL',    sexo: 'A', raza: 'PAVA' },
-    { id: 'pava-reprod-crec-1',     nombre: 'Pava Reprod Crecimiento 1', sexo: 'A', raza: 'PAVA' },
-    { id: 'pava-reprod-crec-2',     nombre: 'Pava Reprod Crecimiento 2', sexo: 'A', raza: 'PAVA' },
-    { id: 'pava-reprod-produccion', nombre: 'Pava Reprod Producción',    sexo: 'A', raza: 'PAVA' },
-  ];
-
-  get alimentosH(): AlimentoOpt[] { return this.alimentos.filter(a => a.activo !== false && (a.sexo === 'H' || a.sexo === 'A')); }
-  get alimentosM(): AlimentoOpt[] { return this.alimentos.filter(a => a.activo !== false && (a.sexo === 'M' || a.sexo === 'A')); }
-
-  mapAlimentoNombre = (id?: string | null) => {
-    if (!id) return '';
-    return this.alimentos.find(a => a.id === id)?.nombre ?? id;
-  };
-
-  // ================== catálogos ==================
+  // ================== catálogos (otros) ==================
   granjas: FarmDto[] = [];
   nucleos: NucleoDto[] = [];
   galpones: Array<{ id: string; label: string }> = [];
@@ -121,16 +90,22 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     private loteSvc: LoteService,
     private segSvc: SeguimientoLoteLevanteService,
     private galponSvc: GalponService,
+    // servicio de catálogo
+    private catalogSvc: CatalogoAlimentosService,
   ) {}
 
+  // ================== INIT ==================
   ngOnInit(): void {
+    // cargar catálogos de granjas, etc.
     this.farmSvc.getAll().subscribe({
       next: fs => (this.granjas = fs || []),
       error: () => (this.granjas = [])
     });
 
+    // form
     this.form = this.fb.group({
-      fechaRegistro:      [new Date().toISOString().substring(0, 10), Validators.required],
+      // YYYY-MM-DD estable para <input type="date">
+      fechaRegistro:      [this.todayYMD(), Validators.required],
       loteId:             ['', Validators.required],
       mortalidadHembras:  [0, [Validators.required, Validators.min(0)]],
       mortalidadMachos:   [0, [Validators.required, Validators.min(0)]],
@@ -138,6 +113,7 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       selM:               [0, [Validators.required, Validators.min(0)]],
       errorSexajeHembras: [0, [Validators.required, Validators.min(0)]],
       errorSexajeMachos:  [0, [Validators.required, Validators.min(0)]],
+      // LEGACY: tipoAlimento (se mantiene por compatibilidad, pero preferir H/M)
       tipoAlimento:       [''],
       consumoKgHembras:   [0, [Validators.required, Validators.min(0)]],
       observaciones:      [''],
@@ -148,17 +124,83 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       uniformidadM:    [null, [Validators.min(0), Validators.max(100)]],
       cvH:             [null, [Validators.min(0)]],
       cvM:             [null, [Validators.min(0)]],
+      // NUEVO: selects ligados al catálogo
       tipoAlimentoHembras: [''],
       tipoAlimentoMachos:  [''],
       consumoAlimentoHembras: [null],
       consumoAlimentoMachos:  [null],
       ciclo: ['Normal'],
     });
+
+    // CARGA CATÁLOGO DE ALIMENTOS (para selects y mapeos en tabla)
+    this.loadAlimentosCatalog();
   }
 
+  // ================== CATALOGO ALIMENTOS ==================
+  private loadAlimentosCatalog(): void {
+    const firstPage = 1;
+    const pageSize = 100; // ajusta si tu API permite más
+
+    this.catalogSvc.list('', firstPage, pageSize).pipe(
+      // si aún faltan páginas, sigue pidiéndolas
+      expand((res: PagedResult<CatalogItemDto>) => {
+        const received = res.page * res.pageSize;
+        const more = received < (res.total ?? 0);
+        return more
+          ? this.catalogSvc.list('', res.page + 1, res.pageSize)
+          : EMPTY;
+      }),
+      // acumula todos los items de todas las páginas
+      reduce((acc: CatalogItemDto[], res: PagedResult<CatalogItemDto>) => {
+        const items = Array.isArray(res.items) ? res.items : [];
+        return acc.concat(items);
+      }, []),
+      // ordena por nombre (opcional)
+      map(all => all.sort((a, b) =>
+        (a.nombre || '').localeCompare(b.nombre || '', 'es', { numeric: true, sensitivity: 'base' })
+      ))
+    ).subscribe(all => {
+      this.alimentosCatalog = all;
+
+      // reconstruye índices
+      this.alimentosById.clear();
+      this.alimentosByCode.clear();
+      this.alimentosByName.clear();
+
+      for (const it of all) {
+        if (it.id != null) this.alimentosById.set(it.id, it);
+        if (it.codigo)     this.alimentosByCode.set(String(it.codigo).trim(), it);
+        if (it.nombre)     this.alimentosByName.set(it.nombre.trim().toLowerCase(), it);
+      }
+    });
+  }
+
+  // Dado un string (código) o número (id), devolver el nombre del alimento
+  mapAlimentoNombre = (value?: string | number | null): string => {
+    if (value == null || value === '') return '';
+    // si vino un número (id)
+    if (typeof value === 'number') {
+      const f = this.alimentosById.get(value);
+      return f?.nombre || String(value);
+    }
+    // si vino un string (guardamos códigos como strings)
+    const k = value.toString().trim();
+    // 1) buscar por código
+    const found = this.alimentosByCode.get(k);
+    if (found) return found.nombre || k;
+    // 2) a veces el backend pudo guardar el id como string; intentar parsear
+    const asId = Number(k);
+    if (!Number.isNaN(asId)) {
+      const byId = this.alimentosById.get(asId);
+      if (byId) return byId.nombre || k;
+    }
+    // 3) fallback
+    return k;
+  };
+
+  // ================== CARGA GALPONES ==================
   private loadGalponCatalog(): void {
     this.galponNameById.clear();
-
     if (!this.selectedGranjaId) return;
 
     if (this.selectedNucleoId) {
@@ -185,7 +227,7 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     this.buildGalponesFromLotes();
   }
 
-  // ================== cascada de filtros ==================
+  // ================== CASCADA DE FILTROS ==================
   onGranjaChange(): void {
     this.selectedNucleoId = null;
     this.selectedGalponId = null;
@@ -253,7 +295,7 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     });
   }
 
-  // ================== carga y filtrado ==================
+  // ================== CARGA Y FILTRADO ==================
   private reloadLotesThenApplyFilters(): void {
     if (!this.selectedGranjaId) {
       this.allLotes = [];
@@ -347,7 +389,7 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     if (!this.selectedLoteId) return;
     this.editing = null;
     this.form.reset({
-      fechaRegistro: new Date().toISOString().substring(0, 10),
+      fechaRegistro: this.todayYMD(),   // YYYY-MM-DD local
       loteId: this.selectedLoteId,
       mortalidadHembras: 0,
       mortalidadMachos: 0,
@@ -377,7 +419,8 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
   edit(seg: SeguimientoLoteLevanteDto): void {
     this.editing = seg;
     this.form.patchValue({
-      fechaRegistro: seg.fechaRegistro?.substring(0, 10),
+      // normaliza a YYYY-MM-DD para el input date
+      fechaRegistro: this.toYMD(seg.fechaRegistro),
       loteId: seg.loteId,
       mortalidadHembras: seg.mortalidadHembras,
       mortalidadMachos: seg.mortalidadMachos,
@@ -422,11 +465,15 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     const raw = this.form.value;
 
+    // OJO: guardamos los "códigos" de catálogo (string) en tipoAlimentoHembras/Machos
     const tipoAlH = (raw.tipoAlimentoHembras || '').toString().trim();
     const tipoAlM = (raw.tipoAlimentoMachos  || '').toString().trim();
 
-    const dto: CreateSeguimientoLoteLevanteDto = {
-      fechaRegistro: new Date(raw.fechaRegistro).toISOString(),
+    // Serializa la fecha al MEDIODÍA local → evita corrimiento de día al pasar a UTC
+    const ymd = this.toYMD(raw.fechaRegistro)!;
+
+    const baseDto = {
+      fechaRegistro: this.ymdToIsoAtNoon(ymd),
       loteId: raw.loteId,
       mortalidadHembras: Number(raw.mortalidadHembras) || 0,
       mortalidadMachos: Number(raw.mortalidadMachos) || 0,
@@ -434,6 +481,7 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       selM: Number(raw.selM) || 0,
       errorSexajeHembras: Number(raw.errorSexajeHembras) || 0,
       errorSexajeMachos: Number(raw.errorSexajeMachos) || 0,
+      // LEGACY: si no se eligió H/M, usar tipoAlimento tradicional
       tipoAlimento: raw.tipoAlimento || tipoAlH || tipoAlM || '',
       consumoKgHembras: Number(raw.consumoKgHembras) || 0,
       consumoKgMachos: this.toNumOrNull(raw.consumoKgMachos),
@@ -454,8 +502,8 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     };
 
     const op$ = this.editing
-      ? this.segSvc.update({ ...dto, id: this.editing.id } as UpdateSeguimientoLoteLevanteDto)
-      : this.segSvc.create(dto);
+      ? this.segSvc.update({ ...(baseDto as any), id: this.editing.id } as UpdateSeguimientoLoteLevanteDto)
+      : this.segSvc.create(baseDto as CreateSeguimientoLoteLevanteDto);
 
     this.loading = true;
     op$.pipe(finalize(() => (this.loading = false))).subscribe({
@@ -496,22 +544,22 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
 
   /** Edad (en semanas) a HOY desde fecha de encasetamiento (mínimo 1). */
   calcularEdadSemanas(fechaEncaset?: string | Date | null): number {
-    if (!fechaEncaset) return 0;
-    const d = typeof fechaEncaset === 'string' ? new Date(fechaEncaset) : fechaEncaset;
-    if (isNaN(d.getTime())) return 0;
+    const encYmd = this.toYMD(fechaEncaset);
+    const enc = this.ymdToLocalNoonDate(encYmd);
+    if (!enc) return 0;
     const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
-    return Math.max(1, Math.floor((Date.now() - d.getTime()) / MS_WEEK) + 1);
+    const now = this.ymdToLocalNoonDate(this.todayYMD())!; // hoy al mediodía local
+    return Math.max(1, Math.floor((now.getTime() - enc.getTime()) / MS_WEEK) + 1);
   }
 
   /**
-   * NUEVO: Edad (en semanas) del pollito AL MOMENTO DEL REGISTRO.
-   * Calcula semanas desde fechaEncaset hasta fechaRegistro (mínimo 1).
+   * Edad (en semanas) del pollito AL MOMENTO DEL REGISTRO.
+   * Calcula semanas desde fechaEncaset hasta fechaRegistro (mínimo 1), sin corrimientos.
    */
   calcularEdadSemanasDesde(fechaEncaset?: string | Date | null, fechaReferencia?: string | Date | null): number {
-    if (!fechaEncaset || !fechaReferencia) return 0;
-    const enc = typeof fechaEncaset === 'string' ? new Date(fechaEncaset) : fechaEncaset;
-    const ref = typeof fechaReferencia === 'string' ? new Date(fechaReferencia) : fechaReferencia;
-    if (isNaN(enc.getTime()) || isNaN(ref.getTime())) return 0;
+    const enc = this.ymdToLocalNoonDate(this.toYMD(fechaEncaset));
+    const ref = this.ymdToLocalNoonDate(this.toYMD(fechaReferencia));
+    if (!enc || !ref) return 0;
     const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
     const diff = ref.getTime() - enc.getTime();
     if (diff < 0) return 0;
@@ -594,8 +642,8 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       }
     });
   }
-// ******************************* agregamos los componnte nuevos  *******************************
 
+  // ******************************* Helpers de fecha *******************************
 
   /** Hoy en formato YYYY-MM-DD (local, sin zona) para <input type="date"> */
   private todayYMD(): string {
@@ -627,10 +675,9 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     const sl = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
     const m2 = s.match(sl);
     if (m2) {
-      let a = parseInt(m2[1], 10); // podría ser mm o dd
-      let b = parseInt(m2[2], 10); // podría ser dd o mm
+      let a = parseInt(m2[1], 10); // mm o dd
+      let b = parseInt(m2[2], 10); // dd o mm
       const yyyy = parseInt(m2[3], 10);
-      // Heurística: si el "mes" > 12, asumimos que venía dd/mm/aaaa y permutamos
       let mm = a, dd = b;
       if (a > 12 && b <= 12) { mm = b; dd = a; }
       const mmS = String(mm).padStart(2, '0');
@@ -654,13 +701,12 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
   formatDMY = (input: string | Date | null | undefined): string => {
     const ymd = this.toYMD(input);
     if (!ymd) return '';
-    const [, m, d] = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/)!;
-    return `${d}/${m}/${ymd.slice(0,4)}`;
+    const [y, m, d] = ymd.split('-');
+    return `${d}/${m}/${y}`;
   };
 
   /** Convierte YYYY-MM-DD a ISO asegurando MEDIODÍA local → evita cruzar de día por zona horaria */
   private ymdToIsoAtNoon(ymd: string): string {
-    // Sin 'Z' → la interpreta como hora local; luego toISOString la lleva a UTC manteniendo el mismo día local.
     const iso = new Date(`${ymd}T12:00:00`);
     return iso.toISOString();
   }
@@ -671,5 +717,4 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     const d = new Date(`${ymd}T12:00:00`);
     return isNaN(d.getTime()) ? null : d;
   }
-
 }

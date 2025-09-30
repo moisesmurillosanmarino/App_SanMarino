@@ -128,6 +128,17 @@
             "development": {
               "sourceMap": true,
               "optimization": false
+            },
+            "docker": {
+              "outputHashing": "media",
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.prod.ts"
+                }
+              ],
+              "sourceMap": false,
+              "optimization": true
             }
           },
           "defaultConfiguration": "production"
@@ -144,6 +155,9 @@
             },
             "development": {
               "buildTarget": "frontend:build:development"
+            },
+            "docker": {
+              "buildTarget": "frontend:build:docker"
             }
           },
           "defaultConfiguration": "development"

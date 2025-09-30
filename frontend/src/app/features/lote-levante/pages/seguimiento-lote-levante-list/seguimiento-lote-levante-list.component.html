@@ -1,10 +1,7 @@
 <div class="ux-page" [attr.aria-busy]="loading ? 'true' : null">
-  <!-- Sidebar -->
   <app-sidebar class="ux-sidebar"></app-sidebar>
 
-  <!-- Main -->
   <div class="ux-main">
-    <!-- Header -->
     <header class="ux-header">
       <div class="ux-header__title">
         <h1>Seguimiento Diario de Levante</h1>
@@ -46,7 +43,6 @@
       </div>
 
       <div class="ux-header__actions">
-        <!-- Botón para abrir el modal de CÁLCULOS -->
         <button
           type="button"
           class="btn btn--outline"
@@ -56,7 +52,6 @@
           Ver cálculos
         </button>
 
-        <!-- Botón para crear registro -->
         <button
           type="button"
           (click)="create()"
@@ -71,7 +66,6 @@
     <!-- Filtros en cascada -->
     <section class="ux-card" role="group" aria-label="Filtros">
       <div class="ux-toolbar">
-        <!-- Granja -->
         <div class="ux-field">
           <label class="ux-label" for="granja-select">Granja</label>
           <div class="ux-select">
@@ -85,7 +79,6 @@
           </div>
         </div>
 
-        <!-- Núcleo -->
         <div class="ux-field">
           <label class="ux-label" for="nucleo-select">Núcleo</label>
           <div class="ux-select">
@@ -102,7 +95,6 @@
           </div>
         </div>
 
-        <!-- Galpón -->
         <div class="ux-field">
           <label class="ux-label" for="galpon-select">Galpón</label>
           <div class="ux-select">
@@ -117,7 +109,6 @@
           </div>
         </div>
 
-        <!-- Lote -->
         <div class="ux-field">
           <label class="ux-label" for="lote-select">Lote</label>
           <div class="ux-select">
@@ -160,7 +151,7 @@
             </div>
             <div class="form-field">
               <label>📅 Encaset</label>
-              <div>{{ selectedLote?.fechaEncaset | date:'shortDate' }}</div>
+              <div>{{ formatDMY(selectedLote?.fechaEncaset) }}</div>
             </div>
             <div class="form-field">
               <label>⏳ Edad (sem)</label>
@@ -271,7 +262,6 @@
 
           <tbody>
             <tr *ngIf="!loading && (!seguimientos || seguimientos.length === 0)">
-              <!-- 18 columnas (se agregó 'Semana') -->
               <td colspan="18" class="empty-state">
                 <div class="empty-illustration" aria-hidden="true">📄</div>
                 <p *ngIf="!selectedLoteId">Selecciona un lote para ver/crear registros.</p>
@@ -283,7 +273,7 @@
             </tr>
 
             <tr *ngFor="let s of seguimientos; trackBy: trackById" class="ux-row">
-              <td>{{ s.fechaRegistro | date:'shortDate' }}</td>
+              <td>{{ formatDMY(s.fechaRegistro) }}</td>
               <td>{{ edadSemanaDe(s) }}</td>
               <td>{{ s.mortalidadHembras }}</td>
               <td>{{ s.mortalidadMachos }}</td>
@@ -293,8 +283,8 @@
               <td>{{ s.errorSexajeMachos }}</td>
               <td>
                 <ng-container *ngIf="s?.tipoAlimentoHembras || s?.tipoAlimentoMachos; else legacyAli">
-                  <span *ngIf="s?.tipoAlimentoHembras as ah">H: {{ mapAlimentoNombre(ah.toString()) }}</span>
-                  <span *ngIf="s?.tipoAlimentoMachos as am"> / M: {{ mapAlimentoNombre(am.toString()) }}</span>
+                  <span *ngIf="s?.tipoAlimentoHembras as ah">H: {{ mapAlimentoNombre(ah) }}</span>
+                  <span *ngIf="s?.tipoAlimentoMachos as am"> / M: {{ mapAlimentoNombre(am) }}</span>
                 </ng-container>
                 <ng-template #legacyAli>
                   {{ mapAlimentoNombre(s?.tipoAlimento) }}
@@ -336,7 +326,6 @@
     </header>
 
     <form [formGroup]="form" (ngSubmit)="save()" class="ux-form" novalidate>
-      <!-- Tabs -->
       <div class="ux-tabs" role="tablist" aria-label="Secciones del registro">
         <input type="radio" name="regTab" id="tab-general" checked />
         <label class="ux-tab" id="lab-general" for="tab-general" role="tab" tabindex="0" aria-controls="panel-general" aria-selected="true">General</label>
@@ -411,16 +400,18 @@
                 <input id="f-cvh" type="number" step="0.01" min="0" formControlName="cvH" />
               </div>
 
-              <!-- Tipo de alimento HEMBRAS (select local) -->
+              <!-- Tipo de alimento HEMBRAS (desde catálogo backend) -->
               <div class="form-field">
                 <label for="f-alim-h">Tipo de alimento H</label>
                 <div class="ux-select">
                   <select id="f-alim-h" formControlName="tipoAlimentoHembras">
                     <option value="">— Seleccione —</option>
-                    <option *ngFor="let a of alimentosH" [ngValue]="a.id">{{ a.nombre }}</option>
+                    <option *ngFor="let a of alimentosCatalog" [ngValue]="a.nombre">
+                      {{ a.nombre }} <ng-container *ngIf="a.codigo">({{ a.codigo }})</ng-container>
+                    </option>
                   </select>
                 </div>
-                <small class="ux-hint">Lista local del componente</small>
+                <small class="ux-hint">Origen: catálogo (type_item = "alimento").</small>
               </div>
             </div>
           </section>
@@ -463,16 +454,18 @@
                 <input id="f-cvm" type="number" step="0.01" min="0" formControlName="cvM" />
               </div>
 
-              <!-- Tipo de alimento MACHOS (select local) -->
+              <!-- Tipo de alimento MACHOS (desde catálogo backend) -->
               <div class="form-field">
                 <label for="f-alim-m">Tipo de alimento M</label>
                 <div class="ux-select">
                   <select id="f-alim-m" formControlName="tipoAlimentoMachos">
                     <option value="">— Seleccione —</option>
-                    <option *ngFor="let a of alimentosM" [ngValue]="a.id">{{ a.nombre }}</option>
+                    <option *ngFor="let a of alimentosCatalog" [ngValue]="a.nombre">
+                      {{ a.nombre }} <ng-container *ngIf="a.codigo">({{ a.codigo }})</ng-container>
+                    </option>
                   </select>
                 </div>
-                <small class="ux-hint">Lista local del componente</small>
+                <small class="ux-hint">Origen: catálogo (type_item = "alimento").</small>
               </div>
             </div>
           </section>
@@ -584,7 +577,7 @@
               </tr>
 
               <tr *ngFor="let it of calcsResp?.items">
-                <td>{{ it.fecha | date:'shortDate' }}</td>
+                <td>{{ formatDMY(it.fecha) }}</td>
                 <td>{{ it.edadSemana ?? 0 }}</td>
 
                 <td>{{ it.hembraViva ?? 0 | number:'1.0-0' }}</td>
@@ -617,8 +610,8 @@
 
         <div class="ux-hint" style="margin-top:.5rem" *ngIf="calcsResp">
           <strong>Lote:</strong> {{ calcsResp?.loteId }}
-          <span *ngIf="calcsResp?.desde"> — desde {{ calcsResp?.desde | date:'shortDate' }}</span>
-          <span *ngIf="calcsResp?.hasta"> — hasta {{ calcsResp?.hasta | date:'shortDate' }}</span>
+          <span *ngIf="calcsResp?.desde"> — desde {{ formatDMY(calcsResp?.desde) }}</span>
+          <span *ngIf="calcsResp?.hasta"> — hasta {{ formatDMY(calcsResp?.hasta) }}</span>
           <span> — {{ calcsResp?.total || 0 }} día(s)</span>
         </div>
       </ng-container>
