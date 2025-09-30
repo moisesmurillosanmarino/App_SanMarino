@@ -9,11 +9,10 @@ import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { faPlus, faPen, faTrash } from '@fortawesome/free-solid-svg-icons';
 
 import { LoteProduccionDto } from '../../services/lote-produccion.service';
-import { LoteService, LoteDto } from '../../../lote/services/lote.service';
+import { LoteService, LoteDto, LoteMortalidadResumenDto } from '../../../lote/services/lote.service';
 import { GalponService } from '../../../galpon/services/galpon.service';
 import { GalponDetailDto } from '../../../galpon/models/galpon.models';
 import { FarmService, FarmDto } from '../../../farm/services/farm.service';
-// Ajusta la ruta si tu NucleoService vive en otro módulo
 import { NucleoService, NucleoDto } from '../../../lote-levante/services/nucleo.service';
 
 type LoteView = LoteDto & { edadSemanas: number };
@@ -34,24 +33,23 @@ type LoteView = LoteDto & { edadSemanas: number };
   encapsulation: ViewEncapsulation.Emulated
 })
 export class LoteProduccionListComponent implements OnInit {
-  // ================== constantes ==================
   private readonly SIN_GALPON = '__SIN_GALPON__';
 
-  // ================== Icons ==================
+  // Icons
   faPlus = faPlus;
   faPen = faPen;
   faTrash = faTrash;
 
-  // ================== UI ==================
+  // UI
   loading = false;
   modalOpen = false;
 
-  // ================== Catálogos ==================
+  // Catálogos
   granjas: FarmDto[] = [];
   nucleos: NucleoDto[] = [];
   galpones: Array<{ id: string; label: string }> = [];
 
-  // ================== Selección / filtro ==================
+  // Selección / filtro
   selectedGranjaId: number | null = null;
   selectedNucleoId: string | null = null;
   selectedGalponId: string | null = null;
@@ -59,21 +57,26 @@ export class LoteProduccionListComponent implements OnInit {
   selectedLoteId: number | string | null = null;
   selectedLoteNombre = '';
   selectedLoteSemanas = 0;
+  selectedLoteFechaEncaset: string | Date | null = null;
 
-  // ================== Datos ==================
+  // Datos
   private allLotes: LoteDto[] = [];
   lotes: LoteView[] = [];
   registros: LoteProduccionDto[] = [];
 
-  // ================== Modal / Form ==================
+  // NUEVO: ficha/estados
+  selectedLote?: LoteDto;
+  resumenSelected: LoteMortalidadResumenDto | null = null;
+
+  // Modal / Form
   form!: FormGroup;
   editing: LoteProduccionDto | null = null;
   esPrimerRegistroProduccion = false;
 
-  // ================== Maps auxiliares ==================
+  // Aux
   private galponNameById = new Map<string, string>();
 
-  // ================== trackBy ==================
+  // trackBy
   trackByLoteId = (_: number, l: LoteView) => l.loteId as any;
   trackByRegistroId = (_: number, r: LoteProduccionDto) => r.id as any;
   trackByNucleo = (_: number, n: NucleoDto) => n.nucleoId as any;
@@ -86,15 +89,12 @@ export class LoteProduccionListComponent implements OnInit {
     private galponSvc: GalponService,
   ) {}
 
-  // ================== Init ==================
   ngOnInit() {
-    // Catálogo de granjas
     this.farmSvc.getAll().subscribe({
       next: fs => (this.granjas = fs || []),
       error: () => (this.granjas = [])
     });
 
-    // Form
     this.form = this.fb.group({
       fecha: [this.hoyISO(), Validators.required],
       loteId: ['', Validators.required],
@@ -109,8 +109,6 @@ export class LoteProduccionListComponent implements OnInit {
       observaciones: [''],
       pesoHuevo:   [0, [Validators.required, Validators.min(0)]],
       etapa:       [1, Validators.required],
-
-      // Iniciales (si es primer registro de producción)
       hembrasInicio: [null],
       machosInicio:  [null],
       huevosInicio:  [null],
@@ -120,24 +118,22 @@ export class LoteProduccionListComponent implements OnInit {
     });
   }
 
-  // ================== Getters para chips (evitan arrow functions en el HTML) ==================
+  // Getters chips
   get selectedGranjaName(): string {
-    const g = this.granjas.find(x => x.id === this.selectedGranjaId as any);
+    const g = this.granjas.find(x => x.id === (this.selectedGranjaId as any));
     return g?.name ?? (this.selectedGranjaId != null ? String(this.selectedGranjaId) : '');
   }
-
   get selectedNucleoNombre(): string {
     const n = this.nucleos.find(x => x.nucleoId === this.selectedNucleoId);
     return n?.nucleoNombre ?? (this.selectedNucleoId ?? '');
   }
-
   get selectedGalponNombre(): string {
     if (this.selectedGalponId === this.SIN_GALPON) return '— Sin galpón —';
     const id = (this.selectedGalponId ?? '').trim();
     return this.galponNameById.get(id) || id;
   }
 
-  // ================== Cascada de Filtros ==================
+  // Filtros en cascada
   onGranjaChange(): void {
     this.selectedNucleoId = null;
     this.selectedGalponId = null;
@@ -148,18 +144,21 @@ export class LoteProduccionListComponent implements OnInit {
     this.nucleos = [];
     this.lotes = [];
     this.allLotes = [];
+
+    // limpiar ficha
+    this.selectedLote = undefined;
+    this.resumenSelected = null;
     this.selectedLoteNombre = '';
     this.selectedLoteSemanas = 0;
+    this.selectedLoteFechaEncaset = null;
 
     if (!this.selectedGranjaId) return;
 
-    // Núcleos por granja
     this.nucleoSvc.getByGranja(this.selectedGranjaId).subscribe({
       next: rows => (this.nucleos = rows || []),
       error: () => (this.nucleos = [])
     });
 
-    // Lotes y galpones
     this.reloadLotesThenApplyFilters();
     this.loadGalponCatalog();
   }
@@ -169,8 +168,11 @@ export class LoteProduccionListComponent implements OnInit {
     this.selectedLoteId = null;
 
     this.registros = [];
+    this.selectedLote = undefined;
+    this.resumenSelected = null;
     this.selectedLoteNombre = '';
     this.selectedLoteSemanas = 0;
+    this.selectedLoteFechaEncaset = null;
 
     this.applyFiltersToLotes();
     this.loadGalponCatalog();
@@ -178,17 +180,24 @@ export class LoteProduccionListComponent implements OnInit {
 
   onGalponChange(): void {
     this.selectedLoteId = null;
+
     this.registros = [];
+    this.selectedLote = undefined;
+    this.resumenSelected = null;
     this.selectedLoteNombre = '';
     this.selectedLoteSemanas = 0;
+    this.selectedLoteFechaEncaset = null;
 
     this.applyFiltersToLotes();
   }
 
   onLoteChange(): void {
     this.registros = [];
+    this.selectedLote = undefined;
+    this.resumenSelected = null;
     this.selectedLoteNombre = '';
     this.selectedLoteSemanas = 0;
+    this.selectedLoteFechaEncaset = null;
 
     if (this.selectedLoteId == null) {
       this.esPrimerRegistroProduccion = false;
@@ -198,16 +207,27 @@ export class LoteProduccionListComponent implements OnInit {
     const lote = this.lotes.find(l => (l.loteId as any) === this.selectedLoteId);
     this.selectedLoteNombre = lote?.loteNombre ?? '';
     this.selectedLoteSemanas = lote?.edadSemanas ?? 0;
+    this.selectedLoteFechaEncaset = lote?.fechaEncaset ?? null;
 
-    // Cargar registros (sessionStorage)
+    // Registros (sessionStorage)
     const stored = sessionStorage.getItem('registros-produccion');
     const all: LoteProduccionDto[] = stored ? JSON.parse(stored) : [];
     this.registros = all.filter(r => (r.loteId as any) === this.selectedLoteId);
-
     this.esPrimerRegistroProduccion = this.registros.length === 0 && this.selectedLoteSemanas >= 26;
+
+    // NUEVO: cargar ficha y resumen
+    this.loteSvc.getById(String(this.selectedLoteId)).subscribe({
+      next: l => (this.selectedLote = l),
+      error: () => (this.selectedLote = undefined)
+    });
+
+    this.loteSvc.getResumenMortalidad(String(this.selectedLoteId)).subscribe({
+      next: r => (this.resumenSelected = r),
+      error: () => (this.resumenSelected = null)
+    });
   }
 
-  // ================== Carga/Filtrado lotes ==================
+  // Carga/filtrado lotes
   private reloadLotesThenApplyFilters(): void {
     if (!this.selectedGranjaId) {
       this.allLotes = [];
@@ -237,16 +257,13 @@ export class LoteProduccionListComponent implements OnInit {
     if (!this.selectedGranjaId) { this.lotes = []; return; }
     const gid = String(this.selectedGranjaId);
 
-    // Base: por granja
     let filtered = this.allLotes.filter(l => String(l.granjaId) === gid);
 
-    // Núcleo (opcional)
     if (this.selectedNucleoId) {
       const nid = String(this.selectedNucleoId);
       filtered = filtered.filter(l => String(l.nucleoId) === nid);
     }
 
-    // Galpón (opcional) — con soporte a "sin galpón"
     if (this.selectedGalponId) {
       if (this.selectedGalponId === this.SIN_GALPON) {
         filtered = filtered.filter(l => !this.hasValue(l.galponId));
@@ -256,7 +273,6 @@ export class LoteProduccionListComponent implements OnInit {
       }
     }
 
-    // Agregar edad y filtrar por producción (>=26 semanas)
     const withAge: LoteView[] = filtered.map(l => ({
       ...l,
       edadSemanas: this.calcularEdadSemanas(l.fechaEncaset)
@@ -265,7 +281,7 @@ export class LoteProduccionListComponent implements OnInit {
     this.lotes = withAge.filter(l => l.edadSemanas >= 26);
   }
 
-  // ================== Catálogo de Galpones ==================
+  // Catálogo de Galpones
   private loadGalponCatalog(): void {
     this.galponNameById.clear();
     if (!this.selectedGranjaId) return;
@@ -320,7 +336,6 @@ export class LoteProduccionListComponent implements OnInit {
       result.push({ id, label });
     }
 
-    // Si hay lotes sin galpón, agrega opción especial
     const hasSinGalpon = base.some(l => !this.hasValue(l.galponId));
     if (hasSinGalpon) {
       result.unshift({ id: this.SIN_GALPON, label: '— Sin galpón —' });
@@ -331,7 +346,7 @@ export class LoteProduccionListComponent implements OnInit {
     );
   }
 
-  // ================== CRUD Registros (sessionStorage) ==================
+  // CRUD Registros (sessionStorage)
   create() { this.openNew(); }
 
   openNew() {
@@ -389,7 +404,7 @@ export class LoteProduccionListComponent implements OnInit {
 
   cancel() { this.modalOpen = false; }
 
-  // ================== Helpers ==================
+  // Helpers de fecha / edad
   private hoyISO(): string {
     const d = new Date();
     return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0, 10);
@@ -398,10 +413,29 @@ export class LoteProduccionListComponent implements OnInit {
   public calcularEdadSemanas(fechaEncaset?: string | Date | null): number {
     if (!fechaEncaset) return 0;
     const fecha = new Date(fechaEncaset);
+    if (isNaN(fecha.getTime())) return 0;
     const hoy = new Date();
     const msPorSemana = 1000 * 60 * 60 * 24 * 7;
     const semanas = Math.floor((hoy.getTime() - fecha.getTime()) / msPorSemana);
     return Math.max(1, semanas + 1);
+  }
+
+  public calcularEdadSemanasDesde(
+    fechaEncaset?: string | Date | null,
+    fechaReferencia?: string | Date | null
+  ): number {
+    if (!fechaEncaset || !fechaReferencia) return 0;
+    const enc = new Date(fechaEncaset);
+    const ref = new Date(fechaReferencia);
+    if (isNaN(enc.getTime()) || isNaN(ref.getTime())) return 0;
+    const diff = ref.getTime() - enc.getTime();
+    if (diff < 0) return 0;
+    const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
+    return Math.max(1, Math.floor(diff / MS_WEEK) + 1);
+  }
+
+  public edadSemanaDe(r: LoteProduccionDto): number {
+    return this.calcularEdadSemanasDesde(this.selectedLoteFechaEncaset, r?.fecha);
   }
 
   private hasValue(v: unknown): boolean {

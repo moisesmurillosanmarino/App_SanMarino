@@ -594,4 +594,82 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       }
     });
   }
+// ******************************* agregamos los componnte nuevos  *******************************
+
+
+  /** Hoy en formato YYYY-MM-DD (local, sin zona) para <input type="date"> */
+  private todayYMD(): string {
+    const d = new Date();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${mm}-${dd}`;
+  }
+
+  /** Normaliza cadenas mm/dd/aaaa, dd/mm/aaaa, ISO o Date a YYYY-MM-DD (local) */
+  private toYMD(input: string | Date | null | undefined): string | null {
+    if (!input) return null;
+
+    if (input instanceof Date && !isNaN(input.getTime())) {
+      const y = input.getFullYear();
+      const m = String(input.getMonth() + 1).padStart(2, '0');
+      const d = String(input.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    const s = String(input).trim();
+
+    // YYYY-MM-DD
+    const ymd = /^(\d{4})-(\d{2})-(\d{2})$/;
+    const m1 = s.match(ymd);
+    if (m1) return `${m1[1]}-${m1[2]}-${m1[3]}`;
+
+    // mm/dd/aaaa o dd/mm/aaaa
+    const sl = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+    const m2 = s.match(sl);
+    if (m2) {
+      let a = parseInt(m2[1], 10); // podría ser mm o dd
+      let b = parseInt(m2[2], 10); // podría ser dd o mm
+      const yyyy = parseInt(m2[3], 10);
+      // Heurística: si el "mes" > 12, asumimos que venía dd/mm/aaaa y permutamos
+      let mm = a, dd = b;
+      if (a > 12 && b <= 12) { mm = b; dd = a; }
+      const mmS = String(mm).padStart(2, '0');
+      const ddS = String(dd).padStart(2, '0');
+      return `${yyyy}-${mmS}-${ddS}`;
+    }
+
+    // ISO (con T). Extrae la fecha en LOCAL sin cambiar el día
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    return null;
+  }
+
+  /** Muestra dd/MM/aaaa SIN timezone shift a partir de cualquier entrada */
+  formatDMY = (input: string | Date | null | undefined): string => {
+    const ymd = this.toYMD(input);
+    if (!ymd) return '';
+    const [, m, d] = ymd.match(/^(\d{4})-(\d{2})-(\d{2})$/)!;
+    return `${d}/${m}/${ymd.slice(0,4)}`;
+  };
+
+  /** Convierte YYYY-MM-DD a ISO asegurando MEDIODÍA local → evita cruzar de día por zona horaria */
+  private ymdToIsoAtNoon(ymd: string): string {
+    // Sin 'Z' → la interpreta como hora local; luego toISOString la lleva a UTC manteniendo el mismo día local.
+    const iso = new Date(`${ymd}T12:00:00`);
+    return iso.toISOString();
+  }
+
+  /** Date (local) a partir de YMD en el mediodía local (para cálculos de semanas sin corrimientos) */
+  private ymdToLocalNoonDate(ymd: string | null): Date | null {
+    if (!ymd) return null;
+    const d = new Date(`${ymd}T12:00:00`);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
 }

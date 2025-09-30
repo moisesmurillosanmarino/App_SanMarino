@@ -46,3 +46,25 @@ Después de guardar este package.json, corre:
 
 yarn build:ssr
 yarn compile:server
+
+
+## **********  Actualizar **********************
+
+# 0) Variables
+$REGION  = "us-east-2"
+$BUCKET  = "sanmarino-frontend-021891592771-us-east-2"
+$DIST_ID = "EBH3ELXXF2N7T"
+
+# 1) Build producción (Angular)
+ng build --configuration production
+
+# 2) Subir a S3 (tu distribución usa OriginPath=/browser)
+aws s3 sync ".\dist" "s3://$BUCKET" --delete
+
+# 3) Invalidar CloudFront (para que tome el nuevo build)
+aws cloudfront create-invalidation --distribution-id $DIST_ID --paths "/*"
+
+# 4) (Opcional) Ver estado de la invalidación y la distro
+aws cloudfront get-distribution --id $DIST_ID --query "Distribution.Status" --output text
+
+

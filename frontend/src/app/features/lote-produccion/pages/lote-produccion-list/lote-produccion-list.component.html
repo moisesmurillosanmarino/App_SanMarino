@@ -1,8 +1,6 @@
 <div class="ux-page" [attr.aria-busy]="loading ? 'true' : null">
-  <!-- Sidebar -->
   <app-sidebar class="ux-sidebar"></app-sidebar>
 
-  <!-- Main -->
   <div class="ux-main">
     <!-- Header -->
     <header class="ux-header">
@@ -121,6 +119,110 @@
       </div>
     </section>
 
+    <!-- ========= Ficha del Lote + Estados (igual a Levante) ========= -->
+    <section class="ux-card" *ngIf="selectedLoteId">
+      <div class="grid grid-2">
+        <div>
+          <h3 class="sr-only">Ficha del Lote</h3>
+          <div class="grid grid-2" style="row-gap:.6rem; column-gap:1rem;">
+            <div class="form-field">
+              <label>📋 Nombre</label>
+              <div><strong>{{ selectedLote?.loteNombre || selectedLoteId }}</strong></div>
+            </div>
+            <div class="form-field">
+              <label>🏠 Granja</label>
+              <div>{{ selectedGranjaName || '—' }}</div>
+            </div>
+            <div class="form-field">
+              <label>🧬 Núcleo</label>
+              <div>{{ selectedNucleoNombre || '—' }}</div>
+            </div>
+            <div class="form-field">
+              <label>🏚️ Galpón</label>
+              <div>{{ selectedLote?.galponId || '—' }}</div>
+            </div>
+            <div class="form-field">
+              <label>📅 Encaset</label>
+              <div>{{ selectedLote?.fechaEncaset | date:'shortDate' }}</div>
+            </div>
+            <div class="form-field">
+              <label>⏳ Edad (sem)</label>
+              <div>{{ calcularEdadSemanas(selectedLote?.fechaEncaset) }}</div>
+            </div>
+            <div class="form-field">
+              <label>📦 Aves encasetadas</label>
+              <div>{{ (selectedLote?.avesEncasetadas || 0) | number:'1.0-0' }}</div>
+            </div>
+            <div class="form-field">
+              <label>🐔 Hembras L (inicial)</label>
+              <div>{{ (selectedLote?.hembrasL || 0) | number:'1.0-0' }}</div>
+            </div>
+            <div class="form-field">
+              <label>🐓 Machos L (inicial)</label>
+              <div>{{ (selectedLote?.machosL || 0) | number:'1.0-0' }}</div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3 class="sr-only">Estados del Lote</h3>
+          <div class="grid grid-2" style="row-gap:.8rem; column-gap:1rem;">
+            <div class="ux-card" style="padding:.75rem">
+              <div class="form-field">
+                <label>🐔 Hembras iniciales</label>
+                <div><strong>{{ (resumenSelected?.hembrasIniciales || 0) | number:'1.0-0' }}</strong></div>
+              </div>
+              <div class="form-field">
+                <label>🐓 Machos iniciales</label>
+                <div><strong>{{ (resumenSelected?.machosIniciales || 0) | number:'1.0-0' }}</strong></div>
+              </div>
+            </div>
+
+            <div class="ux-card" style="padding:.75rem">
+              <div class="form-field">
+                <label>📦 Mort. caja H</label>
+                <div>{{ (resumenSelected?.mortCajaHembras || 0) | number:'1.0-0' }}</div>
+              </div>
+              <div class="form-field">
+                <label>📦 Mort. caja M</label>
+                <div>{{ (resumenSelected?.mortCajaMachos || 0) | number:'1.0-0' }}</div>
+              </div>
+            </div>
+
+            <div class="ux-card" style="padding:.75rem">
+              <div class="form-field">
+                <label>✖ Mort. acum H</label>
+                <div>{{ (resumenSelected?.mortalidadAcumHembras || 0) | number:'1.0-0' }}</div>
+              </div>
+              <div class="form-field">
+                <label>✖ Mort. acum M</label>
+                <div>{{ (resumenSelected?.mortalidadAcumMachos || 0) | number:'1.0-0' }}</div>
+              </div>
+            </div>
+
+            <div class="ux-card" style="padding:.75rem">
+              <div class="form-field">
+                <label>✅ Vivas H</label>
+                <div><strong>{{ (resumenSelected?.saldoHembras || 0) | number:'1.0-0' }}</strong></div>
+              </div>
+              <div class="form-field">
+                <label>✅ Vivas M</label>
+                <div><strong>{{ (resumenSelected?.saldoMachos || 0) | number:'1.0-0' }}</strong></div>
+              </div>
+              <div class="form-field form-field--full" style="margin-top:.25rem">
+                <label>🔢 Vivas totales</label>
+                <div>
+                  <strong>
+                    {{ ((resumenSelected?.saldoHembras || 0) + (resumenSelected?.saldoMachos || 0)) | number:'1.0-0' }}
+                  </strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div> <!-- /grid -->
+    </section>
+
     <!-- Tabla -->
     <section class="ux-card">
       <div class="ux-scroll">
@@ -130,6 +232,7 @@
           <thead>
             <tr>
               <th scope="col">Fecha</th>
+              <th scope="col">Edad</th>
               <th scope="col">Mort. H</th>
               <th scope="col">Mort. M</th>
               <th scope="col">Sel H</th>
@@ -146,6 +249,7 @@
           <tbody>
             <tr *ngFor="let r of registros; trackBy: trackByRegistroId" class="ux-row">
               <td>{{ r.fecha | date:'shortDate' }}</td>
+              <td>{{ edadSemanaDe(r) }}</td>
               <td>{{ r.mortalidadH }}</td>
               <td>{{ r.mortalidadM }}</td>
               <td>{{ r.selH }}</td>
@@ -157,47 +261,24 @@
               <td>{{ r.etapa }}</td>
               <td class="text-right">
                 <div class="btn-group">
-                  <button
-                    type="button"
-                    (click)="edit(r)"
-                    class="icon-btn"
-                    title="Editar"
-                    aria-label="Editar registro">
-                    ✎
-                  </button>
-                  <button
-                    type="button"
-                    (click)="delete(r.id)"
-                    class="icon-btn icon-btn--danger"
-                    title="Eliminar"
-                    aria-label="Eliminar registro">
-                    🗑
-                  </button>
+                  <button type="button" (click)="edit(r)" class="icon-btn" title="Editar" aria-label="Editar registro">✎</button>
+                  <button type="button" (click)="delete(r.id)" class="icon-btn icon-btn--danger" title="Eliminar" aria-label="Eliminar registro">🗑</button>
                 </div>
               </td>
             </tr>
 
-            <!-- Vacío -->
             <tr *ngIf="!loading && (!registros || registros.length === 0)">
-              <td colspan="11" class="empty-state">
+              <td colspan="12" class="empty-state">
                 <div class="empty-illustration" aria-hidden="true">📄</div>
                 <p *ngIf="!selectedLoteId">Selecciona un lote para ver/crear registros.</p>
                 <p *ngIf="selectedLoteId">Sin registros para este lote.</p>
-                <button
-                  type="button"
-                  class="btn btn--outline"
-                  (click)="create()"
-                  [disabled]="!selectedLoteId"
-                  [title]="!selectedLoteId ? 'Primero selecciona un lote' : 'Crear el primer registro'">
-                  Crear el primero
-                </button>
+                <button type="button" class="btn btn--outline" (click)="create()" [disabled]="!selectedLoteId">Crear el primero</button>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
 
-      <!-- Overlay de carga -->
       <div *ngIf="loading" class="loading-overlay" aria-live="polite" role="status">
         <div class="spinner"></div>
         Cargando…
