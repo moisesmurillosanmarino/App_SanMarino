@@ -51,8 +51,8 @@
         <!-- KPIs opcionales del último día -->
         <ng-container *ngIf="d.items?.length">
           <div class="kpi">
-            <span class="kpi__label">Edad (sem)</span>
-            <span class="kpi__value">{{ d.items.at(-1)!.edadSemana ?? '—' }}</span>
+            <span class="kpi__label">Edad (días)</span>
+            <span class="kpi__value">{{ d.items.at(-1)!.edadDias ?? '—' }}</span>
           </div>
           <div class="kpi">
             <span class="kpi__label">Hembras vivas</span>

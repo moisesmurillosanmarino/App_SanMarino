@@ -17,7 +17,7 @@
               Lote: {{ loteNombre(lid) }}
             </span>
             <span class="chip chip--muted">
-              {{ calcularEdadSemanas(lotesById[lid]?.fechaEncaset) }} sem
+              {{ calcularEdadDias(lotesById[lid]!.fechaEncaset) }} días
             </span>
           </ng-container>
 
@@ -62,12 +62,12 @@
               >
                 <option value="" disabled>— Selecciona un lote —</option>
                 <option *ngFor="let l of lotes" [ngValue]="l.loteId">
-                  {{ l.loteNombre }} ({{ calcularEdadSemanas(l.fechaEncaset) }} sem)
+                  {{ l.loteNombre }} ({{ calcularEdadDias(l.fechaEncaset) }} días)
                 </option>
               </select>
             </div>
             <small class="field-hint" *ngIf="f['loteId'].valid">
-              Edad: {{ calcularEdadSemanas(lotesById[form.value.loteId]?.fechaEncaset) || '—' }} sem
+              Edad: {{ calcularEdadDias(lotesById[form.value.loteId]!.fechaEncaset) || '—' }} días
             </small>
             <small class="field-error" *ngIf="f['loteId'].invalid && f['loteId'].touched">Obligatorio.</small>
           </div>

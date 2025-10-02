@@ -20,6 +20,7 @@ import {
 import { FarmService, FarmDto } from '../../../farm/services/farm.service';
 import { NucleoService, NucleoDto } from '../../services/nucleo.service';
 import { SeguimientoCalculosComponent } from "../../seguimiento-calculos/seguimiento-calculos.component";
+import { LiquidacionTecnicaComponent } from '../../components/liquidacion-tecnica/liquidacion-tecnica.component';
 
 // ===== Importa el servicio del catálogo =====
 import {
@@ -34,7 +35,7 @@ import { EMPTY } from 'rxjs';
 @Component({
   selector: 'app-seguimiento-lote-levante-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, SidebarComponent, SeguimientoCalculosComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, SidebarComponent, SeguimientoCalculosComponent, LiquidacionTecnicaComponent],
   templateUrl: './seguimiento-lote-levante-list.component.html',
   styleUrls: ['./seguimiento-lote-levante-list.component.scss']
 })
@@ -76,7 +77,7 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
   editing: SeguimientoLoteLevanteDto | null = null;
   hasSinGalpon = false;
 
-  activeTab: 'principal' | 'calculos' = 'principal';
+  activeTab: 'principal' | 'calculos' | 'liquidacion' = 'principal';
 
   // ================== formulario modal ==================
   form!: FormGroup;
@@ -542,7 +543,37 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     return this.galponNameById.get(id) || id;
   }
 
-  /** Edad (en semanas) a HOY desde fecha de encasetamiento (mínimo 1). */
+  /** Edad (en días) a HOY desde fecha de encasetamiento (mínimo 1). */
+  calcularEdadDias(fechaEncaset?: string | Date | null): number {
+    const encYmd = this.toYMD(fechaEncaset);
+    const enc = this.ymdToLocalNoonDate(encYmd);
+    if (!enc) return 0;
+    const MS_DAY = 24 * 60 * 60 * 1000;
+    const now = this.ymdToLocalNoonDate(this.todayYMD())!; // hoy al mediodía local
+    return Math.max(1, Math.floor((now.getTime() - enc.getTime()) / MS_DAY) + 1);
+  }
+
+  /**
+   * Edad (en días) del pollito AL MOMENTO DEL REGISTRO.
+   * Calcula días desde fechaEncaset hasta fechaRegistro (mínimo 1), sin corrimientos.
+   */
+  calcularEdadDiasDesde(fechaEncaset?: string | Date | null, fechaReferencia?: string | Date | null): number {
+    const enc = this.ymdToLocalNoonDate(this.toYMD(fechaEncaset));
+    const ref = this.ymdToLocalNoonDate(this.toYMD(fechaReferencia));
+    if (!enc || !ref) return 0;
+    const MS_DAY = 24 * 60 * 60 * 1000;
+    const diff = ref.getTime() - enc.getTime();
+    if (diff < 0) return 0;
+    return Math.max(1, Math.floor(diff / MS_DAY) + 1);
+  }
+
+  /** Atajo para la tabla: edad en días del registro s usando el encaset del lote seleccionado. */
+  edadDiasDe(s: SeguimientoLoteLevanteDto): number {
+    return this.calcularEdadDiasDesde(this.selectedLote?.fechaEncaset ?? null, s?.fechaRegistro ?? null);
+  }
+
+  // ========== MÉTODOS LEGACY (SEMANAS) - MANTENER PARA COMPATIBILIDAD ==========
+  /** @deprecated Usar calcularEdadDias() en su lugar */
   calcularEdadSemanas(fechaEncaset?: string | Date | null): number {
     const encYmd = this.toYMD(fechaEncaset);
     const enc = this.ymdToLocalNoonDate(encYmd);
@@ -553,6 +584,7 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
   }
 
   /**
+   * @deprecated Usar calcularEdadDiasDesde() en su lugar
    * Edad (en semanas) del pollito AL MOMENTO DEL REGISTRO.
    * Calcula semanas desde fechaEncaset hasta fechaRegistro (mínimo 1), sin corrimientos.
    */
@@ -566,7 +598,7 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     return Math.max(1, Math.floor(diff / MS_WEEK) + 1);
   }
 
-  /** Atajo para la tabla: edad semana del registro s usando el encaset del lote seleccionado. */
+  /** @deprecated Usar edadDiasDe() en su lugar */
   edadSemanaDe(s: SeguimientoLoteLevanteDto): number {
     return this.calcularEdadSemanasDesde(this.selectedLote?.fechaEncaset ?? null, s?.fechaRegistro ?? null);
   }
@@ -584,6 +616,7 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
 
   // ========= CÁLCULOS =========
   calcsOpen = false;
+  liquidacionOpen = false;
   calcsLoading = false;
   calcsDesde: string | null = null;
   calcsHasta: string | null = null;
@@ -595,7 +628,8 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     hasta?: string | null;
     items: Array<{
       fecha: string;
-      edadSemana?: number | null;
+      edadDias?: number | null;  // Cambiado de edadSemana a edadDias
+      edadSemana?: number | null; // @deprecated - mantener para compatibilidad
       hembraViva?: number | null;
       mortH: number; selH: number; errH: number;
       consKgH?: number | null; pesoH?: number | null; unifH?: number | null;
@@ -620,6 +654,16 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
 
   closeCalculos(): void {
     this.calcsOpen = false;
+  }
+
+  // ========= LIQUIDACIÓN TÉCNICA =========
+  openLiquidacion(): void {
+    if (!this.selectedLoteId) return;
+    this.liquidacionOpen = true;
+  }
+
+  closeLiquidacion(): void {
+    this.liquidacionOpen = false;
   }
 
   reloadCalculos(): void {

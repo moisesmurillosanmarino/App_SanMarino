@@ -55,7 +55,7 @@ export class SeguimientoLoteLevanteFormComponent implements OnInit {
   ngOnInit(): void {
     // 1) Cargar lotes y filtrar < 25 semanas
     this.loteSvc.getAll().subscribe((data) => {
-      this.lotes = data.filter((l) => this.calcularEdadSemanas(l.fechaEncaset) < 25);
+      this.lotes = data.filter((l) => this.calcularEdadDias(l.fechaEncaset) < 175); // 25 semanas * 7 días = 175 días
       this.lotesById = this.lotes.reduce((acc, l) => {
         acc[l.loteId] = l;
         return acc;
@@ -179,6 +179,15 @@ export class SeguimientoLoteLevanteFormComponent implements OnInit {
     return this.form.controls;
   }
 
+  calcularEdadDias(fechaEncaset: string | Date | null | undefined): number {
+    if (!fechaEncaset) return 0;
+    const d = typeof fechaEncaset === 'string' ? new Date(fechaEncaset) : fechaEncaset;
+    if (isNaN(d.getTime())) return 0;
+    const MS_DAY = 24 * 60 * 60 * 1000;
+    return Math.floor((Date.now() - d.getTime()) / MS_DAY) + 1; // base 1
+  }
+
+  /** @deprecated Usar calcularEdadDias() en su lugar */
   calcularEdadSemanas(fechaEncaset: string | Date | null | undefined): number {
     if (!fechaEncaset) return 0;
     const d = typeof fechaEncaset === 'string' ? new Date(fechaEncaset) : fechaEncaset;

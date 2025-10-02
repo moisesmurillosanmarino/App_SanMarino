@@ -3,7 +3,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SidebarComponent } from '../../../../shared/components/sidebar/sidebar.component';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import { faBoxesStacked, faRightLeft, faWarehouse, faScrewdriverWrench, faList, faClipboardCheck, faArrowsUpDown } from '@fortawesome/free-solid-svg-icons';
+import { faBoxesStacked, faRightLeft, faWarehouse, faScrewdriverWrench, faList, faClipboardCheck, faArrowsUpDown, faBook } from '@fortawesome/free-solid-svg-icons';
 
 import { MovimientosFormComponent } from '../movimientos-form/movimientos-form.component';
 import { TrasladoFormComponent } from '../traslado-form/traslado-form.component';
@@ -40,6 +40,7 @@ export class InventarioTabsComponent {
   faWrench  = faScrewdriverWrench;
   faList    = faList;
   faClipboard = faClipboardCheck;
+  faCatalog = faBook;
   title = 'Inventario de Productos';
 
   activeTab: TabKey = 'mov';
@@ -60,6 +61,8 @@ export class InventarioTabsComponent {
 
   setTab(tab: TabKey) { this.activeTab = tab; }
 
-
-
+  refreshData(): void {
+    // TODO: Implementar lógica de actualización de datos
+    console.log('Actualizando datos del inventario...');
+  }
 }

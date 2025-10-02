@@ -33,11 +33,11 @@
           </span>
 
           <span class="chip chip--muted" *ngIf="selectedLoteId">
-            {{ calcularEdadSemanas(selectedLote?.fechaEncaset) }} sem
+            {{ calcularEdadDias(selectedLote?.fechaEncaset) }} días
           </span>
 
           <span class="chip chip--muted" *ngIf="selectedLoteId">
-            {{ seguimientos?.length || 0 }} registro(s)
+            {{ seguimientos.length || 0 }} registro(s)
           </span>
         </div>
       </div>
@@ -50,6 +50,15 @@
           [title]="!selectedLoteId ? 'Primero selecciona lote' : 'Ver cálculos del lote'"
           (click)="openCalculos()">
           Ver cálculos
+        </button>
+
+        <button
+          type="button"
+          class="btn btn--outline"
+          [disabled]="!selectedLoteId"
+          [title]="!selectedLoteId ? 'Primero selecciona lote' : 'Ver liquidación técnica'"
+          (click)="openLiquidacion()">
+          Liquidación técnica
         </button>
 
         <button
@@ -119,7 +128,7 @@
               (ngModelChange)="selectedLoteId = $event; onLoteChange()">
               <option [ngValue]="null" disabled>— Seleccione —</option>
               <option *ngFor="let l of lotes" [ngValue]="l.loteId">
-                {{ l.loteNombre || l.loteId }} ({{ calcularEdadSemanas(l.fechaEncaset) }} sem)
+                {{ l.loteNombre || l.loteId }} ({{ calcularEdadDias(l.fechaEncaset) }} días)
               </option>
             </select>
           </div>
@@ -154,8 +163,8 @@
               <div>{{ formatDMY(selectedLote?.fechaEncaset) }}</div>
             </div>
             <div class="form-field">
-              <label>⏳ Edad (sem)</label>
-              <div>{{ calcularEdadSemanas(selectedLote?.fechaEncaset) }}</div>
+              <label>⏳ Edad (días)</label>
+              <div>{{ calcularEdadDias(selectedLote?.fechaEncaset) }}</div>
             </div>
             <div class="form-field">
               <label>📦 Aves encasetadas</label>
@@ -274,7 +283,7 @@
 
             <tr *ngFor="let s of seguimientos; trackBy: trackById" class="ux-row">
               <td>{{ formatDMY(s.fechaRegistro) }}</td>
-              <td>{{ edadSemanaDe(s) }}</td>
+              <td>{{ edadDiasDe(s) }}</td>
               <td>{{ s.mortalidadHembras }}</td>
               <td>{{ s.mortalidadMachos }}</td>
               <td>{{ s.selH }}</td>
@@ -523,7 +532,7 @@
 
         <div class="ux-field" *ngIf="calcsResp">
           <span class="chip chip--muted">
-            {{ calcsResp?.total || 0 }} día(s)
+            {{ calcsResp.total || 0 }} día(s)
           </span>
         </div>
       </div>
@@ -578,7 +587,7 @@
 
               <tr *ngFor="let it of calcsResp?.items">
                 <td>{{ formatDMY(it.fecha) }}</td>
-                <td>{{ it.edadSemana ?? 0 }}</td>
+                <td>{{ it.edadDias ?? 0 }}</td>
 
                 <td>{{ it.hembraViva ?? 0 | number:'1.0-0' }}</td>
                 <td>{{ it.mortH | number:'1.0-0' }}</td>
@@ -609,16 +618,40 @@
         </div>
 
         <div class="ux-hint" style="margin-top:.5rem" *ngIf="calcsResp">
-          <strong>Lote:</strong> {{ calcsResp?.loteId }}
-          <span *ngIf="calcsResp?.desde"> — desde {{ formatDMY(calcsResp?.desde) }}</span>
-          <span *ngIf="calcsResp?.hasta"> — hasta {{ formatDMY(calcsResp?.hasta) }}</span>
-          <span> — {{ calcsResp?.total || 0 }} día(s)</span>
+          <strong>Lote:</strong> {{ calcsResp.loteId }}
+          <span *ngIf="calcsResp.desde"> — desde {{ formatDMY(calcsResp.desde) }}</span>
+          <span *ngIf="calcsResp.hasta"> — hasta {{ formatDMY(calcsResp.hasta) }}</span>
+          <span> — {{ calcsResp.total || 0 }} día(s)</span>
         </div>
       </ng-container>
     </section>
 
     <footer class="ux-modal__footer">
       <button type="button" class="btn btn--ghost" (click)="closeCalculos()">Cerrar</button>
+    </footer>
+  </div>
+</div>
+
+<!-- ================= MODAL: LIQUIDACIÓN TÉCNICA ================= -->
+<div *ngIf="liquidacionOpen" class="ux-modal" role="dialog" aria-modal="true" aria-labelledby="liquidacion-modal-title">
+  <div class="ux-modal__dialog ux-modal__dialog--xxl">
+    <header class="ux-modal__header">
+      <h2 id="liquidacion-modal-title">
+        Liquidación Técnica
+        <ng-container *ngIf="selectedLoteId">— <strong>{{ selectedLoteNombre }}</strong></ng-container>
+      </h2>
+      <button type="button" class="icon-btn" (click)="closeLiquidacion()" aria-label="Cerrar">✕</button>
+    </header>
+
+    <section class="liquidacion-modal-content">
+      <app-liquidacion-tecnica
+        [loteId]="selectedLoteId"
+        [loteNombre]="selectedLoteNombre">
+      </app-liquidacion-tecnica>
+    </section>
+
+    <footer class="ux-modal__footer">
+      <button type="button" class="btn btn--ghost" (click)="closeLiquidacion()">Cerrar</button>
     </footer>
   </div>
 </div>

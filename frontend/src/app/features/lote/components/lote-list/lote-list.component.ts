@@ -22,6 +22,7 @@ import { GalponDetailDto } from '../../../galpon/models/galpon.models';
 import { UserService, UserDto } from '../../../../core/services/user/user.service';
 import { Company, CompanyService } from '../../../../core/services/company/company.service';
 import { MasterListService } from '../../../../core/services/master-list/master-list.service';
+import { GuiaGeneticaService, LineaGeneticaOption } from '../../services/guia-genetica.service';
 
 /* ============================================================
    Directiva standalone: separador de miles (es-CO) y enteros
@@ -122,6 +123,12 @@ export class LoteListComponent implements OnInit {
   nucleos:  NucleoDto[] = [];
   galpones: GalponDetailDto[] = [];
   tecnicos: UserDto[]   = [];
+
+  // Datos para raza y línea genética
+  razasDisponibles: string[] = [];
+  lineasGeneticas: LineaGeneticaOption[] = [];
+  selectedRaza: string = '';
+  selectedLineaGeneticaId: number | null = null;
   companies: Company[]  = [];
 
   // Mapas
@@ -161,6 +168,7 @@ export class LoteListComponent implements OnInit {
     private userSvc:   UserService,
     private companySvc: CompanyService,
     private readonly masterSvc: MasterListService,
+    private guiaGeneticaSvc: GuiaGeneticaService,
   ) {}
 
   // ===================== Ciclo de vida ======================
@@ -174,7 +182,8 @@ export class LoteListComponent implements OnInit {
       tecnicos:  this.userSvc.getAll(),
       companies: this.companySvc.getAll(),
       lineagenetica:  this.masterSvc.getByKey('type_linea_genetica'), // regiones
-    }).subscribe(({ farms, nucleos, galpones, tecnicos, companies }) => {
+      razas:     this.guiaGeneticaSvc.getRazasDisponibles(),
+    }).subscribe(({ farms, nucleos, galpones, tecnicos, companies, razas }) => {
       // Catálogos
       this.farms = farms;
       this.farmById = {};
@@ -190,6 +199,9 @@ export class LoteListComponent implements OnInit {
       tecnicos.forEach(u => this.techMap[u.id] = `${u.surName} ${u.firstName}`);
 
       this.companies = companies;
+
+      // Razas disponibles
+      this.razasDisponibles = razas;
 
       // Lotes
       this.loadLotes();
@@ -227,6 +239,18 @@ export class LoteListComponent implements OnInit {
     this.form.get('hembrasL')!.valueChanges.subscribe(() => this.actualizarEncasetadas());
     this.form.get('machosL')!.valueChanges.subscribe(() => this.actualizarEncasetadas());
     this.form.get('mixtas')!.valueChanges.subscribe(() => this.actualizarEncasetadas());
+
+    // Chain para raza -> línea genética
+    this.form.get('raza')!.valueChanges.subscribe(raza => {
+      this.onRazaChange(raza);
+    });
+
+    // Chain para línea genética -> actualizar campos relacionados
+    this.form.get('lineaGeneticaId')!.valueChanges.subscribe(lineaId => {
+      if (lineaId) {
+        this.onLineaGeneticaChange(+lineaId);
+      }
+    });
   }
 
   // ===================== Init form ==========================
@@ -248,11 +272,12 @@ export class LoteListComponent implements OnInit {
       unifM:              [null],
       mortCajaH:          [null],
       mortCajaM:          [null],
-      raza:               [''],
+      raza:               ['', Validators.required],
       anoTablaGenetica:   [null],
       linea:              [''],
       tipoLinea:          [''],
       codigoGuiaGenetica: [''],
+      lineaGeneticaId:    [null, Validators.required],
       tecnico:            [''],
       mixtas:             [null],
       avesEncasetadas:    [null],
@@ -365,7 +390,7 @@ export class LoteListComponent implements OnInit {
   private sortLotes(arr: LoteDto[]): LoteDto[] {
     const val = (l: LoteDto): number | null => {
       if (!l.fechaEncaset) return null;
-      if (this.sortKey === 'edad') return this.calcularEdadSemanas(l.fechaEncaset);
+      if (this.sortKey === 'edad') return this.calcularEdadDias(l.fechaEncaset);
       const t = new Date(l.fechaEncaset).getTime();
       return isNaN(t) ? null : t;
     };
@@ -495,6 +520,15 @@ export class LoteListComponent implements OnInit {
   }
 
   // ===================== Helpers ===========================
+  calcularEdadDias(fechaEncaset?: string | Date | null): number {
+    if (!fechaEncaset) return 0;
+    const inicio = new Date(fechaEncaset);
+    const hoy = new Date();
+    const msDia = 1000 * 60 * 60 * 24;
+    return Math.floor((hoy.getTime() - inicio.getTime()) / msDia) + 1;
+  }
+
+  /** @deprecated Usar calcularEdadDias() en su lugar */
   calcularEdadSemanas(fechaEncaset?: string | Date | null): number {
     if (!fechaEncaset) return 0;
     const inicio = new Date(fechaEncaset);
@@ -505,7 +539,8 @@ export class LoteListComponent implements OnInit {
 
   calcularFase(fechaEncaset?: string | Date | null): 'Levante' | 'Producción' | 'Desconocido' {
     if (!fechaEncaset) return 'Desconocido';
-    return this.calcularEdadSemanas(fechaEncaset) < 25 ? 'Levante' : 'Producción';
+    // Usar días en lugar de semanas: Levante < 175 días (25 semanas * 7 días)
+    return this.calcularEdadDias(fechaEncaset) < 175 ? 'Levante' : 'Producción';
   }
 
   formatNumber(value: number | null | undefined): string {
@@ -579,6 +614,45 @@ export class LoteListComponent implements OnInit {
       this.form.get(controlName)?.setValue(valorEntero);
     } else {
       this.form.get(controlName)?.setValue(null);
+    }
+  }
+
+  // ===================== Raza y Línea Genética ==============
+  onRazaChange(raza: string): void {
+    this.selectedRaza = raza;
+    this.lineasGeneticas = [];
+    this.form.get('lineaGeneticaId')?.setValue(null);
+    this.form.get('anoTablaGenetica')?.setValue(null);
+
+    if (raza && raza.trim()) {
+      this.guiaGeneticaSvc.getLineasGeneticasPorRaza(raza).subscribe({
+        next: (lineas) => {
+          this.lineasGeneticas = lineas;
+          // Auto-seleccionar la línea más reciente si solo hay una
+          if (lineas.length === 1) {
+            this.form.get('lineaGeneticaId')?.setValue(lineas[0].id);
+            this.form.get('anoTablaGenetica')?.setValue(parseInt(lineas[0].anioGuia));
+          }
+        },
+        error: (error) => {
+          console.error('Error al cargar líneas genéticas:', error);
+          this.lineasGeneticas = [];
+        }
+      });
+    }
+  }
+
+  onLineaGeneticaChange(lineaId: number): void {
+    this.selectedLineaGeneticaId = lineaId;
+    const lineaSeleccionada = this.lineasGeneticas.find(l => l.id === lineaId);
+    
+    if (lineaSeleccionada) {
+      // Actualizar año de tabla genética automáticamente
+      this.form.get('anoTablaGenetica')?.setValue(parseInt(lineaSeleccionada.anioGuia));
+      
+      // Opcional: actualizar otros campos relacionados
+      this.form.get('linea')?.setValue(lineaSeleccionada.raza);
+      this.form.get('codigoGuiaGenetica')?.setValue(`${lineaSeleccionada.raza}-${lineaSeleccionada.anioGuia}`);
     }
   }
 }

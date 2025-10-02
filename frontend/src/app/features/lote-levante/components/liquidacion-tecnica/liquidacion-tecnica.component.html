@@ -1,0 +1,368 @@
+<section class="liquidacion-container" [attr.aria-busy]="loading() ? 'true' : null">
+  <!-- Header con controles -->
+  <header class="liquidacion-header">
+    <div class="liquidacion-title">
+      <h3>Liquidación Técnica</h3>
+      <div class="liquidacion-meta" *ngIf="loteId">
+        <span class="chip chip--info">
+          <span class="chip__dot" aria-hidden="true"></span>
+          {{ loteNombre || loteId }}
+        </span>
+      </div>
+    </div>
+
+    <div class="liquidacion-controls">
+      <form [formGroup]="form" class="controls-form">
+        <div class="ux-field">
+          <label for="fecha-hasta">Fecha hasta</label>
+          <input 
+            id="fecha-hasta" 
+            type="date" 
+            formControlName="fechaHasta"
+            class="ux-input">
+        </div>
+
+        <div class="ux-field">
+          <label for="tipo-vista">Vista</label>
+          <div class="ux-select">
+            <select id="tipo-vista" formControlName="tipoVista">
+              <option value="resumen">Resumen</option>
+              <option value="completa">Completa</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="ux-field">
+          <button 
+            type="button" 
+            class="btn btn--outline"
+            (click)="actualizar()"
+            [disabled]="loading() || !loteId">
+            <span *ngIf="loading()">Calculando...</span>
+            <span *ngIf="!loading()">Actualizar</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </header>
+
+  <!-- Loading -->
+  <div *ngIf="loading()" class="loading-overlay" aria-live="polite" role="status">
+    <div class="spinner"></div>
+    Calculando liquidación técnica...
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="error() && !loading()" class="error-state">
+    <div class="error-icon" aria-hidden="true">⚠️</div>
+    <p>{{ error() }}</p>
+    <button type="button" class="btn btn--outline" (click)="actualizar()">
+      Reintentar
+    </button>
+  </div>
+
+  <!-- Sin lote seleccionado -->
+  <div *ngIf="!loteId && !loading()" class="empty-state">
+    <div class="empty-illustration" aria-hidden="true">📊</div>
+    <p>Selecciona un lote para ver su liquidación técnica.</p>
+  </div>
+
+  <!-- Contenido principal -->
+  <ng-container *ngIf="liquidacion() && !loading() && !error()">
+    <!-- Información general del lote -->
+    <section class="ux-card liquidacion-info">
+      <div class="info-grid">
+        <div class="info-item">
+          <label>📋 Lote</label>
+          <div><strong>{{ liquidacion()!.loteNombre || liquidacion()!.loteId }}</strong></div>
+        </div>
+        <div class="info-item">
+          <label>📅 Fecha Encaset</label>
+          <div>{{ formatDate(liquidacion()!.fechaEncaset) }}</div>
+        </div>
+        <div class="info-item">
+          <label>🧬 Raza</label>
+          <div>{{ liquidacion()!.raza || '—' }}</div>
+        </div>
+        <div class="info-item">
+          <label>📊 Año Guía</label>
+          <div>{{ liquidacion()!.anoTablaGenetica || '—' }}</div>
+        </div>
+        <div class="info-item">
+          <label>🐔 Hembras Encasetadas</label>
+          <div>{{ liquidacion()!.hembrasEncasetadas | number:'1.0-0' }}</div>
+        </div>
+        <div class="info-item">
+          <label>🐓 Machos Encasetados</label>
+          <div>{{ liquidacion()!.machosEncasetados | number:'1.0-0' }}</div>
+        </div>
+        <div class="info-item">
+          <label>📦 Total Aves</label>
+          <div><strong>{{ liquidacion()!.totalAvesEncasetadas | number:'1.0-0' }}</strong></div>
+        </div>
+        <div class="info-item">
+          <label>📈 Retiro General</label>
+          <div class="valor-destacado">{{ liquidacion()!.porcentajeRetiroTotalGeneral | number:'1.2-2' }}%</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tabs de navegación -->
+    <div class="liquidacion-tabs">
+      <button 
+        type="button"
+        class="tab-btn"
+        [class.active]="vistaActiva === 'resumen'"
+        (click)="cambiarVista('resumen')">
+        Resumen Indicadores
+      </button>
+      <button 
+        type="button"
+        class="tab-btn"
+        [class.active]="vistaActiva === 'graficos'"
+        (click)="cambiarVista('graficos')">
+        Gráficos
+      </button>
+      <button 
+        type="button"
+        class="tab-btn"
+        [class.active]="vistaActiva === 'detalle'"
+        [disabled]="!liquidacionCompleta()"
+        (click)="cambiarVista('detalle')">
+        Detalle Completo
+      </button>
+    </div>
+
+    <!-- Vista Resumen -->
+    <section *ngIf="vistaActiva === 'resumen'" class="ux-card liquidacion-resumen">
+      <h4>Indicadores Técnicos</h4>
+      
+      <div class="ux-scroll">
+        <table class="ux-table liquidacion-table">
+          <thead>
+            <tr>
+              <th scope="col">Indicador</th>
+              <th scope="col">Real</th>
+              <th scope="col">Guía</th>
+              <th scope="col">Diferencia</th>
+              <th scope="col">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let indicador of indicadores" class="indicador-row">
+              <td class="indicador-concepto">{{ indicador.concepto }}</td>
+              <td class="indicador-real">
+                {{ indicador.real | number:'1.2-2' }}{{ indicador.unidad }}
+              </td>
+              <td class="indicador-guia">
+                <span *ngIf="indicador.guia !== null; else sinGuia">
+                  {{ indicador.guia | number:'1.2-2' }}{{ indicador.unidad }}
+                </span>
+                <ng-template #sinGuia>—</ng-template>
+              </td>
+              <td class="indicador-diferencia">
+                <span *ngIf="indicador.diferencia !== null; else sinDiferencia"
+                      [class]="indicador.diferencia! > 0 ? 'diferencia-positiva' : 'diferencia-negativa'">
+                  {{ indicador.diferencia! > 0 ? '+' : '' }}{{ indicador.diferencia | number:'1.2-2' }}%
+                </span>
+                <ng-template #sinDiferencia>—</ng-template>
+              </td>
+              <td class="indicador-estado">
+                <span class="estado-badge" 
+                      [class]="getEstadoClase(indicador.diferencia, indicador.tipo)">
+                  {{ getEstadoTexto(indicador.diferencia, indicador.tipo) }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Resumen de retiros -->
+      <div class="retiros-summary">
+        <h5>Resumen de Retiros</h5>
+        <div class="retiros-grid">
+          <div class="retiro-card retiro-hembras">
+            <div class="retiro-header">
+              <span class="retiro-icon">🐔</span>
+              <span class="retiro-titulo">Hembras</span>
+            </div>
+            <div class="retiro-valor">{{ liquidacion()!.porcentajeRetiroTotalHembras | number:'1.2-2' }}%</div>
+            <div class="retiro-detalle">
+              <small>Mort: {{ liquidacion()!.porcentajeMortalidadHembras | number:'1.2-2' }}% | 
+                     Sel: {{ liquidacion()!.porcentajeSeleccionHembras | number:'1.2-2' }}% | 
+                     Err: {{ liquidacion()!.porcentajeErrorSexajeHembras | number:'1.2-2' }}%</small>
+            </div>
+          </div>
+
+          <div class="retiro-card retiro-machos">
+            <div class="retiro-header">
+              <span class="retiro-icon">🐓</span>
+              <span class="retiro-titulo">Machos</span>
+            </div>
+            <div class="retiro-valor">{{ liquidacion()!.porcentajeRetiroTotalMachos | number:'1.2-2' }}%</div>
+            <div class="retiro-detalle">
+              <small>Mort: {{ liquidacion()!.porcentajeMortalidadMachos | number:'1.2-2' }}% | 
+                     Sel: {{ liquidacion()!.porcentajeSeleccionMachos | number:'1.2-2' }}% | 
+                     Err: {{ liquidacion()!.porcentajeErrorSexajeMachos | number:'1.2-2' }}%</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Vista Gráficos -->
+    <section *ngIf="vistaActiva === 'graficos'" class="ux-card liquidacion-graficos">
+      <h4>Análisis Gráfico de Liquidación Técnica</h4>
+      
+      <!-- Grid de gráficos -->
+      <div class="graficos-grid">
+        <!-- Gráfico de barras: Indicadores Real vs Guía -->
+        <div class="grafico-card">
+          <div class="grafico-header">
+            <h5>📊 Indicadores Real vs Guía</h5>
+            <p class="grafico-descripcion">Comparación de valores reales contra la guía genética</p>
+          </div>
+          <div class="grafico-container">
+            <canvas
+              baseChart
+              [type]="'bar'"
+              [data]="indicadoresChartData"
+              [options]="barChartOptions"
+              aria-label="Gráfico de barras comparando indicadores reales vs guía genética">
+            </canvas>
+          </div>
+        </div>
+
+        <!-- Gráfico de torta: Distribución de retiros -->
+        <div class="grafico-card">
+          <div class="grafico-header">
+            <h5>🥧 Distribución del Lote</h5>
+            <p class="grafico-descripcion">Estado actual de las aves del lote</p>
+          </div>
+          <div class="grafico-container">
+            <canvas
+              baseChart
+              [type]="'pie'"
+              [data]="retirosChartData"
+              [options]="pieChartOptions"
+              aria-label="Gráfico de torta mostrando la distribución de aves vivas, muertas y retiradas">
+            </canvas>
+          </div>
+        </div>
+
+        <!-- Gráfico de líneas: Evolución semanal -->
+        <div class="grafico-card grafico-card--wide" *ngIf="liquidacionCompleta()?.detallesSeguimiento?.length">
+          <div class="grafico-header">
+            <h5>📈 Evolución Semanal de Retiros</h5>
+            <p class="grafico-descripcion">Tendencia de mortalidad y selección por semanas</p>
+          </div>
+          <div class="grafico-container">
+            <canvas
+              baseChart
+              [type]="'line'"
+              [data]="evolucionChartData"
+              [options]="lineChartOptions"
+              aria-label="Gráfico de líneas mostrando la evolución semanal de mortalidad y selección">
+            </canvas>
+          </div>
+        </div>
+
+        <!-- Gráfico de líneas: Consumo y Peso -->
+        <div class="grafico-card grafico-card--wide" *ngIf="liquidacionCompleta()?.detallesSeguimiento?.length">
+          <div class="grafico-header">
+            <h5>⚖️ Consumo, Peso y Uniformidad</h5>
+            <p class="grafico-descripcion">Evolución de parámetros productivos por semanas</p>
+          </div>
+          <div class="grafico-container">
+            <canvas
+              baseChart
+              [type]="'line'"
+              [data]="consumoPesoChartData"
+              [options]="consumoPesoChartOptions"
+              aria-label="Gráfico de líneas mostrando la evolución del consumo, peso y uniformidad">
+            </canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mensaje si no hay datos completos -->
+      <div *ngIf="!liquidacionCompleta()?.detallesSeguimiento?.length" class="graficos-info">
+        <div class="info-icon" aria-hidden="true">📊</div>
+        <p><strong>Datos limitados:</strong> Para ver todos los gráficos, selecciona "Vista Completa" en los controles superiores.</p>
+        <p>Los gráficos de evolución semanal requieren datos de seguimiento detallado.</p>
+      </div>
+    </section>
+
+    <!-- Vista Detalle -->
+    <section *ngIf="vistaActiva === 'detalle' && liquidacionCompleta()" class="ux-card liquidacion-detalle">
+      <h4>Liquidación Técnica Completa</h4>
+      
+      <!-- Seguimiento por semanas -->
+      <div class="detalle-section" *ngIf="liquidacionCompleta()!.detallesSeguimiento?.length">
+        <h5>Seguimiento Semanal</h5>
+        <div class="ux-scroll">
+          <table class="ux-table detalle-table">
+            <thead>
+              <tr>
+                <th>Semana</th>
+                <th>Fecha</th>
+                <th>Mort H</th>
+                <th>Mort M</th>
+                <th>Sel H</th>
+                <th>Sel M</th>
+                <th>Consumo</th>
+                <th>Peso H</th>
+                <th>Unif H</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let detalle of liquidacionCompleta()!.detallesSeguimiento">
+                <td>{{ detalle.semana }}</td>
+                <td>{{ formatDate(detalle.fechaRegistro) }}</td>
+                <td>{{ detalle.mortalidadHembras || 0 }}</td>
+                <td>{{ detalle.mortalidadMachos || 0 }}</td>
+                <td>{{ detalle.seleccionHembras || 0 }}</td>
+                <td>{{ detalle.seleccionMachos || 0 }}</td>
+                <td>{{ (detalle.consumoAlimento || 0) | number:'1.2-2' }}</td>
+                <td>{{ (detalle.pesoPromedioHembras || 0) | number:'1.2-2' }}</td>
+                <td>{{ (detalle.uniformidadHembras || 0) | number:'1.1-1' }}%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Guía genética -->
+      <div class="detalle-section" *ngIf="liquidacionCompleta()!.detallesGuiaGenetica?.length">
+        <h5>Guía Genética de Referencia</h5>
+        <div class="ux-scroll">
+          <table class="ux-table guia-table">
+            <thead>
+              <tr>
+                <th>Edad</th>
+                <th>Raza</th>
+                <th>Mort H</th>
+                <th>Mort M</th>
+                <th>Cons H</th>
+                <th>Peso H</th>
+                <th>Uniformidad</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let guia of liquidacionCompleta()!.detallesGuiaGenetica">
+                <td>{{ guia.edad || '—' }}</td>
+                <td>{{ guia.raza || '—' }}</td>
+                <td>{{ guia.mortSemH || '—' }}</td>
+                <td>{{ guia.mortSemM || '—' }}</td>
+                <td>{{ guia.consAcH || '—' }}</td>
+                <td>{{ guia.pesoH || '—' }}</td>
+                <td>{{ guia.uniformidad || '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </ng-container>
+</section>

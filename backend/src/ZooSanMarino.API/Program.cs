@@ -152,9 +152,29 @@ builder.Services.AddScoped<IPermissionService, PermissionService>();
 // ✅ Servicio orquestador único de roles/permissions/menús
 builder.Services.AddScoped<IRoleCompositeService, RoleCompositeService>();
 
+// Producción Avícola Raw
+builder.Services.AddScoped<IProduccionAvicolaRawService, ProduccionAvicolaRawService>();
+
+// Excel Import Service
+builder.Services.AddScoped<IExcelImportService, ExcelImportService>();
+
+// Liquidación Técnica Service
+builder.Services.AddScoped<ILiquidacionTecnicaService, LiquidacionTecnicaService>();
+
+// Sistema de Inventario de Aves
+builder.Services.AddScoped<IInventarioAvesService, InventarioAvesService>();
+builder.Services.AddScoped<IMovimientoAvesService, MovimientoAvesService>();
+builder.Services.AddScoped<IHistorialInventarioService, HistorialInventarioService>();
+
 // Proveedores
 builder.Services.AddScoped<IAlimentoNutricionProvider, EfAlimentoNutricionProvider>();
 builder.Services.AddScoped<IGramajeProvider, NullGramajeProvider>();
+
+
+builder.Services.AddScoped<IDbIntrospectionService, DbIntrospectionService>();
+builder.Services.AddScoped<IDbSchemaService, DbSchemaService>();
+builder.Services.AddScoped<IReadOnlyQueryService, ReadOnlyQueryService>();
+
 
 // ─────────────────────────────────────
 // 9) FluentValidation + HealthChecks

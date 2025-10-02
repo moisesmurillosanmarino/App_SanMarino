@@ -15,7 +15,7 @@ import { GalponDetailDto } from '../../../galpon/models/galpon.models';
 import { FarmService, FarmDto } from '../../../farm/services/farm.service';
 import { NucleoService, NucleoDto } from '../../../lote-levante/services/nucleo.service';
 
-type LoteView = LoteDto & { edadSemanas: number };
+type LoteView = LoteDto & { edadDias: number };
 
 @Component({
   selector: 'app-lote-produccion-list',
@@ -56,7 +56,7 @@ export class LoteProduccionListComponent implements OnInit {
 
   selectedLoteId: number | string | null = null;
   selectedLoteNombre = '';
-  selectedLoteSemanas = 0;
+  selectedLoteDias = 0;
   selectedLoteFechaEncaset: string | Date | null = null;
 
   // Datos
@@ -149,7 +149,7 @@ export class LoteProduccionListComponent implements OnInit {
     this.selectedLote = undefined;
     this.resumenSelected = null;
     this.selectedLoteNombre = '';
-    this.selectedLoteSemanas = 0;
+    this.selectedLoteDias = 0;
     this.selectedLoteFechaEncaset = null;
 
     if (!this.selectedGranjaId) return;
@@ -171,7 +171,7 @@ export class LoteProduccionListComponent implements OnInit {
     this.selectedLote = undefined;
     this.resumenSelected = null;
     this.selectedLoteNombre = '';
-    this.selectedLoteSemanas = 0;
+    this.selectedLoteDias = 0;
     this.selectedLoteFechaEncaset = null;
 
     this.applyFiltersToLotes();
@@ -185,7 +185,7 @@ export class LoteProduccionListComponent implements OnInit {
     this.selectedLote = undefined;
     this.resumenSelected = null;
     this.selectedLoteNombre = '';
-    this.selectedLoteSemanas = 0;
+    this.selectedLoteDias = 0;
     this.selectedLoteFechaEncaset = null;
 
     this.applyFiltersToLotes();
@@ -196,7 +196,7 @@ export class LoteProduccionListComponent implements OnInit {
     this.selectedLote = undefined;
     this.resumenSelected = null;
     this.selectedLoteNombre = '';
-    this.selectedLoteSemanas = 0;
+    this.selectedLoteDias = 0;
     this.selectedLoteFechaEncaset = null;
 
     if (this.selectedLoteId == null) {
@@ -206,14 +206,14 @@ export class LoteProduccionListComponent implements OnInit {
 
     const lote = this.lotes.find(l => (l.loteId as any) === this.selectedLoteId);
     this.selectedLoteNombre = lote?.loteNombre ?? '';
-    this.selectedLoteSemanas = lote?.edadSemanas ?? 0;
+    this.selectedLoteDias = lote?.edadDias ?? 0;
     this.selectedLoteFechaEncaset = lote?.fechaEncaset ?? null;
 
     // Registros (sessionStorage)
     const stored = sessionStorage.getItem('registros-produccion');
     const all: LoteProduccionDto[] = stored ? JSON.parse(stored) : [];
     this.registros = all.filter(r => (r.loteId as any) === this.selectedLoteId);
-    this.esPrimerRegistroProduccion = this.registros.length === 0 && this.selectedLoteSemanas >= 26;
+    this.esPrimerRegistroProduccion = this.registros.length === 0 && this.selectedLoteDias >= 182; // 26 semanas * 7 días = 182 días
 
     // NUEVO: cargar ficha y resumen
     this.loteSvc.getById(String(this.selectedLoteId)).subscribe({
@@ -275,10 +275,10 @@ export class LoteProduccionListComponent implements OnInit {
 
     const withAge: LoteView[] = filtered.map(l => ({
       ...l,
-      edadSemanas: this.calcularEdadSemanas(l.fechaEncaset)
+      edadDias: this.calcularEdadDias(l.fechaEncaset)
     }));
 
-    this.lotes = withAge.filter(l => l.edadSemanas >= 26);
+    this.lotes = withAge.filter(l => l.edadDias >= 182); // 26 semanas * 7 días = 182 días
   }
 
   // Catálogo de Galpones
@@ -410,6 +410,36 @@ export class LoteProduccionListComponent implements OnInit {
     return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0, 10);
   }
 
+  public calcularEdadDias(fechaEncaset?: string | Date | null): number {
+    if (!fechaEncaset) return 0;
+    const fecha = new Date(fechaEncaset);
+    if (isNaN(fecha.getTime())) return 0;
+    const hoy = new Date();
+    const msPorDia = 1000 * 60 * 60 * 24;
+    const dias = Math.floor((hoy.getTime() - fecha.getTime()) / msPorDia);
+    return Math.max(1, dias + 1);
+  }
+
+  public calcularEdadDiasDesde(
+    fechaEncaset?: string | Date | null,
+    fechaReferencia?: string | Date | null
+  ): number {
+    if (!fechaEncaset || !fechaReferencia) return 0;
+    const enc = new Date(fechaEncaset);
+    const ref = new Date(fechaReferencia);
+    if (isNaN(enc.getTime()) || isNaN(ref.getTime())) return 0;
+    const diff = ref.getTime() - enc.getTime();
+    if (diff < 0) return 0;
+    const MS_DAY = 24 * 60 * 60 * 1000;
+    return Math.max(1, Math.floor(diff / MS_DAY) + 1);
+  }
+
+  public edadDiasDe(r: LoteProduccionDto): number {
+    return this.calcularEdadDiasDesde(this.selectedLoteFechaEncaset, r?.fecha);
+  }
+
+  // ========== MÉTODOS LEGACY (SEMANAS) - MANTENER PARA COMPATIBILIDAD ==========
+  /** @deprecated Usar calcularEdadDias() en su lugar */
   public calcularEdadSemanas(fechaEncaset?: string | Date | null): number {
     if (!fechaEncaset) return 0;
     const fecha = new Date(fechaEncaset);
@@ -420,6 +450,7 @@ export class LoteProduccionListComponent implements OnInit {
     return Math.max(1, semanas + 1);
   }
 
+  /** @deprecated Usar calcularEdadDiasDesde() en su lugar */
   public calcularEdadSemanasDesde(
     fechaEncaset?: string | Date | null,
     fechaReferencia?: string | Date | null
@@ -434,6 +465,7 @@ export class LoteProduccionListComponent implements OnInit {
     return Math.max(1, Math.floor(diff / MS_WEEK) + 1);
   }
 
+  /** @deprecated Usar edadDiasDe() en su lugar */
   public edadSemanaDe(r: LoteProduccionDto): number {
     return this.calcularEdadSemanasDesde(this.selectedLoteFechaEncaset, r?.fecha);
   }

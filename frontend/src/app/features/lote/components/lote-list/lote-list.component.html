@@ -80,7 +80,7 @@
           <select id="l-sort-key" class="ux-select"
                   [ngModel]="sortKey"
                   (ngModelChange)="onSortKeyChange($event)">
-            <option [ngValue]="'edad'">Edad (semanas)</option>
+            <option [ngValue]="'edad'">Edad (días)</option>
             <option [ngValue]="'fecha'">Fecha de encaset</option>
           </select>
         </div>
@@ -129,7 +129,7 @@
               <td>{{ l.loteId }}</td>
               <td>{{ l.loteNombre }}</td>
               <td><span class="ux-badge">{{ calcularFase(l.fechaEncaset) }}</span></td>
-              <td>{{ l.fechaEncaset ? calcularEdadSemanas(l.fechaEncaset) : '—' }}</td>
+              <td>{{ l.fechaEncaset ? calcularEdadDias(l.fechaEncaset) : '—' }}</td>
 
               <td>{{ formatOrDash(vivasH(l)) }}</td>
               <td>{{ formatOrDash(vivasM(l)) }}</td>
@@ -235,10 +235,40 @@
               <input formControlName="loteErp" class="ux-input"/>
             </div>
 
+            <!-- Raza -->
+            <div>
+              <label class="ux-label">🧬 Raza <span class="req">*</span></label>
+              <select formControlName="raza" class="ux-input"
+                      [class.is-invalid]="form.get('raza')?.invalid && form.get('raza')?.touched">
+                <option value="" disabled selected>Seleccione raza…</option>
+                <option *ngFor="let raza of razasDisponibles" [value]="raza">{{ raza }}</option>
+              </select>
+              <small class="text-danger" *ngIf="form.get('raza')?.invalid && form.get('raza')?.touched">
+                La raza es requerida
+              </small>
+            </div>
+
             <!-- Línea genética -->
             <div>
-              <label class="ux-label">🐣 Línea genética</label>
-              <input formControlName="lineaGenetica" class="ux-input"/>
+              <label class="ux-label">🐣 Línea genética <span class="req">*</span></label>
+              <select formControlName="lineaGeneticaId" class="ux-input"
+                      [class.is-invalid]="form.get('lineaGeneticaId')?.invalid && form.get('lineaGeneticaId')?.touched"
+                      [disabled]="!selectedRaza || lineasGeneticas.length === 0">
+                <option value="" disabled selected>
+                  {{ !selectedRaza ? 'Primero seleccione una raza' : 
+                     lineasGeneticas.length === 0 ? 'Cargando líneas genéticas...' : 
+                     'Seleccione línea genética…' }}
+                </option>
+                <option *ngFor="let linea of lineasGeneticas" [value]="linea.id">
+                  {{ linea.descripcion }}
+                </option>
+              </select>
+              <small class="text-danger" *ngIf="form.get('lineaGeneticaId')?.invalid && form.get('lineaGeneticaId')?.touched">
+                La línea genética es requerida
+              </small>
+              <small class="text-muted" *ngIf="selectedRaza && lineasGeneticas.length === 0">
+                No se encontraron líneas genéticas para la raza {{ selectedRaza }}
+              </small>
             </div>
 
             <!-- ======= AVES: enteros con separador ======= -->
@@ -370,7 +400,7 @@
             <div><strong class="text-warm-gray-800">📍 Núcleo:</strong> {{ getNucleoName(selectedLote.nucleoId) }}</div>
             <div><strong class="text-warm-gray-800">📅 Fecha encaset:</strong> {{ selectedLote.fechaEncaset ? (selectedLote.fechaEncaset | date:'dd/MM/yyyy') : '—' }}</div>
             <div><strong class="text-warm-gray-800">📊 Fase:</strong> {{ calcularFase(selectedLote.fechaEncaset) }}</div>
-            <div><strong class="text-warm-gray-800">⏳ Edad:</strong> {{ calcularEdadSemanas(selectedLote.fechaEncaset) }} sem</div>
+            <div><strong class="text-warm-gray-800">⏳ Edad:</strong> {{ calcularEdadDias(selectedLote.fechaEncaset) }} días</div>
             <div><strong class="text-warm-gray-800">📄 Lote ERP:</strong> {{ selectedLote.loteErp || '—' }}</div>
             <div><strong class="text-warm-gray-800">🧬 Línea genética:</strong> {{ selectedLote.lineaGenetica || '—' }}</div>
             <div><strong class="text-warm-gray-800">🐔 Hembras L:</strong> {{ formatNumber(selectedLote.hembrasL || 0) }}</div>

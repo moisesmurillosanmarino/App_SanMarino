@@ -12,7 +12,8 @@ import {
 // Asegúrate de que en tu service estén estos tipos exactos:
 export interface ResultadoLevanteItemDto {
   fecha: string;
-  edadSemana: number | null;
+  edadDias: number | null;  // Cambiado de edadSemana a edadDias
+  edadSemana?: number | null; // @deprecated - mantener para compatibilidad
 
   hembraViva: number | null;
   mortH: number; selH: number; errH: number;

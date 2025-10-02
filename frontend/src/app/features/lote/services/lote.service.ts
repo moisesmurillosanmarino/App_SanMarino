@@ -43,6 +43,7 @@ export interface LoteDto {
   linea?: string;
   tipoLinea?: string;
   codigoGuiaGenetica?: string;
+  lineaGeneticaId?: number;
   tecnico?: string;
 
   mixtas?: number;

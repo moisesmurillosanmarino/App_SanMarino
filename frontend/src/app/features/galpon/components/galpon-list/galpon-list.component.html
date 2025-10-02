@@ -97,9 +97,9 @@
 
           <tbody>
             <tr *ngFor="let g of viewGalpones" class="ux-row">
-              <td>{{ g.company?.name }}</td>
-              <td>{{ g.farm?.name }}</td>
-              <td>{{ g.nucleo?.nucleoNombre }}</td>
+              <td>{{ g.company.name }}</td>
+              <td>{{ g.farm.name }}</td>
+              <td>{{ g.nucleo.nucleoNombre }}</td>
               <td>{{ g.galponNombre }}</td>
               <td>{{ g.ancho || '–' }}</td>
               <td>{{ g.largo || '–' }}</td>
@@ -199,11 +199,11 @@
 
           <!-- Meta: solo en edición -->
           <div *ngIf="editing" class="md:col-span-2 ux-meta">
-            <div class="ux-meta__item"><strong>Empresa:</strong> {{ editing?.company?.name }} ({{ editing?.company?.identifier }})</div>
-            <div class="ux-meta__item"><strong>Granja:</strong> {{ editing?.farm?.name }} (ID {{ editing?.farm?.id }})</div>
-            <div class="ux-meta__item"><strong>Núcleo:</strong> {{ editing?.nucleo?.nucleoNombre }} ({{ editing?.nucleo?.nucleoId }})</div>
-            <div class="ux-meta__item"><strong>Creado:</strong> {{ editing?.createdAt | date:'short' }}</div>
-            <div class="ux-meta__item"><strong>Actualizado:</strong> {{ editing?.updatedAt | date:'short' }}</div>
+            <div class="ux-meta__item"><strong>Empresa:</strong> {{ editing!.company.name }} ({{ editing!.company.identifier }})</div>
+            <div class="ux-meta__item"><strong>Granja:</strong> {{ editing!.farm.name }} (ID {{ editing!.farm.id }})</div>
+            <div class="ux-meta__item"><strong>Núcleo:</strong> {{ editing!.nucleo.nucleoNombre }} ({{ editing!.nucleo.nucleoId }})</div>
+            <div class="ux-meta__item"><strong>Creado:</strong> {{ editing!.createdAt | date:'short' }}</div>
+            <div class="ux-meta__item"><strong>Actualizado:</strong> {{ editing!.updatedAt | date:'short' }}</div>
           </div>
 
           <div class="md:col-span-2 ux-actions">

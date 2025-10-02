@@ -591,5 +591,32 @@
 .ux-tab-btn[aria-selected="true"] { font-weight:600; border-bottom:2px solid currentColor; }
 .ux-tab-btn:disabled { opacity:.5; cursor:not-allowed; }
 
+/* ==========================================================================
+   💰 Modal de Liquidación Técnica
+   ========================================================================== */
+.liquidacion-modal-content {
+  padding: 0;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* Ajustar el tamaño del modal para liquidación */
+:host .ux-modal__dialog--xxl {
+  width: min(1200px, 95vw);
+  max-height: 90vh;
+}
+
+/* Responsive para el modal de liquidación */
+@media (max-width: 768px) {
+  :host .ux-modal__dialog--xxl {
+    width: 95vw;
+    max-height: 95vh;
+  }
+  
+  .liquidacion-modal-content {
+    max-height: 75vh;
+  }
+}
+
 
 

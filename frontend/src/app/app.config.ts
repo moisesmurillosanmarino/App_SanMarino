@@ -58,6 +58,7 @@ export const appConfig: ApplicationConfig = {
             .then(m => m.DashboardComponent)
       },
 
+
       {
         path: 'daily-log',
         canActivate: [authGuard],
@@ -179,10 +180,25 @@ export const appConfig: ApplicationConfig = {
               .then(m => m.CatalogoAlimentosModule)
         },
 
-
+        // Módulo de DB Studio (lazy)
+         {
+          path: 'db-studio',
+          loadChildren: () =>
+            import('./features/db-studio/db-studio.module')
+              .then(m => m.DbStudioModule)
+        },
 
           { path: '', redirectTo: 'farms-list', pathMatch: 'full' }
         ]
+      },
+
+      // Módulo de Traslados de Aves (lazy)
+      {
+        path: 'traslados-aves',
+        canActivate: [authGuard],
+        loadChildren: () =>
+          import('./features/traslados-aves/traslados-aves.module')
+            .then(m => m.TrasladosAvesModule)
       },
 
       { path: '**', redirectTo: 'login' }

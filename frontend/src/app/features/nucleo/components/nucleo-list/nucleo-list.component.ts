@@ -1,3 +1,4 @@
+// app/features/nucleo/components/nucleo-list/nucleo-list.component.ts
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,

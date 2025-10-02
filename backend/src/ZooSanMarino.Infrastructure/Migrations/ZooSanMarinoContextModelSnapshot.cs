@@ -188,8 +188,9 @@ namespace ZooSanMarino.Infrastructure.Migrations
                     b.HasKey("DepartamentoId")
                         .HasName("pk_departamento");
 
-                    b.HasIndex("PaisId")
-                        .HasDatabaseName("ix_departamentos_pais_id");
+                    b.HasIndex("PaisId", "DepartamentoNombre")
+                        .IsUnique()
+                        .HasDatabaseName("ux_departamentos_pais_nombre");
 
                     b.ToTable("departamentos", (string)null);
                 });
@@ -233,14 +234,16 @@ namespace ZooSanMarino.Infrastructure.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
-                    b.Property<int>("RegionalId")
+                    b.Property<int?>("RegionalId")
                         .HasColumnType("integer")
                         .HasColumnName("regional_id");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(1)
+                        .HasColumnType("character varying(1)")
+                        .HasDefaultValue("A")
                         .HasColumnName("status");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -261,7 +264,8 @@ namespace ZooSanMarino.Infrastructure.Migrations
                         .HasDatabaseName("ix_farms_municipio_id");
 
                     b.HasIndex("CompanyId", "Name")
-                        .HasDatabaseName("ix_farms_company_name");
+                        .IsUnique()
+                        .HasDatabaseName("ux_farms_company_name");
 
                     b.ToTable("farms", (string)null);
                 });
@@ -504,6 +508,288 @@ namespace ZooSanMarino.Infrastructure.Migrations
                         .HasDatabaseName("ix_galpones_nucleo_id_granja_id");
 
                     b.ToTable("galpones", "public");
+                });
+
+            modelBuilder.Entity("ZooSanMarino.Domain.Entities.HistorialInventario", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CantidadHembrasAnterior")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("cantidad_hembras_anterior");
+
+                    b.Property<int>("CantidadHembrasNueva")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("cantidad_hembras_nueva");
+
+                    b.Property<int>("CantidadMachosAnterior")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("cantidad_machos_anterior");
+
+                    b.Property<int>("CantidadMachosNueva")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("cantidad_machos_nueva");
+
+                    b.Property<int>("CantidadMixtasAnterior")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("cantidad_mixtas_anterior");
+
+                    b.Property<int>("CantidadMixtasNueva")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("cantidad_mixtas_nueva");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("integer")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<DateTime>("FechaCambio")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_cambio");
+
+                    b.Property<string>("GalponId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("galpon_id");
+
+                    b.Property<int>("GranjaId")
+                        .HasColumnType("integer")
+                        .HasColumnName("granja_id");
+
+                    b.Property<int>("InventarioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("inventario_id");
+
+                    b.Property<string>("LoteId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("lote_id");
+
+                    b.Property<string>("Motivo")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("motivo");
+
+                    b.Property<int?>("MovimientoId")
+                        .HasColumnType("integer")
+                        .HasColumnName("movimiento_id");
+
+                    b.Property<string>("NucleoId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("nucleo_id");
+
+                    b.Property<string>("Observaciones")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("observaciones");
+
+                    b.Property<string>("TipoCambio")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("tipo_cambio");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int?>("UpdatedByUserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("updated_by_user_id");
+
+                    b.Property<int>("UsuarioCambioId")
+                        .HasColumnType("integer")
+                        .HasColumnName("usuario_cambio_id");
+
+                    b.Property<string>("UsuarioNombre")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("usuario_nombre");
+
+                    b.HasKey("Id")
+                        .HasName("pk_historial_inventario");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_historial_inventario_company_id");
+
+                    b.HasIndex("FechaCambio")
+                        .HasDatabaseName("ix_historial_inventario_fecha_cambio");
+
+                    b.HasIndex("GalponId")
+                        .HasDatabaseName("ix_historial_inventario_galpon_id");
+
+                    b.HasIndex("InventarioId")
+                        .HasDatabaseName("ix_historial_inventario_inventario_id");
+
+                    b.HasIndex("LoteId")
+                        .HasDatabaseName("ix_historial_inventario_lote_id");
+
+                    b.HasIndex("MovimientoId")
+                        .HasDatabaseName("ix_historial_inventario_movimiento_id");
+
+                    b.HasIndex("TipoCambio")
+                        .HasDatabaseName("ix_historial_inventario_tipo_cambio");
+
+                    b.HasIndex("UsuarioCambioId")
+                        .HasDatabaseName("ix_historial_inventario_usuario_cambio_id");
+
+                    b.HasIndex("NucleoId", "GranjaId")
+                        .HasDatabaseName("ix_historial_inventario_nucleo_id_granja_id");
+
+                    b.HasIndex("GranjaId", "NucleoId", "GalponId")
+                        .HasDatabaseName("ix_historial_inventario_ubicacion");
+
+                    b.ToTable("historial_inventario", (string)null);
+                });
+
+            modelBuilder.Entity("ZooSanMarino.Domain.Entities.InventarioAves", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CantidadHembras")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("cantidad_hembras");
+
+                    b.Property<int>("CantidadMachos")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("cantidad_machos");
+
+                    b.Property<int>("CantidadMixtas")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("cantidad_mixtas");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("integer")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Activo")
+                        .HasColumnName("estado");
+
+                    b.Property<DateTime>("FechaActualizacion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_actualizacion");
+
+                    b.Property<string>("GalponId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("galpon_id");
+
+                    b.Property<int>("GranjaId")
+                        .HasColumnType("integer")
+                        .HasColumnName("granja_id");
+
+                    b.Property<string>("LoteId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("lote_id");
+
+                    b.Property<string>("NucleoId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("nucleo_id");
+
+                    b.Property<string>("Observaciones")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("observaciones");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int?>("UpdatedByUserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("updated_by_user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_inventario_aves");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_inventario_aves_company_id");
+
+                    b.HasIndex("Estado")
+                        .HasDatabaseName("ix_inventario_aves_estado");
+
+                    b.HasIndex("FechaActualizacion")
+                        .HasDatabaseName("ix_inventario_aves_fecha_actualizacion");
+
+                    b.HasIndex("GalponId")
+                        .HasDatabaseName("ix_inventario_aves_galpon_id");
+
+                    b.HasIndex("LoteId")
+                        .HasDatabaseName("ix_inventario_aves_lote_id");
+
+                    b.HasIndex("NucleoId", "GranjaId")
+                        .HasDatabaseName("ix_inventario_aves_nucleo_id_granja_id");
+
+                    b.HasIndex("GranjaId", "NucleoId", "GalponId")
+                        .HasDatabaseName("ix_inventario_aves_ubicacion");
+
+                    b.HasIndex("LoteId", "GranjaId", "NucleoId", "GalponId", "CompanyId")
+                        .IsUnique()
+                        .HasDatabaseName("uq_inventario_aves_lote_ubicacion_company")
+                        .HasFilter("deleted_at IS NULL");
+
+                    b.ToTable("inventario_aves", (string)null);
                 });
 
             modelBuilder.Entity("ZooSanMarino.Domain.Entities.Login", b =>
@@ -1009,15 +1295,17 @@ namespace ZooSanMarino.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
                     b.Property<string>("Icon")
-                        .HasMaxLength(80)
-                        .HasColumnType("character varying(80)")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
                         .HasColumnName("icon");
 
                     b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
-                        .HasDefaultValue(true)
                         .HasColumnName("is_active");
 
                     b.Property<string>("Label")
@@ -1039,11 +1327,15 @@ namespace ZooSanMarino.Infrastructure.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("route");
 
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
                     b.HasKey("Id")
                         .HasName("pk_menus");
 
-                    b.HasIndex("ParentId")
-                        .HasDatabaseName("ix_menus_parent_id");
+                    b.HasIndex("ParentId", "Order")
+                        .HasDatabaseName("ix_menus_parent_id_order");
 
                     b.ToTable("menus", (string)null);
                 });
@@ -1065,6 +1357,225 @@ namespace ZooSanMarino.Infrastructure.Migrations
                         .HasDatabaseName("ix_menu_permissions_permission_id");
 
                     b.ToTable("menu_permissions", (string)null);
+                });
+
+            modelBuilder.Entity("ZooSanMarino.Domain.Entities.MovimientoAves", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CantidadHembras")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("cantidad_hembras");
+
+                    b.Property<int>("CantidadMachos")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("cantidad_machos");
+
+                    b.Property<int>("CantidadMixtas")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("cantidad_mixtas");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("integer")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Estado")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("Pendiente")
+                        .HasColumnName("estado");
+
+                    b.Property<DateTime?>("FechaCancelacion")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_cancelacion");
+
+                    b.Property<DateTime>("FechaMovimiento")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_movimiento");
+
+                    b.Property<DateTime?>("FechaProcesamiento")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha_procesamiento");
+
+                    b.Property<string>("GalponDestinoId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("galpon_destino_id");
+
+                    b.Property<string>("GalponOrigenId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("galpon_origen_id");
+
+                    b.Property<int?>("GranjaDestinoId")
+                        .HasColumnType("integer")
+                        .HasColumnName("granja_destino_id");
+
+                    b.Property<int?>("GranjaOrigenId")
+                        .HasColumnType("integer")
+                        .HasColumnName("granja_origen_id");
+
+                    b.Property<int?>("InventarioDestinoId")
+                        .HasColumnType("integer")
+                        .HasColumnName("inventario_destino_id");
+
+                    b.Property<int?>("InventarioOrigenId")
+                        .HasColumnType("integer")
+                        .HasColumnName("inventario_origen_id");
+
+                    b.Property<string>("LoteDestinoId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("lote_destino_id");
+
+                    b.Property<string>("LoteOrigenId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("lote_origen_id");
+
+                    b.Property<string>("MotivoMovimiento")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("motivo_movimiento");
+
+                    b.Property<int?>("NucleoDestinoGranjaId")
+                        .HasColumnType("integer")
+                        .HasColumnName("nucleo_destino_granja_id");
+
+                    b.Property<string>("NucleoDestinoId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("nucleo_destino_id");
+
+                    b.Property<string>("NucleoDestinoNucleoId")
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("nucleo_destino_nucleo_id");
+
+                    b.Property<int?>("NucleoOrigenGranjaId")
+                        .HasColumnType("integer")
+                        .HasColumnName("nucleo_origen_granja_id");
+
+                    b.Property<string>("NucleoOrigenId")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("nucleo_origen_id");
+
+                    b.Property<string>("NucleoOrigenNucleoId")
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("nucleo_origen_nucleo_id");
+
+                    b.Property<string>("NumeroMovimiento")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("numero_movimiento");
+
+                    b.Property<string>("Observaciones")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("observaciones");
+
+                    b.Property<string>("TipoMovimiento")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("tipo_movimiento");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int?>("UpdatedByUserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("updated_by_user_id");
+
+                    b.Property<int>("UsuarioMovimientoId")
+                        .HasColumnType("integer")
+                        .HasColumnName("usuario_movimiento_id");
+
+                    b.Property<string>("UsuarioNombre")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("usuario_nombre");
+
+                    b.HasKey("Id")
+                        .HasName("pk_movimiento_aves");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_movimiento_aves_company_id");
+
+                    b.HasIndex("Estado")
+                        .HasDatabaseName("ix_movimiento_aves_estado");
+
+                    b.HasIndex("FechaMovimiento")
+                        .HasDatabaseName("ix_movimiento_aves_fecha_movimiento");
+
+                    b.HasIndex("GalponDestinoId")
+                        .HasDatabaseName("ix_movimiento_aves_galpon_destino_id");
+
+                    b.HasIndex("GalponOrigenId")
+                        .HasDatabaseName("ix_movimiento_aves_galpon_origen_id");
+
+                    b.HasIndex("GranjaDestinoId")
+                        .HasDatabaseName("ix_movimiento_aves_granja_destino_id");
+
+                    b.HasIndex("InventarioDestinoId")
+                        .HasDatabaseName("ix_movimiento_aves_inventario_destino_id");
+
+                    b.HasIndex("InventarioOrigenId")
+                        .HasDatabaseName("ix_movimiento_aves_inventario_origen_id");
+
+                    b.HasIndex("LoteDestinoId")
+                        .HasDatabaseName("ix_movimiento_aves_lote_destino_id");
+
+                    b.HasIndex("LoteOrigenId")
+                        .HasDatabaseName("ix_movimiento_aves_lote_origen_id");
+
+                    b.HasIndex("NumeroMovimiento")
+                        .IsUnique()
+                        .HasDatabaseName("uq_movimiento_aves_numero_movimiento");
+
+                    b.HasIndex("TipoMovimiento")
+                        .HasDatabaseName("ix_movimiento_aves_tipo_movimiento");
+
+                    b.HasIndex("UsuarioMovimientoId")
+                        .HasDatabaseName("ix_movimiento_aves_usuario_movimiento_id");
+
+                    b.HasIndex("GranjaOrigenId", "GranjaDestinoId")
+                        .HasDatabaseName("ix_movimiento_aves_granjas");
+
+                    b.HasIndex("NucleoDestinoNucleoId", "NucleoDestinoGranjaId")
+                        .HasDatabaseName("ix_movimiento_aves_nucleo_destino_nucleo_id_nucleo_destino_gra");
+
+                    b.HasIndex("NucleoOrigenNucleoId", "NucleoOrigenGranjaId")
+                        .HasDatabaseName("ix_movimiento_aves_nucleo_origen_nucleo_id_nucleo_origen_granj");
+
+                    b.ToTable("movimiento_aves", (string)null);
                 });
 
             modelBuilder.Entity("ZooSanMarino.Domain.Entities.Municipio", b =>
@@ -1257,6 +1768,221 @@ namespace ZooSanMarino.Infrastructure.Migrations
                     b.ToTable("plan_gramaje_galpon", (string)null);
                 });
 
+            modelBuilder.Entity("ZooSanMarino.Domain.Entities.ProduccionAvicolaRaw", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AnioGuia")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("anio_guia");
+
+                    b.Property<string>("Apareo")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("apareo");
+
+                    b.Property<string>("AprovAc")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("aprov_ac");
+
+                    b.Property<string>("AprovSem")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("aprov_sem");
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("integer")
+                        .HasColumnName("company_id");
+
+                    b.Property<string>("ConsAcH")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("cons_ac_h");
+
+                    b.Property<string>("ConsAcM")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("cons_ac_m");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Edad")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("edad");
+
+                    b.Property<string>("GrAveDiaH")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("gr_ave_dia_h");
+
+                    b.Property<string>("GrAveDiaM")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("gr_ave_dia_m");
+
+                    b.Property<string>("GrHuevoInc")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("gr_huevo_inc");
+
+                    b.Property<string>("GrHuevoT")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("gr_huevo_t");
+
+                    b.Property<string>("GrPollito")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("gr_pollito");
+
+                    b.Property<string>("GrasaPorcentaje")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("grasa_porcentaje");
+
+                    b.Property<string>("HIncAa")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("h_inc_aa");
+
+                    b.Property<string>("HTotalAa")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("h_total_aa");
+
+                    b.Property<string>("KcalAveDiaH")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("kcal_ave_dia_h");
+
+                    b.Property<string>("KcalAveDiaM")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("kcal_ave_dia_m");
+
+                    b.Property<string>("MasaHuevo")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("masa_huevo");
+
+                    b.Property<string>("MortSemH")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("mort_sem_h");
+
+                    b.Property<string>("MortSemM")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("mort_sem_m");
+
+                    b.Property<string>("NacimPorcentaje")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("nacim_porcentaje");
+
+                    b.Property<string>("PesoH")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("peso_h");
+
+                    b.Property<string>("PesoHuevo")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("peso_huevo");
+
+                    b.Property<string>("PesoM")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("peso_m");
+
+                    b.Property<string>("PesoMh")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("peso_mh");
+
+                    b.Property<string>("PollitoAa")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("pollito_aa");
+
+                    b.Property<string>("ProdPorcentaje")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("prod_porcentaje");
+
+                    b.Property<string>("Raza")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("raza");
+
+                    b.Property<string>("RetiroAcH")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("retiro_ac_h");
+
+                    b.Property<string>("RetiroAcM")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("retiro_ac_m");
+
+                    b.Property<string>("Uniformidad")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("uniformidad");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int?>("UpdatedByUserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("updated_by_user_id");
+
+                    b.Property<string>("Valor1000")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("valor_1000");
+
+                    b.Property<string>("Valor150")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("valor_150");
+
+                    b.HasKey("Id")
+                        .HasName("pk_produccion_avicola_raw");
+
+                    b.HasIndex("AnioGuia")
+                        .HasDatabaseName("ix_produccion_avicola_raw_anio_guia");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("ix_produccion_avicola_raw_company_id");
+
+                    b.HasIndex("Raza")
+                        .HasDatabaseName("ix_produccion_avicola_raw_raza");
+
+                    b.ToTable("produccion_avicola_raw", (string)null);
+                });
+
             modelBuilder.Entity("ZooSanMarino.Domain.Entities.ProduccionDiaria", b =>
                 {
                     b.Property<int>("Id")
@@ -1432,6 +2158,252 @@ namespace ZooSanMarino.Infrastructure.Migrations
                     b.ToTable("produccion_lotes", (string)null);
                 });
 
+            modelBuilder.Entity("ZooSanMarino.Domain.Entities.ProduccionResultadoLevante", b =>
+                {
+                    b.Property<double?>("AcConsKgH")
+                        .HasColumnType("double precision")
+                        .HasColumnName("ac_cons_kg_h");
+
+                    b.Property<double?>("AcConsKgM")
+                        .HasColumnType("double precision")
+                        .HasColumnName("ac_cons_kg_m");
+
+                    b.Property<int>("AcErrH")
+                        .HasColumnType("integer")
+                        .HasColumnName("ac_err_h");
+
+                    b.Property<int>("AcErrM")
+                        .HasColumnType("integer")
+                        .HasColumnName("ac_err_m");
+
+                    b.Property<int>("AcMortH")
+                        .HasColumnType("integer")
+                        .HasColumnName("ac_mort_h");
+
+                    b.Property<int>("AcMortM")
+                        .HasColumnType("integer")
+                        .HasColumnName("ac_mort_m");
+
+                    b.Property<int>("AcSelH")
+                        .HasColumnType("integer")
+                        .HasColumnName("ac_sel_h");
+
+                    b.Property<int>("AcSelM")
+                        .HasColumnType("integer")
+                        .HasColumnName("ac_sel_m");
+
+                    b.Property<string>("AlimentoHGuia")
+                        .HasColumnType("text")
+                        .HasColumnName("alimento_h_guia");
+
+                    b.Property<string>("AlimentoMGuia")
+                        .HasColumnType("text")
+                        .HasColumnName("alimento_m_guia");
+
+                    b.Property<double?>("ConsAcGrH")
+                        .HasColumnType("double precision")
+                        .HasColumnName("cons_ac_gr_h");
+
+                    b.Property<double?>("ConsAcGrHGuia")
+                        .HasColumnType("double precision")
+                        .HasColumnName("cons_ac_gr_h_guia");
+
+                    b.Property<double?>("ConsAcGrM")
+                        .HasColumnType("double precision")
+                        .HasColumnName("cons_ac_gr_m");
+
+                    b.Property<double?>("ConsAcGrMGuia")
+                        .HasColumnType("double precision")
+                        .HasColumnName("cons_ac_gr_m_guia");
+
+                    b.Property<double?>("ConsKgH")
+                        .HasColumnType("double precision")
+                        .HasColumnName("cons_kg_h");
+
+                    b.Property<double?>("ConsKgM")
+                        .HasColumnType("double precision")
+                        .HasColumnName("cons_kg_m");
+
+                    b.Property<double?>("CvH")
+                        .HasColumnType("double precision")
+                        .HasColumnName("cv_h");
+
+                    b.Property<double?>("CvM")
+                        .HasColumnType("double precision")
+                        .HasColumnName("cv_m");
+
+                    b.Property<double?>("DifConsHPct")
+                        .HasColumnType("double precision")
+                        .HasColumnName("dif_cons_h_pct");
+
+                    b.Property<double?>("DifConsMPct")
+                        .HasColumnType("double precision")
+                        .HasColumnName("dif_cons_m_pct");
+
+                    b.Property<double?>("DifPesoHPct")
+                        .HasColumnType("double precision")
+                        .HasColumnName("dif_peso_h_pct");
+
+                    b.Property<double?>("DifPesoMPct")
+                        .HasColumnType("double precision")
+                        .HasColumnName("dif_peso_m_pct");
+
+                    b.Property<int?>("EdadSemana")
+                        .HasColumnType("integer")
+                        .HasColumnName("edad_semana");
+
+                    b.Property<int>("ErrH")
+                        .HasColumnType("integer")
+                        .HasColumnName("err_h");
+
+                    b.Property<double?>("ErrHPct")
+                        .HasColumnType("double precision")
+                        .HasColumnName("err_h_pct");
+
+                    b.Property<int>("ErrM")
+                        .HasColumnType("integer")
+                        .HasColumnName("err_m");
+
+                    b.Property<double?>("ErrMPct")
+                        .HasColumnType("double precision")
+                        .HasColumnName("err_m_pct");
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha");
+
+                    b.Property<double?>("GrAveDiaH")
+                        .HasColumnType("double precision")
+                        .HasColumnName("gr_ave_dia_h");
+
+                    b.Property<double?>("GrAveDiaHGuia")
+                        .HasColumnType("double precision")
+                        .HasColumnName("gr_ave_dia_h_guia");
+
+                    b.Property<double?>("GrAveDiaM")
+                        .HasColumnType("double precision")
+                        .HasColumnName("gr_ave_dia_m");
+
+                    b.Property<double?>("GrAveDiaMGuia")
+                        .HasColumnType("double precision")
+                        .HasColumnName("gr_ave_dia_m_guia");
+
+                    b.Property<int?>("HembraViva")
+                        .HasColumnType("integer")
+                        .HasColumnName("hembra_viva");
+
+                    b.Property<string>("LoteId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("lote_id");
+
+                    b.Property<int?>("MachoVivo")
+                        .HasColumnType("integer")
+                        .HasColumnName("macho_vivo");
+
+                    b.Property<int>("MortH")
+                        .HasColumnType("integer")
+                        .HasColumnName("mort_h");
+
+                    b.Property<double?>("MortHPct")
+                        .HasColumnType("double precision")
+                        .HasColumnName("mort_h_pct");
+
+                    b.Property<double?>("MortHPctGuia")
+                        .HasColumnType("double precision")
+                        .HasColumnName("mort_h_pct_guia");
+
+                    b.Property<int>("MortM")
+                        .HasColumnType("integer")
+                        .HasColumnName("mort_m");
+
+                    b.Property<double?>("MortMPct")
+                        .HasColumnType("double precision")
+                        .HasColumnName("mort_m_pct");
+
+                    b.Property<double?>("MortMPctGuia")
+                        .HasColumnType("double precision")
+                        .HasColumnName("mort_m_pct_guia");
+
+                    b.Property<int>("MsEhH")
+                        .HasColumnType("integer")
+                        .HasColumnName("ms_eh_h");
+
+                    b.Property<int>("MsEmM")
+                        .HasColumnType("integer")
+                        .HasColumnName("ms_em_m");
+
+                    b.Property<double?>("PesoH")
+                        .HasColumnType("double precision")
+                        .HasColumnName("peso_h");
+
+                    b.Property<double?>("PesoHGuia")
+                        .HasColumnType("double precision")
+                        .HasColumnName("peso_h_guia");
+
+                    b.Property<double?>("PesoM")
+                        .HasColumnType("double precision")
+                        .HasColumnName("peso_m");
+
+                    b.Property<double?>("PesoMGuia")
+                        .HasColumnType("double precision")
+                        .HasColumnName("peso_m_guia");
+
+                    b.Property<double?>("RelMHPct")
+                        .HasColumnType("double precision")
+                        .HasColumnName("rel_m_h_pct");
+
+                    b.Property<double?>("RetiroHAcPct")
+                        .HasColumnType("double precision")
+                        .HasColumnName("retiro_h_ac_pct");
+
+                    b.Property<double?>("RetiroHPct")
+                        .HasColumnType("double precision")
+                        .HasColumnName("retiro_h_pct");
+
+                    b.Property<double?>("RetiroMAcPct")
+                        .HasColumnType("double precision")
+                        .HasColumnName("retiro_m_ac_pct");
+
+                    b.Property<double?>("RetiroMPct")
+                        .HasColumnType("double precision")
+                        .HasColumnName("retiro_m_pct");
+
+                    b.Property<int>("SelHOut")
+                        .HasColumnType("integer")
+                        .HasColumnName("sel_h_out");
+
+                    b.Property<double?>("SelHPct")
+                        .HasColumnType("double precision")
+                        .HasColumnName("sel_h_pct");
+
+                    b.Property<int>("SelMOut")
+                        .HasColumnType("integer")
+                        .HasColumnName("sel_m_out");
+
+                    b.Property<double?>("SelMPct")
+                        .HasColumnType("double precision")
+                        .HasColumnName("sel_m_pct");
+
+                    b.Property<double?>("UnifH")
+                        .HasColumnType("double precision")
+                        .HasColumnName("unif_h");
+
+                    b.Property<double?>("UnifHGuia")
+                        .HasColumnType("double precision")
+                        .HasColumnName("unif_h_guia");
+
+                    b.Property<double?>("UnifM")
+                        .HasColumnType("double precision")
+                        .HasColumnName("unif_m");
+
+                    b.Property<double?>("UnifMGuia")
+                        .HasColumnType("double precision")
+                        .HasColumnName("unif_m_guia");
+
+                    b.ToTable("produccion_resultado_levante", (string)null);
+                });
+
             modelBuilder.Entity("ZooSanMarino.Domain.Entities.Regional", b =>
                 {
                     b.Property<int>("RegionalCia")
@@ -1513,6 +2485,25 @@ namespace ZooSanMarino.Infrastructure.Migrations
                         .HasDatabaseName("ix_role_companies_company_id");
 
                     b.ToTable("role_companies", (string)null);
+                });
+
+            modelBuilder.Entity("ZooSanMarino.Domain.Entities.RoleMenu", b =>
+                {
+                    b.Property<int>("RoleId")
+                        .HasColumnType("integer")
+                        .HasColumnName("role_id");
+
+                    b.Property<int>("MenuId")
+                        .HasColumnType("integer")
+                        .HasColumnName("menu_id");
+
+                    b.HasKey("RoleId", "MenuId")
+                        .HasName("pk_role_menus");
+
+                    b.HasIndex("MenuId")
+                        .HasDatabaseName("ix_role_menus_menu_id");
+
+                    b.ToTable("role_menus", (string)null);
                 });
 
             modelBuilder.Entity("ZooSanMarino.Domain.Entities.RolePermission", b =>
@@ -1865,7 +2856,7 @@ namespace ZooSanMarino.Infrastructure.Migrations
                     b.HasOne("ZooSanMarino.Domain.Entities.Pais", "Pais")
                         .WithMany("Departamentos")
                         .HasForeignKey("PaisId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_departamentos_paises_pais_id");
 
@@ -1964,6 +2955,97 @@ namespace ZooSanMarino.Infrastructure.Migrations
                     b.Navigation("Company");
 
                     b.Navigation("Farm");
+
+                    b.Navigation("Nucleo");
+                });
+
+            modelBuilder.Entity("ZooSanMarino.Domain.Entities.HistorialInventario", b =>
+                {
+                    b.HasOne("ZooSanMarino.Domain.Entities.Galpon", "Galpon")
+                        .WithMany()
+                        .HasForeignKey("GalponId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_historial_inventario_galpon_id");
+
+                    b.HasOne("ZooSanMarino.Domain.Entities.Farm", "Granja")
+                        .WithMany()
+                        .HasForeignKey("GranjaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_historial_inventario_granja_id");
+
+                    b.HasOne("ZooSanMarino.Domain.Entities.InventarioAves", "Inventario")
+                        .WithMany()
+                        .HasForeignKey("InventarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_historial_inventario_inventario_id");
+
+                    b.HasOne("ZooSanMarino.Domain.Entities.Lote", "Lote")
+                        .WithMany()
+                        .HasForeignKey("LoteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_historial_inventario_lote_id");
+
+                    b.HasOne("ZooSanMarino.Domain.Entities.MovimientoAves", "Movimiento")
+                        .WithMany()
+                        .HasForeignKey("MovimientoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_historial_inventario_movimiento_id");
+
+                    b.HasOne("ZooSanMarino.Domain.Entities.Nucleo", "Nucleo")
+                        .WithMany()
+                        .HasForeignKey("NucleoId", "GranjaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_historial_inventario_nucleo_id_granja_id");
+
+                    b.Navigation("Galpon");
+
+                    b.Navigation("Granja");
+
+                    b.Navigation("Inventario");
+
+                    b.Navigation("Lote");
+
+                    b.Navigation("Movimiento");
+
+                    b.Navigation("Nucleo");
+                });
+
+            modelBuilder.Entity("ZooSanMarino.Domain.Entities.InventarioAves", b =>
+                {
+                    b.HasOne("ZooSanMarino.Domain.Entities.Galpon", "Galpon")
+                        .WithMany()
+                        .HasForeignKey("GalponId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_inventario_aves_galpones_galpon_id");
+
+                    b.HasOne("ZooSanMarino.Domain.Entities.Farm", "Granja")
+                        .WithMany()
+                        .HasForeignKey("GranjaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_inventario_aves_farms_granja_id");
+
+                    b.HasOne("ZooSanMarino.Domain.Entities.Lote", "Lote")
+                        .WithMany()
+                        .HasForeignKey("LoteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_inventario_aves_lotes_lote_id");
+
+                    b.HasOne("ZooSanMarino.Domain.Entities.Nucleo", "Nucleo")
+                        .WithMany()
+                        .HasForeignKey("NucleoId", "GranjaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_inventario_aves_nucleos_nucleo_id_granja_id");
+
+                    b.Navigation("Galpon");
+
+                    b.Navigation("Granja");
+
+                    b.Navigation("Lote");
 
                     b.Navigation("Nucleo");
                 });
@@ -2094,6 +3176,85 @@ namespace ZooSanMarino.Infrastructure.Migrations
                     b.Navigation("Permission");
                 });
 
+            modelBuilder.Entity("ZooSanMarino.Domain.Entities.MovimientoAves", b =>
+                {
+                    b.HasOne("ZooSanMarino.Domain.Entities.Galpon", "GalponDestino")
+                        .WithMany()
+                        .HasForeignKey("GalponDestinoId")
+                        .HasConstraintName("fk_movimiento_aves_galpones_galpon_destino_id");
+
+                    b.HasOne("ZooSanMarino.Domain.Entities.Galpon", "GalponOrigen")
+                        .WithMany()
+                        .HasForeignKey("GalponOrigenId")
+                        .HasConstraintName("fk_movimiento_aves_galpones_galpon_origen_id");
+
+                    b.HasOne("ZooSanMarino.Domain.Entities.Farm", "GranjaDestino")
+                        .WithMany()
+                        .HasForeignKey("GranjaDestinoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_movimiento_aves_granja_destino_id");
+
+                    b.HasOne("ZooSanMarino.Domain.Entities.Farm", "GranjaOrigen")
+                        .WithMany()
+                        .HasForeignKey("GranjaOrigenId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_movimiento_aves_granja_origen_id");
+
+                    b.HasOne("ZooSanMarino.Domain.Entities.InventarioAves", "InventarioDestino")
+                        .WithMany("MovimientosDestino")
+                        .HasForeignKey("InventarioDestinoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_movimiento_aves_inventario_destino_id");
+
+                    b.HasOne("ZooSanMarino.Domain.Entities.InventarioAves", "InventarioOrigen")
+                        .WithMany("MovimientosOrigen")
+                        .HasForeignKey("InventarioOrigenId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_movimiento_aves_inventario_origen_id");
+
+                    b.HasOne("ZooSanMarino.Domain.Entities.Lote", "LoteDestino")
+                        .WithMany()
+                        .HasForeignKey("LoteDestinoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_movimiento_aves_lote_destino_id");
+
+                    b.HasOne("ZooSanMarino.Domain.Entities.Lote", "LoteOrigen")
+                        .WithMany()
+                        .HasForeignKey("LoteOrigenId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_movimiento_aves_lote_origen_id");
+
+                    b.HasOne("ZooSanMarino.Domain.Entities.Nucleo", "NucleoDestino")
+                        .WithMany()
+                        .HasForeignKey("NucleoDestinoNucleoId", "NucleoDestinoGranjaId")
+                        .HasConstraintName("fk_movimiento_aves_nucleos_nucleo_destino_nucleo_id_nucleo_des");
+
+                    b.HasOne("ZooSanMarino.Domain.Entities.Nucleo", "NucleoOrigen")
+                        .WithMany()
+                        .HasForeignKey("NucleoOrigenNucleoId", "NucleoOrigenGranjaId")
+                        .HasConstraintName("fk_movimiento_aves_nucleos_nucleo_origen_nucleo_id_nucleo_orig");
+
+                    b.Navigation("GalponDestino");
+
+                    b.Navigation("GalponOrigen");
+
+                    b.Navigation("GranjaDestino");
+
+                    b.Navigation("GranjaOrigen");
+
+                    b.Navigation("InventarioDestino");
+
+                    b.Navigation("InventarioOrigen");
+
+                    b.Navigation("LoteDestino");
+
+                    b.Navigation("LoteOrigen");
+
+                    b.Navigation("NucleoDestino");
+
+                    b.Navigation("NucleoOrigen");
+                });
+
             modelBuilder.Entity("ZooSanMarino.Domain.Entities.Municipio", b =>
                 {
                     b.HasOne("ZooSanMarino.Domain.Entities.Departamento", "Departamento")
@@ -2201,6 +3362,27 @@ namespace ZooSanMarino.Infrastructure.Migrations
                         .HasConstraintName("fk_role_companies_roles_role_id");
 
                     b.Navigation("Company");
+
+                    b.Navigation("Role");
+                });
+
+            modelBuilder.Entity("ZooSanMarino.Domain.Entities.RoleMenu", b =>
+                {
+                    b.HasOne("ZooSanMarino.Domain.Entities.Menu", "Menu")
+                        .WithMany("RoleMenus")
+                        .HasForeignKey("MenuId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_role_menus_menus_menu_id");
+
+                    b.HasOne("ZooSanMarino.Domain.Entities.Role", "Role")
+                        .WithMany("RoleMenus")
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_role_menus_roles_role_id");
+
+                    b.Navigation("Menu");
 
                     b.Navigation("Role");
                 });
@@ -2349,6 +3531,13 @@ namespace ZooSanMarino.Infrastructure.Migrations
                     b.Navigation("Nucleos");
                 });
 
+            modelBuilder.Entity("ZooSanMarino.Domain.Entities.InventarioAves", b =>
+                {
+                    b.Navigation("MovimientosDestino");
+
+                    b.Navigation("MovimientosOrigen");
+                });
+
             modelBuilder.Entity("ZooSanMarino.Domain.Entities.Login", b =>
                 {
                     b.Navigation("UserLogins");
@@ -2376,6 +3565,8 @@ namespace ZooSanMarino.Infrastructure.Migrations
                     b.Navigation("Children");
 
                     b.Navigation("MenuPermissions");
+
+                    b.Navigation("RoleMenus");
                 });
 
             modelBuilder.Entity("ZooSanMarino.Domain.Entities.Nucleo", b =>
@@ -2400,6 +3591,8 @@ namespace ZooSanMarino.Infrastructure.Migrations
             modelBuilder.Entity("ZooSanMarino.Domain.Entities.Role", b =>
                 {
                     b.Navigation("RoleCompanies");
+
+                    b.Navigation("RoleMenus");
 
                     b.Navigation("RolePermissions");
 

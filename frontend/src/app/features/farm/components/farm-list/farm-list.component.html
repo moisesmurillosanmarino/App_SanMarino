@@ -82,7 +82,7 @@
           <tbody>
             <tr *ngFor="let g of viewFarms; trackBy: trackByFarm">
               <td>{{ g.id }}</td>
-              <td>{{ companyName(g.companyId ?? null) }}</td>
+              <td>{{ companyName(g.companyId) }}</td>
               <td class="uppercase">{{ g.name }}</td>
               <td>{{ g.regional || '' }}</td>
               <td>{{ g.status }}</td>
