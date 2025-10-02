@@ -1,27 +1,6 @@
 version: "3.9"
 
 services:
-  postgres:
-    image: postgres:16
-    container_name: sanmarino-postgres
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 123456789
-      POSTGRES_DB: sanmarinoapp
-    ports:
-      - "5433:5432"          # Host:Contenedor
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d sanmarinoapp || exit 1"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-      start_period: 5s
-    networks:
-      - app-network
-    restart: unless-stopped
-
   backend:
     build:
       context: .
@@ -35,9 +14,7 @@ services:
       ASPNETCORE_ENVIRONMENT: "Production"
       ASPNETCORE_URLS: "http://+:5002"
       PORT: "5002"
-    depends_on:
-      postgres:
-        condition: service_healthy
+    # Sin dependencias de base de datos local (usando conexión remota)
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:5002/health || exit 1"]
       interval: 10s
@@ -47,9 +24,6 @@ services:
     networks:
       - app-network
     restart: unless-stopped
-
-volumes:
-  pgdata:
 
 networks:
   app-network:
