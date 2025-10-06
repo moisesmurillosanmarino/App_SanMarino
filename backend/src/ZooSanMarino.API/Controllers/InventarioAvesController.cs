@@ -92,11 +92,11 @@ public class InventarioAvesController : ControllerBase
     /// </summary>
     [HttpGet("lote/{loteId}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<InventarioAvesDto>))]
-    public async Task<IActionResult> GetByLote(string loteId)
+    public async Task<IActionResult> GetByLote(int loteId)  // Changed from string to int
     {
         try
         {
-            var inventarios = await _inventarioService.GetByLoteIdAsync(loteId);
+            var inventarios = await _inventarioService.GetByLoteIdAsync(loteId);  // Changed from loteId
             return Ok(inventarios);
         }
         catch (Exception ex)
@@ -112,11 +112,11 @@ public class InventarioAvesController : ControllerBase
     [HttpGet("lote/{loteId}/estado")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(EstadoLoteDto))]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetEstadoLote(string loteId)
+    public async Task<IActionResult> GetEstadoLote(int loteId)  // Changed from string to int
     {
         try
         {
-            var estado = await _inventarioService.GetEstadoLoteAsync(loteId);
+            var estado = await _inventarioService.GetEstadoLoteAsync(loteId);  // Changed from loteId
             return Ok(estado);
         }
         catch (InvalidOperationException ex)
@@ -318,11 +318,11 @@ public class InventarioAvesController : ControllerBase
     [HttpPost("inicializar/{loteId}")]
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(InventarioAvesDto))]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> InicializarDesdeLotel(string loteId)
+    public async Task<IActionResult> InicializarDesdeLotel(int loteId)  // Changed from string to int
     {
         try
         {
-            var inventario = await _inventarioService.InicializarDesdeLotelAsync(loteId);
+            var inventario = await _inventarioService.InicializarDesdeLotelAsync(loteId);  // Changed from loteId
             return CreatedAtAction(nameof(GetById), new { id = inventario.Id }, inventario);
         }
         catch (InvalidOperationException ex)

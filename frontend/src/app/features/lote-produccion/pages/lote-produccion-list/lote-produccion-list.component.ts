@@ -54,7 +54,7 @@ export class LoteProduccionListComponent implements OnInit {
   selectedNucleoId: string | null = null;
   selectedGalponId: string | null = null;
 
-  selectedLoteId: number | string | null = null;
+  selectedLoteId: number | null = null;  // Changed from number | string | null to number | null
   selectedLoteNombre = '';
   selectedLoteDias = 0;
   selectedLoteFechaEncaset: string | Date | null = null;
@@ -216,12 +216,12 @@ export class LoteProduccionListComponent implements OnInit {
     this.esPrimerRegistroProduccion = this.registros.length === 0 && this.selectedLoteDias >= 182; // 26 semanas * 7 días = 182 días
 
     // NUEVO: cargar ficha y resumen
-    this.loteSvc.getById(String(this.selectedLoteId)).subscribe({
+    this.loteSvc.getById(this.selectedLoteId).subscribe({  // Removed String() conversion
       next: l => (this.selectedLote = l),
       error: () => (this.selectedLote = undefined)
     });
 
-    this.loteSvc.getResumenMortalidad(String(this.selectedLoteId)).subscribe({
+    this.loteSvc.getResumenMortalidad(this.selectedLoteId).subscribe({  // Removed String() conversion
       next: r => (this.resumenSelected = r),
       error: () => (this.resumenSelected = null)
     });

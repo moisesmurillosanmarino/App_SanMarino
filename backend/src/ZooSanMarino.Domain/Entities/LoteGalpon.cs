@@ -3,7 +3,7 @@ namespace ZooSanMarino.Domain.Entities;
 public class LoteGalpon
 {
 // PK compuesta (LoteId, ReproductoraId, GalponId)
-public string LoteId { get; set; } = null!; // FK → LoteReproductora.LoteId
+public int LoteId { get; set; } // FK → LoteReproductora.LoteId
 public string ReproductoraId { get; set; } = null!; // FK → LoteReproductora.ReproductoraId
 public string GalponId { get; set; } = null!; // FK → Galpon.GalponId
 

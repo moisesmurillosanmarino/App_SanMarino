@@ -28,7 +28,7 @@ public record ResultadoLevanteItemDto(
 );
 
 public record ResultadoLevanteResponse(
-    string  LoteId,
+    int     LoteId,
     DateTime? Desde,
     DateTime? Hasta,
     int     Total,

@@ -5,7 +5,7 @@ using NucleoLiteDto = ZooSanMarino.Application.DTOs.Shared.NucleoLiteDto;
 using GalponLiteDto = ZooSanMarino.Application.DTOs.Shared.GalponLiteDto;
 
 public sealed record LoteDetailDto(
-    string    LoteId,
+    int       LoteId,  // Cambiado a int para secuencia numérica
     string    LoteNombre,
     int       GranjaId,
     string?   NucleoId,
@@ -25,6 +25,7 @@ public sealed record LoteDetailDto(
     string?   Linea,
     string?   TipoLinea,
     string?   CodigoGuiaGenetica,
+    int?      LineaGeneticaId,  // ← NUEVO: ID de la línea genética
     string?   Tecnico,
     int?      Mixtas,
     double?   PesoMixto,

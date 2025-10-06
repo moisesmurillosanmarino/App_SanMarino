@@ -3,7 +3,7 @@ namespace ZooSanMarino.Application.DTOs;
 
 public class CreateLoteDto
 {
-    public string LoteId { get; set; } = null!;
+    public int? LoteId { get; set; } // Opcional - auto-incremento numérico
     public string LoteNombre { get; set; } = null!;
     public int    GranjaId { get; set; }
     public string? NucleoId { get; set; }      // ← string?
@@ -24,6 +24,7 @@ public class CreateLoteDto
     public string? Linea { get; set; }
     public string? TipoLinea { get; set; }
     public string? CodigoGuiaGenetica { get; set; }
+    public int?    LineaGeneticaId { get; set; }  // ← NUEVO: ID de la línea genética
     public string? Tecnico { get; set; }
     public int?    Mixtas { get; set; }
     public int?    AvesEncasetadas { get; set; }

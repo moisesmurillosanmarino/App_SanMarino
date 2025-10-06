@@ -3,7 +3,7 @@ namespace ZooSanMarino.Domain.Entities;
 
 public class ProduccionResultadoLevante
 {
-    public string  LoteId { get; set; } = null!;
+    public int LoteId { get; set; }
     public DateTime Fecha { get; set; }
     public int?    EdadSemana { get; set; }
 

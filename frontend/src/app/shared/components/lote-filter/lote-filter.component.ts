@@ -275,7 +275,7 @@ export class LoteFilterComponent implements OnInit {
   }
 
   onLoteSelect(loteId: string | null): void {
-    const lote = loteId ? this.lotes().find(l => l.loteId === loteId) || null : null;
+    const lote = loteId ? this.lotes().find(l => l.loteId === Number(loteId)) || null : null;  // Convert string to number for comparison
     const currentFilters = this.filters();
     const newFilters: LoteFilterCriteria = {
       ...currentFilters,

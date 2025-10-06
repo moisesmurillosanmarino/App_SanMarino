@@ -21,7 +21,6 @@ public class InventarioAvesConfiguration : IEntityTypeConfiguration<InventarioAv
         // Propiedades básicas
         builder.Property(x => x.LoteId)
             .HasColumnName("lote_id")
-            .HasMaxLength(50)
             .IsRequired();
 
         builder.Property(x => x.GranjaId)

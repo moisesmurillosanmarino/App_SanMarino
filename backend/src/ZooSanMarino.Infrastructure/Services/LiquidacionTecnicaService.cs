@@ -35,7 +35,7 @@ public class LiquidacionTecnicaService : ILiquidacionTecnicaService
         var diferencias = CalcularDiferenciasConGuia(metricas, datosGuia);
         
         return new LiquidacionTecnicaDto(
-            lote.LoteId,
+            lote.LoteId?.ToString() ?? "0",
             lote.LoteNombre,
             lote.FechaEncaset ?? DateTime.MinValue,
             lote.Raza,
@@ -128,7 +128,7 @@ public class LiquidacionTecnicaService : ILiquidacionTecnicaService
         );
     }
 
-    public async Task<bool> ValidarLoteParaLiquidacionAsync(string loteId)
+    public async Task<bool> ValidarLoteParaLiquidacionAsync(int loteId)
     {
         var loteExiste = await _context.Lotes
             .Where(l => l.LoteId == loteId && 
@@ -147,7 +147,7 @@ public class LiquidacionTecnicaService : ILiquidacionTecnicaService
 
     #region Métodos Privados
 
-    private async Task<Domain.Entities.Lote> ObtenerLoteAsync(string loteId)
+    private async Task<Domain.Entities.Lote> ObtenerLoteAsync(int loteId)
     {
         var lote = await _context.Lotes
             .AsNoTracking()
@@ -162,7 +162,7 @@ public class LiquidacionTecnicaService : ILiquidacionTecnicaService
         return lote;
     }
 
-    private async Task<List<Domain.Entities.SeguimientoLoteLevante>> ObtenerSeguimientosAsync(string loteId, DateTime? fechaHasta)
+    private async Task<List<Domain.Entities.SeguimientoLoteLevante>> ObtenerSeguimientosAsync(int loteId, DateTime? fechaHasta)
     {
         var query = _context.SeguimientoLoteLevante
             .AsNoTracking()

@@ -17,7 +17,7 @@ b.HasKey(x => x.Id);
 
 b.Property(x => x.Id).HasColumnName("id");
 b.Property(x => x.Fecha).HasColumnName("fecha").IsRequired();
-b.Property(x => x.LoteId).HasColumnName("lote_id").HasMaxLength(64).IsRequired();
+b.Property(x => x.LoteId).HasColumnName("lote_id").IsRequired();
 b.Property(x => x.ReproductoraId).HasColumnName("reproductora_id").HasMaxLength(64).IsRequired();
 
 

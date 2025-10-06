@@ -1,9 +1,10 @@
+//app/features/traslados-aves/pages/traslado-form/traslado-form.component.ts
 import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { SidebarComponent } from '../../../../shared/components/sidebar/sidebar.component';
-import { LoteFilterComponent, LoteFilterCriteria } from '../../../../shared/components/lote-filter/lote-filter.component';
+import { HierarchicalFilterComponent, HierarchicalFilterCriteria, HierarchicalFilterState } from '../../../../shared/components/hierarchical-filter/hierarchical-filter.component';
 import { LoteDto } from '../../../lote/services/lote.service';
 import { 
   TrasladosAvesService, 
@@ -15,7 +16,7 @@ import {
 @Component({
   selector: 'app-traslado-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, SidebarComponent, LoteFilterComponent],
+  imports: [CommonModule, ReactiveFormsModule, SidebarComponent, HierarchicalFilterComponent],
   templateUrl: './traslado-form.component.html',
   styleUrls: ['./traslado-form.component.scss']
 })
@@ -33,8 +34,8 @@ export class TrasladoFormComponent implements OnInit {
   // Filtros de lotes
   loteOrigenSeleccionado = signal<LoteDto | null>(null);
   loteDestinoSeleccionado = signal<LoteDto | null>(null);
-  filtrosOrigen = signal<LoteFilterCriteria>({});
-  filtrosDestino = signal<LoteFilterCriteria>({});
+  filtrosOrigen = signal<HierarchicalFilterCriteria>({});
+  filtrosDestino = signal<HierarchicalFilterCriteria>({});
 
   // Computed properties
   isFormValid = computed(() => this.form?.valid || false);
@@ -74,7 +75,7 @@ export class TrasladoFormComponent implements OnInit {
     // Suscribirse a cambios en los lotes para cargar inventarios
     this.form.get('loteOrigenId')?.valueChanges.subscribe(loteId => {
       if (loteId) {
-        this.cargarInventarioOrigen(loteId);
+        this.cargarInventarioOrigen(Number(loteId));  // Convert string to number
       } else {
         this.inventarioOrigen.set(null);
       }
@@ -83,7 +84,7 @@ export class TrasladoFormComponent implements OnInit {
 
     this.form.get('loteDestinoId')?.valueChanges.subscribe(loteId => {
       if (loteId) {
-        this.cargarInventarioDestino(loteId);
+        this.cargarInventarioDestino(Number(loteId));  // Convert string to number
       } else {
         this.inventarioDestino.set(null);
       }
@@ -111,10 +112,10 @@ export class TrasladoFormComponent implements OnInit {
     }
   }
 
-  async cargarInventarioOrigen(loteId: string): Promise<void> {
+  async cargarInventarioOrigen(loteId: number): Promise<void> {  // Changed from string to number
     try {
       this.validandoLotes.set(true);
-      const inventario = await this.trasladosService.getInventarioByLote(loteId).toPromise();
+      const inventario = await this.trasladosService.getInventarioByLote(loteId.toString()).toPromise();  // Convert to string for API call
       this.inventarioOrigen.set(inventario || null);
     } catch (error: any) {
       console.error('Error al cargar inventario origen:', error);
@@ -125,10 +126,10 @@ export class TrasladoFormComponent implements OnInit {
     }
   }
 
-  async cargarInventarioDestino(loteId: string): Promise<void> {
+  async cargarInventarioDestino(loteId: number): Promise<void> {  // Changed from string to number
     try {
       this.validandoLotes.set(true);
-      const inventario = await this.trasladosService.getInventarioByLote(loteId).toPromise();
+      const inventario = await this.trasladosService.getInventarioByLote(loteId.toString()).toPromise();  // Convert to string for API call
       this.inventarioDestino.set(inventario || null);
     } catch (error: any) {
       console.error('Error al cargar inventario destino:', error);
@@ -139,57 +140,59 @@ export class TrasladoFormComponent implements OnInit {
     }
   }
 
+  /** Valida que si se traslada un género (>0), sea exactamente igual al disponible. 0 también es válido. */
+  private validarIgualDisponible(valor: number, disponible: number): string | null {
+    if (valor === 0) return null;              // mover 0 es válido
+    if (disponible === 0 && valor > 0) return `No hay disponibles (${disponible})`;
+    if (valor !== disponible) return `Debe trasladar exactamente ${disponible}`;
+    return null;
+  }
+
   private validarCantidades(): void {
-    const inventario = this.inventarioOrigen();
-    if (!inventario) return;
+    const inv = this.inventarioOrigen();
+    if (!inv) return;
 
-    const cantidadHembras = this.form.get('cantidadHembras')?.value || 0;
-    const cantidadMachos = this.form.get('cantidadMachos')?.value || 0;
+    const hCtrl = this.form.get('cantidadHembras');
+    const mCtrl = this.form.get('cantidadMachos');
 
-    // Validar que no exceda las cantidades disponibles
-    if (cantidadHembras > inventario.cantidadHembras) {
-      this.form.get('cantidadHembras')?.setErrors({ 
-        exceedsAvailable: { 
-          max: inventario.cantidadHembras, 
-          actual: cantidadHembras 
-        } 
-      });
+    const h = hCtrl?.value ?? 0;
+    const m = mCtrl?.value ?? 0;
+
+    // limpia errores previos
+    hCtrl?.setErrors(null);
+    mCtrl?.setErrors(null);
+    this.error.set(null);
+
+    // === REGLA ESTRICTA ===
+    const errH = this.validarIgualDisponible(Number(h), inv.cantidadHembras);
+    const errM = this.validarIgualDisponible(Number(m), inv.cantidadMachos);
+
+    if (errH) {
+      hCtrl?.setErrors({ equalsAvailable: { required: inv.cantidadHembras, actual: h } });
+    }
+    if (errM) {
+      mCtrl?.setErrors({ equalsAvailable: { required: inv.cantidadMachos, actual: m } });
     }
 
-    if (cantidadMachos > inventario.cantidadMachos) {
-      this.form.get('cantidadMachos')?.setErrors({ 
-        exceedsAvailable: { 
-          max: inventario.cantidadMachos, 
-          actual: cantidadMachos 
-        } 
-      });
-    }
-
-    // Validar que se traslade al menos una ave
-    if (cantidadHembras + cantidadMachos === 0) {
+    // Al menos 1 ave total
+    if ((Number(h) + Number(m)) === 0) {
       this.error.set('Debe trasladar al menos una ave');
-    } else {
-      if (this.error() === 'Debe trasladar al menos una ave') {
-        this.error.set(null);
-      }
+    } else if (!errH && !errM) {
+      // si todo OK, limpia mensaje de “al menos 1”
+      if (this.error() === 'Debe trasladar al menos una ave') this.error.set(null);
     }
   }
 
   async onSubmit(): Promise<void> {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      return;
-    }
+    if (this.form.invalid) { this.form.markAllAsTouched(); return; }
 
-    const formValue = this.form.value;
-    
-    // Validaciones adicionales
-    if (formValue.loteOrigenId === formValue.loteDestinoId) {
+    const { loteOrigenId, loteDestinoId, cantidadHembras, cantidadMachos, observaciones } = this.form.value;
+
+    if (loteOrigenId === loteDestinoId) {
       this.error.set('El lote origen y destino no pueden ser el mismo');
       return;
     }
-
-    if (formValue.cantidadHembras + formValue.cantidadMachos === 0) {
+    if ((cantidadHembras ?? 0) + (cantidadMachos ?? 0) === 0) {
       this.error.set('Debe trasladar al menos una ave');
       return;
     }
@@ -199,34 +202,33 @@ export class TrasladoFormComponent implements OnInit {
     this.success.set(null);
 
     try {
-      const request: TrasladoRapidoRequest = {
-        loteOrigenId: formValue.loteOrigenId,
-        loteDestinoId: formValue.loteDestinoId,
-        cantidadHembras: formValue.cantidadHembras,
-        cantidadMachos: formValue.cantidadMachos,
-        observaciones: formValue.observaciones || undefined
+      const req: TrasladoRapidoRequest = {
+        loteOrigenId: String(loteOrigenId),
+        loteDestinoId: String(loteDestinoId),
+        cantidadHembras: Number(cantidadHembras) || 0,
+        cantidadMachos: Number(cantidadMachos) || 0,
+        observaciones: observaciones || undefined
       };
 
-      const result = await this.trasladosService.trasladoRapido(request).toPromise();
-      
+      const result = await this.trasladosService.trasladoRapido(req).toPromise();
+
       if (result?.success) {
         this.success.set(result);
-        this.form.reset();
-        this.inventarioOrigen.set(null);
-        this.inventarioDestino.set(null);
-        
-        // Recargar lotes disponibles
-        await this.cargarLotesDisponibles();
+        // refresca inventarios mostrados
+        if (this.loteOrigenSeleccionado()) await this.cargarInventarioOrigen(this.loteOrigenSeleccionado()!.loteId);
+        if (this.loteDestinoSeleccionado()) await this.cargarInventarioDestino(this.loteDestinoSeleccionado()!.loteId);
+        // limpia cantidades (mantén lotes para ver nuevos saldos)
+        this.form.patchValue({ cantidadHembras: 0, cantidadMachos: 0, observaciones: '' });
       } else {
         this.error.set(result?.message || 'Error al realizar el traslado');
       }
-    } catch (error: any) {
-      console.error('Error al realizar traslado:', error);
-      this.error.set(error.message || 'Error al realizar el traslado');
+    } catch (e: any) {
+      this.error.set(e?.message || 'Error al realizar el traslado');
     } finally {
       this.loading.set(false);
     }
   }
+
 
   limpiarFormulario(): void {
     this.form.reset();
@@ -243,32 +245,54 @@ export class TrasladoFormComponent implements OnInit {
   // Manejo de filtros de lotes
   onLoteOrigenSelected(lote: LoteDto | null): void {
     this.loteOrigenSeleccionado.set(lote);
+    // limpiar cantidades al cambiar lote
+    this.form.patchValue({ cantidadHembras: 0, cantidadMachos: 0 });
+
     if (lote) {
-      this.form.patchValue({ loteOrigen: lote.loteId });
+      // ✅ la llave correcta del form es loteOrigenId
+      this.form.patchValue({ loteOrigenId: String(lote.loteId) });
       this.cargarInventarioOrigen(lote.loteId);
     } else {
-      this.form.patchValue({ loteOrigen: '' });
+      this.form.patchValue({ loteOrigenId: '' });
       this.inventarioOrigen.set(null);
     }
+    this.limpiarMensajes();
   }
 
   onLoteDestinoSelected(lote: LoteDto | null): void {
     this.loteDestinoSeleccionado.set(lote);
+    // limpiar cantidades al cambiar lote
+    this.form.patchValue({ cantidadHembras: 0, cantidadMachos: 0 });
+
     if (lote) {
-      this.form.patchValue({ loteDestino: lote.loteId });
+      // ✅ la llave correcta del form es loteDestinoId
+      this.form.patchValue({ loteDestinoId: String(lote.loteId) });
       this.cargarInventarioDestino(lote.loteId);
     } else {
-      this.form.patchValue({ loteDestino: '' });
+      this.form.patchValue({ loteDestinoId: '' });
       this.inventarioDestino.set(null);
     }
+    this.limpiarMensajes();
   }
 
-  onFiltrosOrigenChange(filtros: LoteFilterCriteria): void {
+
+ 
+  onFiltrosOrigenChange(filtros: HierarchicalFilterCriteria): void {
     this.filtrosOrigen.set(filtros);
   }
 
-  onFiltrosDestinoChange(filtros: LoteFilterCriteria): void {
+  onFiltrosDestinoChange(filtros: HierarchicalFilterCriteria): void {
     this.filtrosDestino.set(filtros);
+  }
+
+  onEstadoOrigenChange(estado: HierarchicalFilterState): void {
+    // Manejar cambios de estado del filtro origen
+    console.log('Estado origen:', estado);
+  }
+
+  onEstadoDestinoChange(estado: HierarchicalFilterState): void {
+    // Manejar cambios de estado del filtro destino
+    console.log('Estado destino:', estado);
   }
 
 
@@ -293,12 +317,17 @@ export class TrasladoFormComponent implements OnInit {
       if (field.errors['required']) return `${this.getFieldLabel(fieldName)} es requerido`;
       if (field.errors['min']) return `Valor mínimo: ${field.errors['min'].min}`;
       if (field.errors['exceedsAvailable']) {
-        const error = field.errors['exceedsAvailable'];
-        return `Cantidad máxima disponible: ${error.max}`;
+        const e = field.errors['exceedsAvailable'];
+        return `Cantidad máxima disponible: ${e.max}`;
+      }
+      if (field.errors['equalsAvailable']) {
+        const e = field.errors['equalsAvailable'];
+        return `Debe trasladar exactamente ${this.formatearNumero(e.required)}`;
       }
     }
     return '';
   }
+
 
   private getFieldLabel(fieldName: string): string {
     const labels: Record<string, string> = {

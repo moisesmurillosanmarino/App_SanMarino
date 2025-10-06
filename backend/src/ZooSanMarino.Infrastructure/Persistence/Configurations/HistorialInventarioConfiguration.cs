@@ -25,7 +25,6 @@ public class HistorialInventarioConfiguration : IEntityTypeConfiguration<Histori
 
         builder.Property(x => x.LoteId)
             .HasColumnName("lote_id")
-            .HasMaxLength(50)
             .IsRequired();
 
         // Información del cambio

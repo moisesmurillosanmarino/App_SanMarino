@@ -46,7 +46,7 @@ export interface ResultadoLevanteItemDto {
   styleUrls: ['./seguimiento-calculos.component.scss']
 })
 export class SeguimientoCalculosComponent implements OnChanges, OnDestroy {
-  @Input({ required: true }) loteId: string | null = null;
+  @Input({ required: true }) loteId: number | null = null;  // Changed from string | null to number | null
 
   // Formulario de filtros
   form = this.fb.group({

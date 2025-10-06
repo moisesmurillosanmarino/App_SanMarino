@@ -8,8 +8,7 @@ import { ChartConfiguration, ChartData, ChartType } from 'chart.js';
 
 import { UserService, UserListItem } from '../../core/services/user/user.service';
 import { FarmService, FarmDto } from '../farm/services/farm.service';
-import { LoteService, LoteDto } from '../lote/services/lote.service';
-import { LoteReproductoraService } from '../lote-reproductora/services/lote-reproductora.service';
+import { LoteReproductoraService, LoteDto, LoteDtoExtendido } from '../lote-reproductora/services/lote-reproductora.service';
 import { LoteProduccionService, LoteProduccionDto } from '../lote-produccion/services/lote-produccion.service';
 import { SeguimientoLoteLevanteService, SeguimientoLoteLevanteDto } from '../lote-levante/services/seguimiento-lote-levante.service';
 
@@ -170,7 +169,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   constructor(
     private userSvc: UserService,
     private farmSvc: FarmService,
-    private loteService: LoteService,
     private loteRepSvc: LoteReproductoraService,
     private loteProdSvc: LoteProduccionService,
     private levanteSvc: SeguimientoLoteLevanteService
@@ -266,13 +264,25 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     forkJoin({
       users: this.userSvc.getAll().pipe(
-        catchError((_err) => { summaryErrParts.push('usuarios'); return of([] as UserListItem[]); })
+        catchError((err) => { 
+          console.error('Dashboard: Error cargando usuarios:', err);
+          summaryErrParts.push('usuarios'); 
+          return of([] as UserListItem[]); 
+        })
       ),
       farms: this.farmSvc.getAll().pipe(
-        catchError((_err) => { summaryErrParts.push('granjas'); return of([] as FarmDto[]); })
+        catchError((err) => { 
+          console.error('Dashboard: Error cargando granjas:', err);
+          summaryErrParts.push('granjas'); 
+          return of([] as FarmDto[]); 
+        })
       ),
-      lotes: this.loteService.getAll().pipe(
-        catchError((_err) => { summaryErrParts.push('lotes'); return of([] as LoteDto[]); })
+      lotes: this.loteRepSvc.getLotes().pipe(
+        catchError((err) => { 
+          console.error('Dashboard: Error cargando lotes:', err);
+          summaryErrParts.push('lotes'); 
+          return of([] as LoteDto[]); 
+        })
       ),
     })
     .pipe(finalize(() => { this.loadingSummary = false; }))
@@ -297,6 +307,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
       },
       error: (err: unknown) => {
+        console.error('Dashboard: Error crítico en loadSummary:', err);
         this.setError('summary', this.describeError(err));
       }
     });
@@ -312,7 +323,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       lotes: of(this.lotesIndex.size ? Array.from(this.lotesIndex.values()) : []).pipe(
         switchMap((ls: LoteDto[]) => ls.length
           ? of(ls)
-          : this.loteService.getAll().pipe(
+          : this.loteRepSvc.getLotes().pipe(
               catchError((err) => { this.setError('activities', this.describeError(err, 'Fallo al cargar lotes')); return of([] as LoteDto[]); })
             )
         )
@@ -388,8 +399,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     const loadLotes$ = sample.length
       ? of(sample)
-      : this.loteService.getAll().pipe(
-          map((ls: LoteDto[]) => ls.slice(0, 10)),
+      : this.loteRepSvc.getLotes().pipe(
+          map((ls: readonly LoteDto[]) => [...ls].slice(0, 10)),
           catchError((err) => { this.setError('production', this.describeError(err, 'Fallo al cargar lotes')); return of([] as LoteDto[]); })
         );
 
@@ -443,8 +454,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.errorMortality = null;
 
     forkJoin({
-      lotes: this.loteService.getAll().pipe(
-        map((ls: LoteDto[]) => ls.slice(0, 10)),
+      lotes: this.loteRepSvc.getLotes().pipe(
+        map((ls: readonly LoteDto[]) => [...ls].slice(0, 10)),
         catchError((err) => { this.setError('mortality', this.describeError(err, 'Fallo al cargar lotes')); return of([] as LoteDto[]); })
       ),
       levante: this.levanteSvc.getAll().pipe(
@@ -565,7 +576,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   // ============ Computed Properties ============
   totalAvesActivas = computed(() => {
     return Array.from(this.lotesIndex.values())
-      .reduce((total, lote) => total + (lote.hembrasL || 0) + (lote.machosL || 0), 0);
+      .reduce((total, lote) => {
+        const loteExt = lote as any; // Type assertion para acceder a propiedades extendidas
+        return total + (loteExt.hembrasL || 0) + (loteExt.machosL || 0);
+      }, 0);
   });
 
   promedioEdadLotes = computed(() => {

@@ -8,7 +8,7 @@ public class SeguimientoLoteLevanteDtoValidator : AbstractValidator<SeguimientoL
 {
     public SeguimientoLoteLevanteDtoValidator()
     {
-        RuleFor(x => x.LoteId).NotEmpty().MaximumLength(50);
+        RuleFor(x => x.LoteId).GreaterThan(0);
         RuleFor(x => x.FechaRegistro).LessThanOrEqualTo(DateTime.UtcNow.AddDays(1)); // tolerancia TZ
         RuleFor(x => x.MortalidadHembras).GreaterThanOrEqualTo(0);
         RuleFor(x => x.MortalidadMachos).GreaterThanOrEqualTo(0);

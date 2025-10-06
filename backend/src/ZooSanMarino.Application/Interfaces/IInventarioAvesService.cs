@@ -18,7 +18,7 @@ public interface IInventarioAvesService
     
     // Búsqueda y filtrado
     Task<ZooSanMarino.Application.DTOs.Common.PagedResult<InventarioAvesDto>> SearchAsync(InventarioAvesSearchRequest request);
-    Task<IEnumerable<InventarioAvesDto>> GetByLoteIdAsync(string loteId);
+    Task<IEnumerable<InventarioAvesDto>> GetByLoteIdAsync(int loteId);
     Task<IEnumerable<InventarioAvesDto>> GetByUbicacionAsync(int granjaId, string? nucleoId = null, string? galponId = null);
     
     // Operaciones de inventario
@@ -26,15 +26,15 @@ public interface IInventarioAvesService
     Task<ResultadoMovimientoDto> TrasladarInventarioAsync(int inventarioId, int granjaDestinoId, string? nucleoDestinoId, string? galponDestinoId, string? motivo = null);
     
     // Estado y resúmenes
-    Task<EstadoLoteDto> GetEstadoLoteAsync(string loteId);
+    Task<EstadoLoteDto> GetEstadoLoteAsync(int loteId);
     Task<IEnumerable<ResumenInventarioDto>> GetResumenPorUbicacionAsync(int? granjaId = null);
     Task<IEnumerable<InventarioAvesDto>> GetInventariosActivosAsync();
     
     // Validaciones
-    Task<bool> ExisteInventarioAsync(string loteId, int granjaId, string? nucleoId, string? galponId);
+    Task<bool> ExisteInventarioAsync(int loteId, int granjaId, string? nucleoId, string? galponId);
     Task<bool> PuedeRealizarMovimientoAsync(int inventarioId, int hembras, int machos, int mixtas);
     
     // Inicialización desde lote existente
-    Task<InventarioAvesDto> InicializarDesdeLotelAsync(string loteId);
+    Task<InventarioAvesDto> InicializarDesdeLotelAsync(int loteId);
     Task<IEnumerable<InventarioAvesDto>> SincronizarInventariosAsync();
 }

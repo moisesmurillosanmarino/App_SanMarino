@@ -4,7 +4,7 @@ namespace ZooSanMarino.Domain.Entities;
 public class SeguimientoLoteLevante
 {
    public int Id { get; set; }
-    public string LoteId { get; set; } = null!;
+    public int LoteId { get; set; }
     public DateTime FechaRegistro { get; set; }
 
     public int MortalidadHembras { get; set; }

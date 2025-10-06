@@ -35,7 +35,7 @@ public class LoteReproductoraService : AppInterfaces.ILoteReproductoraService
     // ----------------------------------------------------
     // LISTADO (tenant-safe; opcional por LoteId)
     // ----------------------------------------------------
-    public async Task<IEnumerable<LoteReproductoraDto>> GetAllAsync(string? loteId = null)
+    public async Task<IEnumerable<LoteReproductoraDto>> GetAllAsync(int? loteId = null)  // Changed from string? to int?
     {
         var q =
             from lr in _ctx.LoteReproductoras.AsNoTracking()
@@ -43,8 +43,8 @@ public class LoteReproductoraService : AppInterfaces.ILoteReproductoraService
             where l.CompanyId == _current.CompanyId && l.DeletedAt == null
             select lr;
 
-        if (!string.IsNullOrWhiteSpace(loteId))
-            q = q.Where(lr => lr.LoteId == loteId);
+        if (loteId.HasValue)  // Changed from string.IsNullOrWhiteSpace check
+            q = q.Where(lr => lr.LoteId == loteId.Value);  // Changed from loteId
 
         var list = await q
             .OrderBy(lr => lr.LoteId)
@@ -57,13 +57,13 @@ public class LoteReproductoraService : AppInterfaces.ILoteReproductoraService
     // ----------------------------------------------------
     // DETALLE (tenant-safe)
     // ----------------------------------------------------
-    public async Task<LoteReproductoraDto?> GetByIdAsync(string loteId, string repId)
+    public async Task<LoteReproductoraDto?> GetByIdAsync(int loteId, string repId)  // Changed from string to int
     {
         var ent =
             await (from lr in _ctx.LoteReproductoras.AsNoTracking()
                    join l in _ctx.Lotes.AsNoTracking() on lr.LoteId equals l.LoteId
                    where l.CompanyId == _current.CompanyId && l.DeletedAt == null
-                      && lr.LoteId == loteId && lr.ReproductoraId == repId
+                      && lr.LoteId == loteId && lr.ReproductoraId == repId  // Changed from loteId
                    select lr).SingleOrDefaultAsync();
 
         return ent is null ? null : Map(ent);
@@ -229,13 +229,13 @@ public class LoteReproductoraService : AppInterfaces.ILoteReproductoraService
     // ----------------------------------------------------
     // DELETE (tenant-safe)
     // ----------------------------------------------------
-    public async Task<bool> DeleteAsync(string loteId, string repId)
+    public async Task<bool> DeleteAsync(int loteId, string repId)  // Changed from string to int
     {
         var ent =
             await (from lr in _ctx.LoteReproductoras
                    join l in _ctx.Lotes on lr.LoteId equals l.LoteId
                    where l.CompanyId == _current.CompanyId && l.DeletedAt == null
-                      && lr.LoteId == loteId && lr.ReproductoraId == repId
+                      && lr.LoteId == loteId && lr.ReproductoraId == repId  // Changed from loteId
                    select lr).SingleOrDefaultAsync();
 
         if (ent is null) return false;
@@ -248,13 +248,13 @@ public class LoteReproductoraService : AppInterfaces.ILoteReproductoraService
     // ----------------------------------------------------
     // Helpers
     // ----------------------------------------------------
-    private async Task EnsureLoteExistsForTenant(string loteId)
+    private async Task EnsureLoteExistsForTenant(int loteId)  // Changed from string to int
     {
         var ok = await _ctx.Lotes.AsNoTracking()
-            .AnyAsync(l => l.LoteId == loteId &&
+            .AnyAsync(l => l.LoteId == loteId &&  // Changed from loteId
                            l.CompanyId == _current.CompanyId &&
                            l.DeletedAt == null);
         if (!ok)
-            throw new InvalidOperationException($"Lote '{loteId}' no existe o no pertenece a la compañía.");
+            throw new InvalidOperationException($"Lote '{loteId}' no existe o no pertenece a la compañía.");  // Changed from loteId
     }
 }

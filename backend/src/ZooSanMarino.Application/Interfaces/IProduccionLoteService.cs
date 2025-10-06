@@ -10,6 +10,6 @@ public interface IProduccionLoteService
     Task<bool>                              DeleteAsync(int id);
 
     Task<IEnumerable<ProduccionLoteDto>>    GetAllAsync();
-    Task<ProduccionLoteDto?>                GetByLoteIdAsync(string loteId);
+    Task<ProduccionLoteDto?>                GetByLoteIdAsync(int loteId);  // Changed from string to int
     Task<IEnumerable<ProduccionLoteDto>>    FilterAsync(FilterProduccionLoteDto filter);
 }

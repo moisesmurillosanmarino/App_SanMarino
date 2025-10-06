@@ -7,7 +7,7 @@ public int Id { get; set; } // PK identity
 public DateTime Fecha { get; set; }
 
 
-public string LoteId { get; set; } = null!; // parte de FK → LoteReproductora
+public int LoteId { get; set; } // parte de FK → LoteReproductora
 public string ReproductoraId { get; set; } = null!; // parte de FK → LoteReproductora
 
 

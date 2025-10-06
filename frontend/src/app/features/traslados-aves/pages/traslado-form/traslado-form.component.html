@@ -8,6 +8,9 @@
         <h1>🚚 Traslado de Aves</h1>
         <p class="ux-header__subtitle">Realizar traslado rápido entre lotes</p>
       </div>
+      <div class="field-hint" *ngIf="inventarioOrigen()">
+        Regla: si trasladas un género, debe ser exactamente su disponible.
+      </div>
       <div class="ux-header__actions">
         <button type="button" class="btn btn--ghost" (click)="navegarADashboard()">
           ← Volver al Dashboard
@@ -29,25 +32,29 @@
           <!-- Filtro Lote Origen -->
           <div class="lote-filter-section">
             <h3 class="section-title">📤 Lote Origen</h3>
-            <app-lote-filter
+            <app-hierarchical-filter
               [showLoteSelection]="true"
+              [showChips]="true"
               [filterLabel]="'Filtros Lote Origen'"
               [placeholder]="'Buscar lote origen...'"
               (filterChange)="onFiltrosOrigenChange($event)"
-              (loteSelected)="onLoteOrigenSelected($event)">
-            </app-lote-filter>
+              (loteSelected)="onLoteOrigenSelected($event)"
+              (stateChange)="onEstadoOrigenChange($event)">
+            </app-hierarchical-filter>
           </div>
 
           <!-- Filtro Lote Destino -->
           <div class="lote-filter-section">
             <h3 class="section-title">📥 Lote Destino</h3>
-            <app-lote-filter
+            <app-hierarchical-filter
               [showLoteSelection]="true"
+              [showChips]="true"
               [filterLabel]="'Filtros Lote Destino'"
               [placeholder]="'Buscar lote destino...'"
               (filterChange)="onFiltrosDestinoChange($event)"
-              (loteSelected)="onLoteDestinoSelected($event)">
-            </app-lote-filter>
+              (loteSelected)="onLoteDestinoSelected($event)"
+              (stateChange)="onEstadoDestinoChange($event)">
+            </app-hierarchical-filter>
           </div>
         </div>
       </div>

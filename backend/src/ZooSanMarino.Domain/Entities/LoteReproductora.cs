@@ -4,7 +4,7 @@ namespace ZooSanMarino.Domain.Entities;
 public class LoteReproductora
 {
 // PK compuesta (LoteId, ReproductoraId)
-public string LoteId { get; set; } = null!;
+public int LoteId { get; set; }
 public string ReproductoraId { get; set; } = null!;
 
 

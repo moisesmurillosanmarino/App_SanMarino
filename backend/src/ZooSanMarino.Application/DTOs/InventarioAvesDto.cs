@@ -6,7 +6,7 @@ namespace ZooSanMarino.Application.DTOs;
 /// </summary>
 public record InventarioAvesDto(
     int Id,
-    string LoteId,
+    int LoteId,
     string LoteNombre,
     int GranjaId,
     string GranjaNombre,
@@ -30,7 +30,7 @@ public record InventarioAvesDto(
 /// </summary>
 public sealed class CreateInventarioAvesDto
 {
-    public string LoteId { get; set; } = null!;
+    public int LoteId { get; set; }
     public int GranjaId { get; set; }
     public string? NucleoId { get; set; }
     public string? GalponId { get; set; }
@@ -60,7 +60,7 @@ public sealed class UpdateInventarioAvesDto
 /// DTO para búsqueda y filtrado de inventarios
 /// </summary>
 public sealed record InventarioAvesSearchRequest(
-    string? LoteId = null,
+    int? LoteId = null,
     int? GranjaId = null,
     string? NucleoId = null,
     string? GalponId = null,
@@ -96,7 +96,7 @@ public record ResumenInventarioDto(
 /// DTO para el estado actual de un lote
 /// </summary>
 public record EstadoLoteDto(
-    string LoteId,
+    int LoteId,
     string LoteNombre,
     List<UbicacionLoteDto> Ubicaciones,
     int TotalHembras,

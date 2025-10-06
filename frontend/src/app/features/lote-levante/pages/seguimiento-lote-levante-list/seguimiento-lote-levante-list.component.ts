@@ -21,6 +21,7 @@ import { FarmService, FarmDto } from '../../../farm/services/farm.service';
 import { NucleoService, NucleoDto } from '../../services/nucleo.service';
 import { SeguimientoCalculosComponent } from "../../seguimiento-calculos/seguimiento-calculos.component";
 import { LiquidacionTecnicaComponent } from '../../components/liquidacion-tecnica/liquidacion-tecnica.component';
+import { LiquidacionComparacionComponent } from '../../components/liquidacion-comparacion/liquidacion-comparacion.component';
 
 // ===== Importa el servicio del catálogo =====
 import {
@@ -35,7 +36,7 @@ import { EMPTY } from 'rxjs';
 @Component({
   selector: 'app-seguimiento-lote-levante-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, SidebarComponent, SeguimientoCalculosComponent, LiquidacionTecnicaComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, SidebarComponent, SeguimientoCalculosComponent, LiquidacionTecnicaComponent, LiquidacionComparacionComponent],
   templateUrl: './seguimiento-lote-levante-list.component.html',
   styleUrls: ['./seguimiento-lote-levante-list.component.scss']
 })
@@ -61,7 +62,7 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
   selectedNucleoId: string | null = null;
 
   selectedGalponId: string | null = null;
-  selectedLoteId: string | null = null;
+  selectedLoteId: number | null = null;  // Changed from string | null to number | null
 
   // ================== datos ==================
   private allLotes: LoteDto[] = [];
@@ -522,8 +523,8 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
   trackByNucleo = (_: number, n: NucleoDto) => n.nucleoId;
 
   get selectedLoteNombre(): string {
-    const l = this.lotes.find(x => x.loteId === this.selectedLoteId);
-    return l?.loteNombre ?? (this.selectedLoteId || '—');
+    const l = this.lotes.find(x => x.loteId === this.selectedLoteId);  // Now both are number | null
+    return l?.loteNombre ?? (this.selectedLoteId?.toString() || '—');  // Convert number to string for display
   }
 
   get selectedGranjaName(): string {

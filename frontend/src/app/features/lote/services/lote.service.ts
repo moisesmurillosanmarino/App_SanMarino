@@ -7,7 +7,7 @@ import { LoteReproductoraDto } from '../../lote-reproductora/services/lote-repro
 
 // ⬇️ NUEVO: DTO del resumen de mortalidad
 export interface LoteMortalidadResumenDto {
-  loteId: string;
+  loteId: number;  // Cambiado a number
   mortalidadAcumHembras: number;
   mortalidadAcumMachos: number;
   hembrasIniciales: number;
@@ -19,7 +19,7 @@ export interface LoteMortalidadResumenDto {
 }
 
 export interface LoteDto {
-  loteId: string;
+  loteId: number;  // Cambiado a number para secuencia numérica
   loteNombre: string;
 
   granjaId: number;
@@ -55,7 +55,7 @@ export interface LoteDto {
 }
 
 export interface CreateLoteDto extends Omit<LoteDto, 'loteId'> {
-  loteId: string;
+  loteId?: number; // Opcional - auto-incremento numérico
 }
 
 export interface UpdateLoteDto extends LoteDto {}
@@ -71,7 +71,7 @@ export class LoteService {
     return this.http.get<LoteDto[]>(this.baseUrl);
   }
 
-  getById(loteId: string): Observable<LoteDto> {
+  getById(loteId: number): Observable<LoteDto> {
     return this.http.get<LoteDto>(`${this.baseUrl}/${loteId}`);
   }
 
@@ -83,19 +83,27 @@ export class LoteService {
     return this.http.put<LoteDto>(`${this.baseUrl}/${dto.loteId}`, dto);
   }
 
-  delete(loteId: string): Observable<void> {
+  delete(loteId: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${loteId}`);
   }
 
-  getReproductorasByLote(loteId: string): Observable<LoteReproductoraDto[]> {
+  getReproductorasByLote(loteId: number): Observable<LoteReproductoraDto[]> {
     return this.http.get<LoteReproductoraDto[]>(`${this.base}/LoteReproductora?loteId=${loteId}`);
   }
 
    // ⬇️ NUEVO: resumen de mortalidad por lote
-  getResumenMortalidad(loteId: string): Observable<LoteMortalidadResumenDto> {
+  getResumenMortalidad(loteId: number): Observable<LoteMortalidadResumenDto> {
     // Si tu backend quedó como /api/Lotes/{id}/..., cambia baseUrl por `${this.base}/Lotes`
     return this.http.get<LoteMortalidadResumenDto>(
-      `${this.baseUrl}/${encodeURIComponent(loteId)}/resumen-mortalidad`
+      `${this.baseUrl}/${loteId}/resumen-mortalidad`
+    );
+  }
+
+  /** Obtiene los lotes filtrados por galpón (galponId) */
+  getByGalpon(galponId: string): Observable<LoteDto[]> {
+    // Mantiene el patrón de filtros por query-string usado en el archivo
+    return this.http.get<LoteDto[]>(
+      `${this.baseUrl}?galponId=${encodeURIComponent(galponId)}`
     );
   }
 }

@@ -203,6 +203,9 @@ export class LoteListComponent implements OnInit {
       // Razas disponibles
       this.razasDisponibles = razas;
 
+      // Cargar todas las líneas genéticas disponibles para mostrar descripciones
+      this.loadAllLineasGeneticas();
+
       // Lotes
       this.loadLotes();
     });
@@ -256,7 +259,7 @@ export class LoteListComponent implements OnInit {
   // ===================== Init form ==========================
   private initForm(): void {
     this.form = this.fb.group({
-      loteId:             ['', Validators.required],
+      loteId:             [null], // Opcional - auto-incremento numérico
       loteNombre:         ['', Validators.required],
       granjaId:           [null, Validators.required],
       nucleoId:           [null],
@@ -373,7 +376,7 @@ export class LoteListComponent implements OnInit {
     if (term) {
       res = res.filter(l => {
         const haystack = [
-          l.loteId ?? '',
+          l.loteId ?? 0,
           l.loteNombre ?? '',
           this.nucleoMap[l.nucleoId ?? ''] ?? '',
           this.farmMap[l.granjaId] ?? '',
@@ -440,13 +443,9 @@ export class LoteListComponent implements OnInit {
       this.filteredGalpones = this.galponesFiltrados;
 
     } else {
-      const ultimoId = this.lotes.length > 0
-        ? Math.max(...this.lotes.map(x => +x.loteId || 0))
-        : 0;
-      const nuevoId = String(ultimoId + 1);
-
+      // Para creación: no establecer loteId (la base de datos lo generará automáticamente)
       this.form.reset({
-        loteId: nuevoId,
+        loteId: null, // Vacío - auto-incremento numérico
         loteNombre: '',
         granjaId: null,
         nucleoId: null,
@@ -487,10 +486,13 @@ export class LoteListComponent implements OnInit {
     const raw = this.form.value;
     const dto: CreateLoteDto | UpdateLoteDto = {
       ...raw,
-      loteId: String(raw.loteId).trim(),
+      // Para creación: no enviar loteId (la base de datos lo generará automáticamente)
+      // Para edición: enviar el loteId existente
+      loteId: this.editing ? raw.loteId : undefined,
       granjaId: Number(raw.granjaId),
       nucleoId: raw.nucleoId ? String(raw.nucleoId) : undefined,
       galponId: raw.galponId ? String(raw.galponId) : undefined,
+      lineaGeneticaId: raw.lineaGeneticaId ? Number(raw.lineaGeneticaId) : undefined,
       fechaEncaset: raw.fechaEncaset
         ? new Date(raw.fechaEncaset + 'T00:00:00Z').toISOString()
         : undefined
@@ -654,5 +656,39 @@ export class LoteListComponent implements OnInit {
       this.form.get('linea')?.setValue(lineaSeleccionada.raza);
       this.form.get('codigoGuiaGenetica')?.setValue(`${lineaSeleccionada.raza}-${lineaSeleccionada.anioGuia}`);
     }
+  }
+
+  // ===================== Métodos de utilidad =====================
+  private loadAllLineasGeneticas(): void {
+    // Cargar líneas genéticas para todas las razas disponibles
+    const requests = this.razasDisponibles.map(raza => 
+      this.guiaGeneticaSvc.getLineasGeneticasPorRaza(raza)
+    );
+    
+    if (requests.length > 0) {
+      forkJoin(requests).subscribe({
+        next: (results) => {
+          // Combinar todas las líneas genéticas en un solo array
+          this.lineasGeneticas = results.flat();
+        },
+        error: (error) => {
+          console.error('Error al cargar líneas genéticas:', error);
+          this.lineasGeneticas = [];
+        }
+      });
+    }
+  }
+
+  getLineaGeneticaDescripcion(lineaGeneticaId: number | null | undefined): string {
+    if (!lineaGeneticaId) return '';
+    
+    // Buscar en las líneas genéticas cargadas
+    const linea = this.lineasGeneticas.find(l => l.id === lineaGeneticaId);
+    if (linea) {
+      return linea.descripcion;
+    }
+    
+    // Si no se encuentra, mostrar el ID como fallback
+    return `ID: ${lineaGeneticaId}`;
   }
 }

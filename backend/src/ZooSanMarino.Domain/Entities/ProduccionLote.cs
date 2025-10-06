@@ -4,7 +4,7 @@ namespace ZooSanMarino.Domain.Entities;
 public class ProduccionLote : AuditableEntity
 {
     public int      Id                     { get; set; }
-    public string   LoteId                 { get; set; } = null!;
+    public int LoteId { get; set; }
     public DateTime FechaInicioProduccion  { get; set; }
 
     public int  HembrasIniciales { get; set; }

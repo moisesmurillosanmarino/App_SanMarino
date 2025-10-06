@@ -29,9 +29,11 @@ export interface LiquidacionTecnicaDto {
   consumoAlimentoGuiaGramos?: number;
   porcentajeDiferenciaConsumo?: number;
   pesoSemana25RealHembras?: number;
+  pesoSemana25RealMachos?: number;
   pesoSemana25GuiaHembras?: number;
   porcentajeDiferenciaPesoHembras?: number;
   uniformidadRealHembras?: number;
+  uniformidadRealMachos?: number;
   uniformidadGuiaHembras?: number;
   porcentajeDiferenciaUniformidadHembras?: number;
 }

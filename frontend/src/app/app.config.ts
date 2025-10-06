@@ -196,9 +196,43 @@ export const appConfig: ApplicationConfig = {
       {
         path: 'traslados-aves',
         canActivate: [authGuard],
-        loadChildren: () =>
-          import('./features/traslados-aves/traslados-aves.module')
-            .then(m => m.TrasladosAvesModule)
+        children: [
+          {
+            path: '',
+            redirectTo: 'dashboard',
+            pathMatch: 'full'
+          },
+          {
+            path: 'dashboard',
+            loadComponent: () => import('./features/traslados-aves/pages/inventario-dashboard/inventario-dashboard.component')
+              .then(m => m.InventarioDashboardComponent),
+            title: 'Inventario de Aves - Dashboard'
+          },
+          {
+            path: 'traslados',
+            loadComponent: () => import('./features/traslados-aves/pages/traslado-form/traslado-form.component')
+              .then(m => m.TrasladoFormComponent),
+            title: 'Traslado de Aves'
+          },
+          {
+            path: 'movimientos',
+            loadComponent: () => import('./features/traslados-aves/pages/movimientos-list/movimientos-list.component')
+              .then(m => m.MovimientosListComponent),
+            title: 'Movimientos de Aves'
+          },
+          {
+            path: 'historial',
+            loadComponent: () => import('./features/traslados-aves/pages/historial-trazabilidad/historial-trazabilidad.component')
+              .then(m => m.HistorialTrazabilidadComponent),
+            title: 'Historial y Trazabilidad'
+          },
+          {
+            path: 'historial/:loteId',
+            loadComponent: () => import('./features/traslados-aves/pages/historial-trazabilidad/historial-trazabilidad.component')
+              .then(m => m.HistorialTrazabilidadComponent),
+            title: 'Trazabilidad de Lote'
+          }
+        ]
       },
 
       { path: '**', redirectTo: 'login' }

@@ -69,11 +69,11 @@ public class HistorialInventarioController : ControllerBase
     /// </summary>
     [HttpGet("lote/{loteId}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<HistorialInventarioDto>))]
-    public async Task<IActionResult> GetByLote(string loteId)
+    public async Task<IActionResult> GetByLote(int loteId)  // Changed from string to int
     {
         try
         {
-            var historial = await _historialService.GetByLoteIdAsync(loteId);
+            var historial = await _historialService.GetByLoteIdAsync(loteId);  // Changed from loteId
             return Ok(historial);
         }
         catch (Exception ex)
@@ -107,11 +107,11 @@ public class HistorialInventarioController : ControllerBase
     /// </summary>
     [HttpGet("trazabilidad/{loteId}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(TrazabilidadLoteDto))]
-    public async Task<IActionResult> GetTrazabilidad(string loteId)
+    public async Task<IActionResult> GetTrazabilidad(int loteId)  // Changed from string to int
     {
         try
         {
-            var trazabilidad = await _historialService.GetTrazabilidadLoteAsync(loteId);
+            var trazabilidad = await _historialService.GetTrazabilidadLoteAsync(loteId);  // Changed from loteId
             return Ok(trazabilidad);
         }
         catch (Exception ex)
@@ -126,11 +126,11 @@ public class HistorialInventarioController : ControllerBase
     /// </summary>
     [HttpGet("eventos/{loteId}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<EventoTrazabilidadDto>))]
-    public async Task<IActionResult> GetEventos(string loteId, [FromQuery] DateTime? fechaDesde = null, [FromQuery] DateTime? fechaHasta = null)
+    public async Task<IActionResult> GetEventos(int loteId, [FromQuery] DateTime? fechaDesde = null, [FromQuery] DateTime? fechaHasta = null)  // Changed from string to int
     {
         try
         {
-            var eventos = await _historialService.GetEventosLoteAsync(loteId, fechaDesde, fechaHasta);
+            var eventos = await _historialService.GetEventosLoteAsync(loteId, fechaDesde, fechaHasta);  // Changed from loteId
             return Ok(eventos);
         }
         catch (Exception ex)

@@ -41,7 +41,7 @@ public record MovimientoAvesDto(
 /// DTO para ubicación en movimientos
 /// </summary>
 public record UbicacionMovimientoDto(
-    string? LoteId,
+    int? LoteId,
     string? LoteNombre,
     int? GranjaId,
     string? GranjaNombre,
@@ -61,14 +61,14 @@ public sealed class CreateMovimientoAvesDto
     
     // Origen
     public int? InventarioOrigenId { get; set; }
-    public string? LoteOrigenId { get; set; }
+    public int? LoteOrigenId { get; set; }  // Changed from string? to int?
     public int? GranjaOrigenId { get; set; }
     public string? NucleoOrigenId { get; set; }
     public string? GalponOrigenId { get; set; }
     
     // Destino
     public int? InventarioDestinoId { get; set; }
-    public string? LoteDestinoId { get; set; }
+    public int? LoteDestinoId { get; set; }  // Changed from string? to int?
     public int? GranjaDestinoId { get; set; }
     public string? NucleoDestinoId { get; set; }
     public string? GalponDestinoId { get; set; }
@@ -112,8 +112,8 @@ public sealed record MovimientoAvesSearchRequest(
     string? NumeroMovimiento = null,
     string? TipoMovimiento = null,
     string? Estado = null,
-    string? LoteOrigenId = null,
-    string? LoteDestinoId = null,
+    int? LoteOrigenId = null,  // Changed from string? to int?
+    int? LoteDestinoId = null,  // Changed from string? to int?
     int? GranjaOrigenId = null,
     int? GranjaDestinoId = null,
     DateTime? FechaDesde = null,
@@ -130,7 +130,7 @@ public sealed record MovimientoAvesSearchRequest(
 /// </summary>
 public sealed class TrasladoRapidoDto
 {
-    public string LoteId { get; set; } = null!;
+    public int LoteId { get; set; }  // Changed from string to int
     
     // Origen (opcional si se detecta automáticamente)
     public int? GranjaOrigenId { get; set; }

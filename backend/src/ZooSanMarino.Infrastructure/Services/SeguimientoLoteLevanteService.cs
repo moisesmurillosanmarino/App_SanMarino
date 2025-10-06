@@ -46,7 +46,7 @@ public class SeguimientoLoteLevanteService : ISeguimientoLoteLevanteService
     // ===========================
     // LISTAR POR LOTE (seguro por compañía)
     // ===========================
-    public async Task<IEnumerable<SeguimientoLoteLevanteDto>> GetByLoteAsync(string loteId)
+    public async Task<IEnumerable<SeguimientoLoteLevanteDto>> GetByLoteAsync(int loteId)
     {
         var q = from s in _ctx.SeguimientoLoteLevante.AsNoTracking()
                 join l in _ctx.Lotes.AsNoTracking()
@@ -283,7 +283,7 @@ public class SeguimientoLoteLevanteService : ISeguimientoLoteLevanteService
     // ===========================
     // FILTRO (seguro por compañía)
     // ===========================
-    public async Task<IEnumerable<SeguimientoLoteLevanteDto>> FilterAsync(string? loteId, DateTime? desde, DateTime? hasta)
+    public async Task<IEnumerable<SeguimientoLoteLevanteDto>> FilterAsync(int? loteId, DateTime? desde, DateTime? hasta)
     {
         var q = from s in _ctx.SeguimientoLoteLevante.AsNoTracking()
                 join l in _ctx.Lotes.AsNoTracking()
@@ -291,8 +291,8 @@ public class SeguimientoLoteLevanteService : ISeguimientoLoteLevanteService
                 where l.CompanyId == _current.CompanyId && l.DeletedAt == null
                 select s;
 
-        if (!string.IsNullOrWhiteSpace(loteId))
-            q = q.Where(x => x.LoteId == loteId);
+        if (loteId.HasValue)
+            q = q.Where(x => x.LoteId == loteId.Value);
         if (desde.HasValue)
             q = q.Where(x => x.FechaRegistro >= desde.Value);
         if (hasta.HasValue)
@@ -320,7 +320,7 @@ public class SeguimientoLoteLevanteService : ISeguimientoLoteLevanteService
         return Math.Max(1, (int)Math.Floor(dias / 7.0) + 1);
     }
 
-    private async Task<int> CalcularHembrasVivasAsync(string loteId)
+    private async Task<int> CalcularHembrasVivasAsync(int loteId)
     {
         var baseH = await _ctx.Lotes.AsNoTracking()
             .Where(l => l.LoteId == loteId && l.CompanyId == _current.CompanyId && l.DeletedAt == null)
@@ -347,7 +347,7 @@ public class SeguimientoLoteLevanteService : ISeguimientoLoteLevanteService
     }
     
       public async Task<ResultadoLevanteResponse> GetResultadoAsync(
-        string loteId, DateTime? desde, DateTime? hasta, bool recalcular = true)
+        int loteId, DateTime? desde, DateTime? hasta, bool recalcular = true)
     {
         // 0) Validar lote/tenant
         var lote = await _ctx.Lotes.AsNoTracking()

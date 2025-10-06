@@ -10,7 +10,7 @@ public class HistorialInventario : AuditableEntity
     
     // Referencia al inventario
     public int InventarioId { get; set; }
-    public string LoteId { get; set; } = null!;
+    public int LoteId { get; set; }
     
     // Información del cambio
     public DateTime FechaCambio { get; set; }

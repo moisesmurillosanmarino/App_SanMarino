@@ -11,6 +11,10 @@ import {
   LiquidacionTecnicaDto, 
   LiquidacionTecnicaCompletaDto 
 } from '../../services/liquidacion-tecnica.service';
+import { 
+  LiquidacionComparacionService, 
+  LiquidacionTecnicaComparacionDto 
+} from '../../services/liquidacion-comparacion.service';
 
 @Component({
   selector: 'app-liquidacion-tecnica',
@@ -28,6 +32,7 @@ export class LiquidacionTecnicaComponent implements OnInit, OnChanges {
   loading = signal(false);
   liquidacion = signal<LiquidacionTecnicaDto | null>(null);
   liquidacionCompleta = signal<LiquidacionTecnicaCompletaDto | null>(null);
+  comparacion = signal<LiquidacionTecnicaComparacionDto | null>(null);
   error = signal<string | null>(null);
 
   // Formulario para filtros
@@ -120,7 +125,8 @@ export class LiquidacionTecnicaComponent implements OnInit, OnChanges {
 
   constructor(
     private fb: FormBuilder,
-    private liquidacionService: LiquidacionTecnicaService
+    private liquidacionService: LiquidacionTecnicaService,
+    private comparacionService: LiquidacionComparacionService
   ) {
     this.form = this.fb.group({
       fechaHasta: [new Date()],
@@ -150,6 +156,7 @@ export class LiquidacionTecnicaComponent implements OnInit, OnChanges {
     if (!this.loteId) {
       this.liquidacion.set(null);
       this.liquidacionCompleta.set(null);
+      this.comparacion.set(null);
       return;
     }
 
@@ -167,6 +174,7 @@ export class LiquidacionTecnicaComponent implements OnInit, OnChanges {
       request$ = this.liquidacionService.getLiquidacionTecnica(this.loteId, fechaHasta);
     }
 
+    // Cargar liquidación técnica básica
     request$.pipe(
       finalize(() => this.loading.set(false))
     ).subscribe({
@@ -180,12 +188,36 @@ export class LiquidacionTecnicaComponent implements OnInit, OnChanges {
           this.liquidacion.set(simpleData);
           this.liquidacionCompleta.set(null);
         }
+        
+        // Cargar datos de comparación con guía genética
+        this.cargarComparacion();
       },
       error: (error: any) => {
         console.error('Error al cargar liquidación técnica:', error);
         this.error.set(this.getErrorMessage(error));
         this.liquidacion.set(null);
         this.liquidacionCompleta.set(null);
+        this.comparacion.set(null);
+      }
+    });
+  }
+
+  /**
+   * Cargar datos de comparación con guía genética
+   */
+  private cargarComparacion(): void {
+    if (!this.loteId) return;
+
+    const fechaHasta = this.form.value.fechaHasta || new Date();
+    const loteIdNumber = parseInt(this.loteId);
+
+    this.comparacionService.getComparacionBasica(loteIdNumber, fechaHasta).subscribe({
+      next: (data: LiquidacionTecnicaComparacionDto) => {
+        this.comparacion.set(data);
+      },
+      error: (error: any) => {
+        console.warn('No se pudo cargar la comparación con guía genética:', error);
+        this.comparacion.set(null);
       }
     });
   }
@@ -209,24 +241,27 @@ export class LiquidacionTecnicaComponent implements OnInit, OnChanges {
    */
   get indicadores() {
     const liquidacion = this.liquidacion();
+    const comparacion = this.comparacion();
     if (!liquidacion) return [];
 
     return [
       {
         concepto: 'Mortalidad Hembras',
         real: liquidacion.porcentajeMortalidadHembras,
-        guia: null,
-        diferencia: null,
+        guia: comparacion?.mortalidadEsperadaHembras || null,
+        diferencia: comparacion?.diferenciaMortalidadHembras || null,
         unidad: '%',
-        tipo: 'porcentaje'
+        tipo: 'porcentaje',
+        cumple: comparacion?.cumpleMortalidadHembras || false
       },
       {
         concepto: 'Mortalidad Machos',
         real: liquidacion.porcentajeMortalidadMachos,
-        guia: null,
-        diferencia: null,
+        guia: comparacion?.mortalidadEsperadaMachos || null,
+        diferencia: comparacion?.diferenciaMortalidadMachos || null,
         unidad: '%',
-        tipo: 'porcentaje'
+        tipo: 'porcentaje',
+        cumple: comparacion?.cumpleMortalidadMachos || false
       },
       {
         concepto: 'Selección Hembras',
@@ -234,7 +269,8 @@ export class LiquidacionTecnicaComponent implements OnInit, OnChanges {
         guia: null,
         diferencia: null,
         unidad: '%',
-        tipo: 'porcentaje'
+        tipo: 'porcentaje',
+        cumple: true // No hay guía para selección
       },
       {
         concepto: 'Selección Machos',
@@ -242,7 +278,8 @@ export class LiquidacionTecnicaComponent implements OnInit, OnChanges {
         guia: null,
         diferencia: null,
         unidad: '%',
-        tipo: 'porcentaje'
+        tipo: 'porcentaje',
+        cumple: true // No hay guía para selección
       },
       {
         concepto: 'Retiro Total Hembras',
@@ -251,7 +288,8 @@ export class LiquidacionTecnicaComponent implements OnInit, OnChanges {
         diferencia: liquidacion.porcentajeRetiroGuia ? 
           liquidacion.porcentajeRetiroTotalHembras - liquidacion.porcentajeRetiroGuia : null,
         unidad: '%',
-        tipo: 'porcentaje'
+        tipo: 'porcentaje',
+        cumple: true // Usar lógica existente
       },
       {
         concepto: 'Retiro Total Machos',
@@ -260,31 +298,53 @@ export class LiquidacionTecnicaComponent implements OnInit, OnChanges {
         diferencia: liquidacion.porcentajeRetiroGuia ? 
           liquidacion.porcentajeRetiroTotalMachos - liquidacion.porcentajeRetiroGuia : null,
         unidad: '%',
-        tipo: 'porcentaje'
+        tipo: 'porcentaje',
+        cumple: true // Usar lógica existente
       },
       {
         concepto: 'Consumo Alimento',
         real: liquidacion.consumoAlimentoRealGramos,
-        guia: liquidacion.consumoAlimentoGuiaGramos,
-        diferencia: liquidacion.porcentajeDiferenciaConsumo,
+        guia: comparacion?.consumoAcumuladoEsperadoHembras || liquidacion.consumoAlimentoGuiaGramos,
+        diferencia: comparacion?.diferenciaConsumoHembras || liquidacion.porcentajeDiferenciaConsumo,
         unidad: 'gr',
-        tipo: 'peso'
+        tipo: 'peso',
+        cumple: comparacion?.cumpleConsumoHembras || false
       },
       {
         concepto: 'Peso Semana 25 (Hembras)',
         real: liquidacion.pesoSemana25RealHembras,
-        guia: liquidacion.pesoSemana25GuiaHembras,
-        diferencia: liquidacion.porcentajeDiferenciaPesoHembras,
+        guia: comparacion?.pesoEsperadoHembras || liquidacion.pesoSemana25GuiaHembras,
+        diferencia: comparacion?.diferenciaPesoHembras || liquidacion.porcentajeDiferenciaPesoHembras,
         unidad: 'gr',
-        tipo: 'peso'
+        tipo: 'peso',
+        cumple: comparacion?.cumplePesoHembras || false
+      },
+      {
+        concepto: 'Peso Semana 25 (Machos)',
+        real: liquidacion.pesoSemana25RealMachos,
+        guia: comparacion?.pesoEsperadoMachos || null,
+        diferencia: comparacion?.diferenciaPesoMachos || null,
+        unidad: 'gr',
+        tipo: 'peso',
+        cumple: comparacion?.cumplePesoMachos || false
       },
       {
         concepto: 'Uniformidad (Hembras)',
         real: liquidacion.uniformidadRealHembras,
-        guia: liquidacion.uniformidadGuiaHembras,
-        diferencia: liquidacion.porcentajeDiferenciaUniformidadHembras,
+        guia: comparacion?.uniformidadEsperadaHembras || liquidacion.uniformidadGuiaHembras,
+        diferencia: comparacion?.diferenciaUniformidadHembras || liquidacion.porcentajeDiferenciaUniformidadHembras,
         unidad: '%',
-        tipo: 'porcentaje'
+        tipo: 'porcentaje',
+        cumple: comparacion?.cumpleUniformidadHembras || false
+      },
+      {
+        concepto: 'Uniformidad (Machos)',
+        real: liquidacion.uniformidadRealMachos,
+        guia: comparacion?.uniformidadEsperadaMachos || null,
+        diferencia: comparacion?.diferenciaUniformidadMachos || null,
+        unidad: '%',
+        tipo: 'porcentaje',
+        cumple: comparacion?.cumpleUniformidadMachos || false
       }
     ].filter(ind => ind.real != null);
   }
@@ -292,7 +352,11 @@ export class LiquidacionTecnicaComponent implements OnInit, OnChanges {
   /**
    * Obtener clase CSS para el estado del indicador
    */
-  getEstadoClase(diferencia: number | null | undefined, tipo: string): string {
+  getEstadoClase(diferencia: number | null | undefined, tipo: string, cumple?: boolean): string {
+    if (cumple !== undefined) {
+      return cumple ? 'estado-bueno' : 'estado-critico';
+    }
+    
     if (diferencia === null || diferencia === undefined) return 'estado-neutral';
     
     const umbral = tipo === 'porcentaje' ? 2 : 5; // 2% para porcentajes, 5% para otros
@@ -305,7 +369,11 @@ export class LiquidacionTecnicaComponent implements OnInit, OnChanges {
   /**
    * Obtener texto del estado
    */
-  getEstadoTexto(diferencia: number | null | undefined, tipo: string): string {
+  getEstadoTexto(diferencia: number | null | undefined, tipo: string, cumple?: boolean): string {
+    if (cumple !== undefined) {
+      return cumple ? 'Cumple' : 'No cumple';
+    }
+    
     if (diferencia === null || diferencia === undefined) return 'Sin datos';
     
     const umbral = tipo === 'porcentaje' ? 2 : 5;
@@ -313,6 +381,24 @@ export class LiquidacionTecnicaComponent implements OnInit, OnChanges {
     if (Math.abs(diferencia) <= umbral) return 'Normal';
     if (Math.abs(diferencia) <= umbral * 2) return 'Alerta';
     return 'Crítico';
+  }
+
+  /**
+   * Obtener información de la guía genética
+   */
+  get guiaGenetica() {
+    const comparacion = this.comparacion();
+    if (!comparacion) return null;
+
+    return {
+      nombre: comparacion.nombreGuiaGenetica || 'Sin guía genética',
+      raza: comparacion.raza,
+      anoTabla: comparacion.anoTablaGenetica,
+      estadoGeneral: comparacion.estadoGeneral,
+      porcentajeCumplimiento: comparacion.porcentajeCumplimiento,
+      parametrosEvaluados: comparacion.totalParametrosEvaluados,
+      parametrosCumplidos: comparacion.parametrosCumplidos
+    };
   }
 
   /**

@@ -44,7 +44,7 @@ public class LoteController : ControllerBase
     [HttpGet("{loteId}")]
     [ProducesResponseType(typeof(LoteDtos.LoteDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<LoteDtos.LoteDetailDto>> GetById(string loteId)
+    public async Task<ActionResult<LoteDtos.LoteDetailDto>> GetById(int loteId)
     {
         var res = await _svc.GetByIdAsync(loteId);
         if (res is null) return NotFound();
@@ -60,8 +60,7 @@ public class LoteController : ControllerBase
     public async Task<ActionResult<LoteDtos.LoteDetailDto>> Create([FromBody] CreateLoteDto dto)
     {
         if (dto is null) return BadRequest("Body requerido.");
-        if (string.IsNullOrWhiteSpace(dto.LoteId))
-            return BadRequest("LoteId es obligatorio.");
+        // LoteId es opcional - el backend generará automáticamente si no se proporciona
 
         try
         {
@@ -86,12 +85,12 @@ public class LoteController : ControllerBase
     [ProducesResponseType(typeof(LoteDtos.LoteDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<LoteDtos.LoteDetailDto>> Update(string loteId, [FromBody] UpdateLoteDto dto)
+    public async Task<ActionResult<LoteDtos.LoteDetailDto>> Update(int loteId, [FromBody] UpdateLoteDto dto)
     {
         if (dto is null) return BadRequest("Body requerido.");
-        if (string.IsNullOrWhiteSpace(dto.LoteId))
-            return BadRequest("LoteId es obligatorio.");
-        if (!string.Equals(loteId, dto.LoteId, StringComparison.OrdinalIgnoreCase))
+        if (dto.LoteId <= 0)
+            return BadRequest("LoteId debe ser mayor que 0.");
+        if (loteId != dto.LoteId)
             return BadRequest("El id de la ruta no coincide con el del cuerpo.");
 
         try
@@ -116,7 +115,7 @@ public class LoteController : ControllerBase
     [HttpDelete("{loteId}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Delete(string loteId)
+    public async Task<IActionResult> Delete(int loteId)
     {
         var ok = await _svc.DeleteAsync(loteId);
         return ok ? NoContent() : NotFound();
@@ -128,7 +127,7 @@ public class LoteController : ControllerBase
     [HttpDelete("{loteId}/hard")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> HardDelete(string loteId)
+    public async Task<IActionResult> HardDelete(int loteId)
     {
         var ok = await _svc.HardDeleteAsync(loteId);
         return ok ? NoContent() : NotFound();
@@ -140,7 +139,7 @@ public class LoteController : ControllerBase
     [HttpGet("{loteId}/resumen-mortalidad")]
     [ProducesResponseType(typeof(LoteMortalidadResumenDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetResumenMortalidad(string loteId)
+    public async Task<IActionResult> GetResumenMortalidad(int loteId)
     {
         var dto = await _svc.GetMortalidadResumenAsync(loteId);
         if (dto is null) return NotFound();

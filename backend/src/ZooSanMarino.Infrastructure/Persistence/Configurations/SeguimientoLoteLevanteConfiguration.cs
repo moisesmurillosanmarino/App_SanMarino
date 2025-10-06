@@ -11,7 +11,7 @@ public class SeguimientoLoteLevanteConfiguration : IEntityTypeConfiguration<Segu
         builder.HasKey(x => x.Id);
         builder.Property(x => x.Id).UseIdentityAlwaysColumn();
 
-        builder.Property(x => x.LoteId).HasMaxLength(50).IsRequired();
+        builder.Property(x => x.LoteId).IsRequired();
         builder.Property(x => x.TipoAlimento).HasMaxLength(100).IsRequired();
         builder.Property(x => x.Observaciones).HasMaxLength(1000);
 

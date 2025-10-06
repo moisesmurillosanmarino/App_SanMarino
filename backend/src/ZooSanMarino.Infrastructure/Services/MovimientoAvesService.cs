@@ -113,11 +113,11 @@ public class MovimientoAvesService : IMovimientoAvesService
         if (!string.IsNullOrEmpty(request.Estado))
             query = query.Where(m => m.Estado == request.Estado);
 
-        if (!string.IsNullOrEmpty(request.LoteOrigenId))
-            query = query.Where(m => m.LoteOrigenId == request.LoteOrigenId);
+        if (request.LoteOrigenId.HasValue)  // Changed from string.IsNullOrEmpty check
+            query = query.Where(m => m.LoteOrigenId == request.LoteOrigenId.Value);  // Changed from request.LoteOrigenId
 
-        if (!string.IsNullOrEmpty(request.LoteDestinoId))
-            query = query.Where(m => m.LoteDestinoId == request.LoteDestinoId);
+        if (request.LoteDestinoId.HasValue)  // Changed from string.IsNullOrEmpty check
+            query = query.Where(m => m.LoteDestinoId == request.LoteDestinoId.Value);  // Changed from request.LoteDestinoId
 
         if (request.GranjaOrigenId.HasValue)
             query = query.Where(m => m.GranjaOrigenId == request.GranjaOrigenId.Value);
@@ -162,11 +162,11 @@ public class MovimientoAvesService : IMovimientoAvesService
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<MovimientoAvesDto>> GetMovimientosByLoteAsync(string loteId)
+    public async Task<IEnumerable<MovimientoAvesDto>> GetMovimientosByLoteAsync(int loteId)  // Changed from string to int
     {
         return await _context.MovimientoAves
             .AsNoTracking()
-            .Where(m => (m.LoteOrigenId == loteId || m.LoteDestinoId == loteId) && 
+            .Where(m => (m.LoteOrigenId == loteId || m.LoteDestinoId == loteId) &&  // Changed from loteId
                        m.CompanyId == _currentUser.CompanyId && 
                        m.DeletedAt == null)
             .OrderByDescending(m => m.FechaMovimiento)
@@ -282,22 +282,22 @@ public class MovimientoAvesService : IMovimientoAvesService
     }
 
     // Implementaciones básicas de los métodos restantes
-    public Task<ResultadoMovimientoDto> TrasladarEntreGranjasAsync(string loteId, int granjaOrigenId, int granjaDestinoId, int hembras, int machos, int mixtas, string? motivo = null)
+    public Task<ResultadoMovimientoDto> TrasladarEntreGranjasAsync(int loteId, int granjaOrigenId, int granjaDestinoId, int hembras, int machos, int mixtas, string? motivo = null)  // Changed from string to int
     {
         throw new NotImplementedException("Método pendiente de implementación completa");
     }
 
-    public Task<ResultadoMovimientoDto> TrasladarDentroGranjaAsync(string loteId, int granjaId, string? nucleoOrigenId, string? galponOrigenId, string? nucleoDestinoId, string? galponDestinoId, int hembras, int machos, int mixtas, string? motivo = null)
+    public Task<ResultadoMovimientoDto> TrasladarDentroGranjaAsync(int loteId, int granjaId, string? nucleoOrigenId, string? galponOrigenId, string? nucleoDestinoId, string? galponDestinoId, int hembras, int machos, int mixtas, string? motivo = null)  // Changed from string to int
     {
         throw new NotImplementedException("Método pendiente de implementación completa");
     }
 
-    public Task<ResultadoMovimientoDto> DividirLoteAsync(string loteOrigenId, string loteDestinoId, int hembras, int machos, int mixtas, string? motivo = null)
+    public Task<ResultadoMovimientoDto> DividirLoteAsync(int loteOrigenId, int loteDestinoId, int hembras, int machos, int mixtas, string? motivo = null)  // Changed from string to int
     {
         throw new NotImplementedException("Método pendiente de implementación completa");
     }
 
-    public Task<ResultadoMovimientoDto> UnificarLotesAsync(string loteOrigenId, string loteDestinoId, string? motivo = null)
+    public Task<ResultadoMovimientoDto> UnificarLotesAsync(int loteOrigenId, int loteDestinoId, string? motivo = null)  // Changed from string to int
     {
         throw new NotImplementedException("Método pendiente de implementación completa");
     }
@@ -306,8 +306,8 @@ public class MovimientoAvesService : IMovimientoAvesService
     {
         // Validación básica
         return (dto.CantidadHembras + dto.CantidadMachos + dto.CantidadMixtas) > 0 && 
-               (!string.IsNullOrEmpty(dto.LoteOrigenId) || dto.InventarioOrigenId.HasValue) &&
-               (!string.IsNullOrEmpty(dto.LoteDestinoId) || dto.InventarioDestinoId.HasValue);
+               (dto.LoteOrigenId.HasValue || dto.InventarioOrigenId.HasValue) &&  // Changed from string.IsNullOrEmpty check
+               (dto.LoteDestinoId.HasValue || dto.InventarioDestinoId.HasValue);  // Changed from string.IsNullOrEmpty check
     }
 
     public async Task<List<string>> ValidarDisponibilidadAvesAsync(int inventarioOrigenId, int hembras, int machos, int mixtas)

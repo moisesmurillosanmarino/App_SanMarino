@@ -600,6 +600,12 @@
   overflow-y: auto;
 }
 
+.comparacion-guia-section {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 2px solid var(--warm-200);
+}
+
 /* Ajustar el tamaño del modal para liquidación */
 :host .ux-modal__dialog--xxl {
   width: min(1200px, 95vw);

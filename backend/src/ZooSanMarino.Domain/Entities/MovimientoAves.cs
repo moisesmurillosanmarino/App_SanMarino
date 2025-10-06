@@ -15,14 +15,14 @@ public class MovimientoAves : AuditableEntity
     
     // Origen del movimiento
     public int? InventarioOrigenId { get; set; }
-    public string? LoteOrigenId { get; set; }
+    public int? LoteOrigenId { get; set; }  // Changed from string? to int?
     public int? GranjaOrigenId { get; set; }
     public string? NucleoOrigenId { get; set; }
     public string? GalponOrigenId { get; set; }
     
     // Destino del movimiento
     public int? InventarioDestinoId { get; set; }
-    public string? LoteDestinoId { get; set; }
+    public int? LoteDestinoId { get; set; }  // Changed from string? to int?
     public int? GranjaDestinoId { get; set; }
     public string? NucleoDestinoId { get; set; }
     public string? GalponDestinoId { get; set; }

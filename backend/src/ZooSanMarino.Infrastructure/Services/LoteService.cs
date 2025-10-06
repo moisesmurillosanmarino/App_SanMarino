@@ -36,7 +36,7 @@ namespace ZooSanMarino.Infrastructure.Services
                 .Where(l => l.CompanyId == _current.CompanyId && l.DeletedAt == null)
                 .OrderBy(l => l.LoteId)
                 .Select(l => new LoteDto(
-                    l.LoteId,
+                    l.LoteId ?? 0,
                     l.LoteNombre,
                     l.GranjaId,
                     l.NucleoId,
@@ -56,6 +56,7 @@ namespace ZooSanMarino.Infrastructure.Services
                     l.Linea,
                     l.TipoLinea,
                     l.CodigoGuiaGenetica,
+                    l.LineaGeneticaId,  // ← NUEVO: ID de la línea genética
                     l.Mixtas,
                     l.PesoMixto,
                     l.AvesEncasetadas,
@@ -84,7 +85,7 @@ namespace ZooSanMarino.Infrastructure.Services
             {
                 var term = req.Search.Trim().ToLower();
                 q = q.Where(l =>
-                    l.LoteId.ToLower().Contains(term) ||
+                    l.LoteId.ToString().Contains(term) ||
                     l.LoteNombre.ToLower().Contains(term));
             }
 
@@ -119,7 +120,7 @@ namespace ZooSanMarino.Infrastructure.Services
         // ======================================================
         // GET DETALLE POR ID (tenant-safe)
         // ======================================================
-        public async Task<LoteDetailDto?> GetByIdAsync(string loteId)
+        public async Task<LoteDetailDto?> GetByIdAsync(int loteId)
         {
             var q = _ctx.Lotes
                 .AsNoTracking()
@@ -135,16 +136,8 @@ namespace ZooSanMarino.Infrastructure.Services
         // ======================================================
         public async Task<LoteDetailDto> CreateAsync(CreateLoteDto dto)
         {
-            if (string.IsNullOrWhiteSpace(dto.LoteId))
-                throw new InvalidOperationException("LoteId no puede ser nulo o vacío.");
-
-            // LoteId único por company
-            var existsLote = await _ctx.Lotes
-                .AnyAsync(l => l.CompanyId == _current.CompanyId &&
-                               l.LoteId == dto.LoteId &&
-                               l.DeletedAt == null);
-            if (existsLote)
-                throw new InvalidOperationException($"El Lote '{dto.LoteId}' ya existe.");
+            // La base de datos generará automáticamente el loteId
+            // No necesitamos generar IDs manualmente
 
             await EnsureFarmExists(dto.GranjaId);
 
@@ -190,7 +183,7 @@ namespace ZooSanMarino.Infrastructure.Services
 
             var ent = new Lote
             {
-                LoteId = dto.LoteId.Trim(),
+                // LoteId será generado automáticamente por la base de datos
                 LoteNombre = (dto.LoteNombre ?? string.Empty).Trim(),
                 GranjaId = dto.GranjaId,
                 NucleoId = nucleoId,
@@ -217,6 +210,7 @@ namespace ZooSanMarino.Infrastructure.Services
                 Linea = dto.Linea,
                 TipoLinea = dto.TipoLinea,
                 CodigoGuiaGenetica = dto.CodigoGuiaGenetica,
+                LineaGeneticaId = dto.LineaGeneticaId,  // ← NUEVO: ID de la línea genética
                 Tecnico = dto.Tecnico,
 
                 Mixtas = dto.Mixtas,
@@ -232,7 +226,7 @@ namespace ZooSanMarino.Infrastructure.Services
             _ctx.Lotes.Add(ent);
             await _ctx.SaveChangesAsync();
 
-            var result = await GetByIdAsync(ent.LoteId);
+            var result = await GetByIdAsync(ent.LoteId ?? 0);
             return result ?? throw new InvalidOperationException("No fue posible leer el lote recién creado.");
         }
 
@@ -311,6 +305,7 @@ namespace ZooSanMarino.Infrastructure.Services
             ent.Linea = dto.Linea;
             ent.TipoLinea = dto.TipoLinea;
             ent.CodigoGuiaGenetica = dto.CodigoGuiaGenetica;
+            ent.LineaGeneticaId = dto.LineaGeneticaId;  // ← NUEVO: ID de la línea genética
             ent.Tecnico = dto.Tecnico;
 
             ent.Mixtas = dto.Mixtas;
@@ -322,13 +317,13 @@ namespace ZooSanMarino.Infrastructure.Services
             ent.UpdatedAt = DateTime.UtcNow;
 
             await _ctx.SaveChangesAsync();
-            return await GetByIdAsync(ent.LoteId);
+            return await GetByIdAsync(ent.LoteId ?? 0);
         }
 
         // ======================================================
         // DELETE (soft) y HARD DELETE
         // ======================================================
-        public async Task<bool> DeleteAsync(string loteId)
+        public async Task<bool> DeleteAsync(int loteId)
         {
             var ent = await _ctx.Lotes
                 .SingleOrDefaultAsync(x => x.LoteId == loteId && x.CompanyId == _current.CompanyId);
@@ -342,7 +337,7 @@ namespace ZooSanMarino.Infrastructure.Services
             return true;
         }
 
-        public async Task<bool> HardDeleteAsync(string loteId)
+        public async Task<bool> HardDeleteAsync(int loteId)
         {
             var ent = await _ctx.Lotes
                 .SingleOrDefaultAsync(x => x.LoteId == loteId && x.CompanyId == _current.CompanyId);
@@ -372,7 +367,7 @@ namespace ZooSanMarino.Infrastructure.Services
                 .Include(l => l.Nucleo)
                 .Include(l => l.Galpon)
                 .Select(l => new LoteDetailDto(
-                    l.LoteId,
+                    l.LoteId ?? 0,
                     l.LoteNombre,
                     l.GranjaId,
                     l.NucleoId,
@@ -392,6 +387,7 @@ namespace ZooSanMarino.Infrastructure.Services
                     l.Linea,
                     l.TipoLinea,
                     l.CodigoGuiaGenetica,
+                    l.LineaGeneticaId,  // ← NUEVO: ID de la línea genética
                     l.Tecnico,
                     l.Mixtas,
                     l.PesoMixto,
@@ -449,7 +445,7 @@ namespace ZooSanMarino.Infrastructure.Services
         ///  - Clampea a cero si queda negativo.
         ///  - Tenant-safe (CompanyId) y exige que el lote no esté eliminado.
         /// </summary>
-        public async Task<LoteMortalidadResumenDto?> GetMortalidadResumenAsync(string loteId)
+        public async Task<LoteMortalidadResumenDto?> GetMortalidadResumenAsync(int loteId)
         {
             // 1) Carga del lote (tenant-safe)
             var lote = await _ctx.Lotes
@@ -488,7 +484,7 @@ namespace ZooSanMarino.Infrastructure.Services
 
             return new LoteMortalidadResumenDto
             {
-                LoteId = loteId,
+                LoteId = loteId.ToString(),
                 MortalidadAcumHembras = mortH,
                 MortalidadAcumMachos = mortM,
                 HembrasIniciales = baseH,
@@ -499,6 +495,9 @@ namespace ZooSanMarino.Infrastructure.Services
                 SaldoMachos = saldoM
             };
         }
+
+        // Los métodos de generación manual de IDs han sido removidos
+        // La base de datos ahora genera automáticamente los IDs
     }
 
 }

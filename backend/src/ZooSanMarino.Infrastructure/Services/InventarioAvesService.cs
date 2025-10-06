@@ -167,8 +167,8 @@ public class InventarioAvesService : IInventarioAvesService
             .Where(i => i.CompanyId == _currentUser.CompanyId && i.DeletedAt == null);
 
         // Aplicar filtros
-        if (!string.IsNullOrEmpty(request.LoteId))
-            query = query.Where(i => i.LoteId.Contains(request.LoteId));
+        if (request.LoteId.HasValue)
+            query = query.Where(i => i.LoteId == request.LoteId.Value);
 
         if (request.GranjaId.HasValue)
             query = query.Where(i => i.GranjaId == request.GranjaId.Value);
@@ -210,7 +210,7 @@ public class InventarioAvesService : IInventarioAvesService
         };
     }
 
-    public async Task<IEnumerable<InventarioAvesDto>> GetByLoteIdAsync(string loteId)
+    public async Task<IEnumerable<InventarioAvesDto>> GetByLoteIdAsync(int loteId)
     {
         return await _context.InventarioAves
             .AsNoTracking()
@@ -301,7 +301,7 @@ public class InventarioAvesService : IInventarioAvesService
         }
     }
 
-    public async Task<EstadoLoteDto> GetEstadoLoteAsync(string loteId)
+    public async Task<EstadoLoteDto> GetEstadoLoteAsync(int loteId)
     {
         var inventarios = await GetByLoteIdAsync(loteId);
         var lote = await _context.Lotes
@@ -380,7 +380,7 @@ public class InventarioAvesService : IInventarioAvesService
             .ToListAsync();
     }
 
-    public async Task<bool> ExisteInventarioAsync(string loteId, int granjaId, string? nucleoId, string? galponId)
+    public async Task<bool> ExisteInventarioAsync(int loteId, int granjaId, string? nucleoId, string? galponId)
     {
         return await _context.InventarioAves
             .Where(i => i.LoteId == loteId && 
@@ -403,7 +403,7 @@ public class InventarioAvesService : IInventarioAvesService
         return inventario?.PuedeRealizarMovimiento(hembras, machos, mixtas) ?? false;
     }
 
-    public async Task<InventarioAvesDto> InicializarDesdeLotelAsync(string loteId)
+    public async Task<InventarioAvesDto> InicializarDesdeLotelAsync(int loteId)
     {
         var lote = await _context.Lotes
             .AsNoTracking()
@@ -447,7 +447,7 @@ public class InventarioAvesService : IInventarioAvesService
         var lotesSinInventario = await _context.Lotes
             .Where(l => l.CompanyId == _currentUser.CompanyId && 
                        l.DeletedAt == null && 
-                       !lotesConInventario.Contains(l.LoteId) &&
+                       !lotesConInventario.Contains(l.LoteId ?? 0) &&
                        (l.HembrasL > 0 || l.MachosL > 0 || l.Mixtas > 0))
             .ToListAsync();
 
@@ -457,7 +457,7 @@ public class InventarioAvesService : IInventarioAvesService
         {
             try
             {
-                var inventario = await InicializarDesdeLotelAsync(lote.LoteId);
+                var inventario = await InicializarDesdeLotelAsync(lote.LoteId ?? 0);
                 inventariosCreados.Add(inventario);
             }
             catch (Exception)

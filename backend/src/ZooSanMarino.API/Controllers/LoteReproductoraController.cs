@@ -21,7 +21,7 @@ public class LoteReproductoraController : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<LoteReproductoraDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<LoteReproductoraDto>>> GetAll(
-        [FromQuery] string? loteId,
+        [FromQuery] int? loteId,  // Changed from string? to int?
         CancellationToken ct)
     {
         // Nota: el service actual no acepta ct; si lo agregas en futuro, pásalo.
@@ -36,11 +36,11 @@ public class LoteReproductoraController : ControllerBase
     [ProducesResponseType(typeof(LoteReproductoraDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<LoteReproductoraDto>> GetById(
-        [FromRoute] string loteId,
+        [FromRoute] int loteId,  // Changed from string to int
         [FromRoute] string repId,
         CancellationToken ct)
     {
-        var dto = await _svc.GetByIdAsync(loteId, repId);
+        var dto = await _svc.GetByIdAsync(loteId, repId);  // Changed from loteId
         return dto is null ? NotFound() : Ok(dto);
     }
 
@@ -103,7 +103,7 @@ public class LoteReproductoraController : ControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<LoteReproductoraDto>> Update(
-        [FromRoute] string loteId,
+        [FromRoute] int loteId,  // Changed from string to int
         [FromRoute] string repId,
         [FromBody] UpdateLoteReproductoraDto dto,
         CancellationToken ct)
@@ -111,7 +111,7 @@ public class LoteReproductoraController : ControllerBase
         if (dto is null)
             return ValidationProblem(new ValidationProblemDetails { Detail = "Body requerido." });
 
-        if (!string.Equals(dto.LoteId, loteId, StringComparison.Ordinal) ||
+        if (dto.LoteId != loteId ||  // Changed from string.Equals to int comparison
             !string.Equals(dto.ReproductoraId, repId, StringComparison.Ordinal))
         {
             return ValidationProblem(new ValidationProblemDetails
@@ -131,11 +131,11 @@ public class LoteReproductoraController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(
-        [FromRoute] string loteId,
+        [FromRoute] int loteId,  // Changed from string to int
         [FromRoute] string repId,
         CancellationToken ct)
     {
-        var ok = await _svc.DeleteAsync(loteId, repId);
+        var ok = await _svc.DeleteAsync(loteId, repId);  // Changed from loteId
         return ok ? NoContent() : NotFound();
     }
 }

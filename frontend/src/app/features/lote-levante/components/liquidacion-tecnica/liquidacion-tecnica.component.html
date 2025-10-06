@@ -107,6 +107,34 @@
       </div>
     </section>
 
+    <!-- Información de la guía genética -->
+    <section *ngIf="guiaGenetica" class="ux-card guia-genetica-info">
+      <div class="guia-header">
+        <h4>📊 Guía Genética</h4>
+        <div class="estado-general" [class]="'estado-' + guiaGenetica.estadoGeneral.toLowerCase()">
+          {{ guiaGenetica.estadoGeneral }}
+        </div>
+      </div>
+      <div class="guia-grid">
+        <div class="guia-item">
+          <label>🧬 Guía Usada</label>
+          <div><strong>{{ guiaGenetica.nombre }}</strong></div>
+        </div>
+        <div class="guia-item">
+          <label>📊 Cumplimiento</label>
+          <div class="valor-destacado">{{ guiaGenetica.porcentajeCumplimiento | number:'1.0-0' }}%</div>
+        </div>
+        <div class="guia-item">
+          <label>✅ Parámetros Cumplidos</label>
+          <div>{{ guiaGenetica.parametrosCumplidos }} / {{ guiaGenetica.parametrosEvaluados }}</div>
+        </div>
+        <div class="guia-item">
+          <label>📅 Año Tabla</label>
+          <div>{{ guiaGenetica.anoTabla || '—' }}</div>
+        </div>
+      </div>
+    </section>
+
     <!-- Tabs de navegación -->
     <div class="liquidacion-tabs">
       <button 
@@ -169,8 +197,8 @@
               </td>
               <td class="indicador-estado">
                 <span class="estado-badge" 
-                      [class]="getEstadoClase(indicador.diferencia, indicador.tipo)">
-                  {{ getEstadoTexto(indicador.diferencia, indicador.tipo) }}
+                      [class]="getEstadoClase(indicador.diferencia, indicador.tipo, indicador.cumple)">
+                  {{ getEstadoTexto(indicador.diferencia, indicador.tipo, indicador.cumple) }}
                 </span>
               </td>
             </tr>

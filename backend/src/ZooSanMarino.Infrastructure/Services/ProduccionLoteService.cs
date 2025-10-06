@@ -82,11 +82,11 @@ public class ProduccionLoteService : AppInterfaces.IProduccionLoteService
             .ToListAsync();
     }
 
-    public async Task<ProduccionLoteDto?> GetByLoteIdAsync(string loteId)
+    public async Task<ProduccionLoteDto?> GetByLoteIdAsync(int loteId)  // Changed from string to int
     {
         var q = from p in _ctx.ProduccionLotes.AsNoTracking()
                 join l in _ctx.Lotes.AsNoTracking() on p.LoteId equals l.LoteId
-                where l.CompanyId == _current.CompanyId && l.DeletedAt == null && p.LoteId == loteId
+                where l.CompanyId == _current.CompanyId && l.DeletedAt == null && p.LoteId == loteId  // Changed from loteId
                 select p;
 
         var x = await q.OrderByDescending(p => p.FechaInicioProduccion).FirstOrDefaultAsync();
@@ -160,8 +160,8 @@ public class ProduccionLoteService : AppInterfaces.IProduccionLoteService
                 where l.CompanyId == _current.CompanyId && l.DeletedAt == null
                 select p;
 
-        if (!string.IsNullOrWhiteSpace(filter.LoteId))
-            q = q.Where(x => x.LoteId == filter.LoteId);
+        if (filter.LoteId.HasValue)  // Changed from string.IsNullOrWhiteSpace check
+            q = q.Where(x => x.LoteId == filter.LoteId.Value);  // Changed from filter.LoteId
         if (filter.Desde.HasValue)
             q = q.Where(x => x.FechaInicioProduccion >= filter.Desde.Value);
         if (filter.Hasta.HasValue)

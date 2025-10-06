@@ -3,7 +3,7 @@ namespace ZooSanMarino.Application.DTOs;
 
 public class UpdateLoteDto
 {
-    public string LoteId { get; set; } = null!;
+    public int LoteId { get; set; } // Requerido para actualización - secuencia numérica
     public string LoteNombre { get; set; } = null!;
     public int    GranjaId { get; set; }
     public string? NucleoId { get; set; }      // ← string? (coincide con Nucleo.NucleoId)
@@ -24,6 +24,7 @@ public class UpdateLoteDto
     public string? Linea { get; set; }
     public string? TipoLinea { get; set; }
     public string? CodigoGuiaGenetica { get; set; }
+    public int?    LineaGeneticaId { get; set; }  // ← NUEVO: ID de la línea genética
     public string? Tecnico { get; set; }
     public int?    Mixtas { get; set; }
     public int?    AvesEncasetadas { get; set; }

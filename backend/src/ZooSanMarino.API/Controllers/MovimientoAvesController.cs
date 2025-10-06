@@ -134,11 +134,11 @@ public class MovimientoAvesController : ControllerBase
     /// </summary>
     [HttpGet("lote/{loteId}")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<MovimientoAvesDto>))]
-    public async Task<IActionResult> GetByLote(string loteId)
+    public async Task<IActionResult> GetByLote(int loteId)  // Changed from string to int
     {
         try
         {
-            var movimientos = await _movimientoService.GetMovimientosByLoteAsync(loteId);
+            var movimientos = await _movimientoService.GetMovimientosByLoteAsync(loteId);  // Changed from loteId
             return Ok(movimientos);
         }
         catch (Exception ex)
@@ -305,7 +305,7 @@ public class MovimientoAvesController : ControllerBase
 
             var trasladoDto = new TrasladoRapidoDto
             {
-                LoteId = request.LoteId,
+                LoteId = int.Parse(request.LoteId),  // Convert string to int
                 GranjaOrigenId = request.GranjaOrigenId,
                 NucleoOrigenId = request.NucleoOrigenId,
                 GalponOrigenId = request.GalponOrigenId,

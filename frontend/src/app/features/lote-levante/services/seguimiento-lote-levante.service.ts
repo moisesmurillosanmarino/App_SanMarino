@@ -137,9 +137,9 @@ export class SeguimientoLoteLevanteService {
   }
 
   /** GET por LoteId */
-  getByLoteId(loteId: string): Observable<SeguimientoLoteLevanteDto[]> {
+  getByLoteId(loteId: number): Observable<SeguimientoLoteLevanteDto[]> {  // Changed from string to number
     return this.http.get<SeguimientoLoteLevanteDto[]>(
-      `${this.baseUrl}/por-lote/${encodeURIComponent(loteId)}`
+      `${this.baseUrl}/por-lote/${encodeURIComponent(loteId.toString())}`  // Convert to string for URL
     );
   }
 
@@ -175,7 +175,7 @@ export class SeguimientoLoteLevanteService {
   }
 
   getResultado(params: {
-    loteId: string;
+    loteId: number;  // Changed from string to number
     desde?: string | Date;
     hasta?: string | Date;
     recalcular?: boolean;     // default true

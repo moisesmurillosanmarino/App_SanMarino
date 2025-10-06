@@ -7,7 +7,7 @@ namespace ZooSanMarino.Application.DTOs;
 public record HistorialInventarioDto(
     int Id,
     int InventarioId,
-    string LoteId,
+    int LoteId,
     string LoteNombre,
     DateTime FechaCambio,
     string TipoCambio,
@@ -47,7 +47,7 @@ public record HistorialInventarioDto(
 /// </summary>
 public sealed record HistorialInventarioSearchRequest(
     int? InventarioId = null,
-    string? LoteId = null,
+    int? LoteId = null,
     string? TipoCambio = null,
     int? MovimientoId = null,
     int? GranjaId = null,
@@ -92,7 +92,7 @@ public record ResumenCambioPorTipoDto(
 /// DTO para trazabilidad completa de un lote
 /// </summary>
 public record TrazabilidadLoteDto(
-    string LoteId,
+    int LoteId,  // Changed from string to int
     string LoteNombre,
     DateTime FechaInicio,
     DateTime? FechaFin,

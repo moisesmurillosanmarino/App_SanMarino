@@ -9,7 +9,7 @@ public class InventarioAves : AuditableEntity
     public int Id { get; set; }
     
     // Identificación del lote
-    public string LoteId { get; set; } = null!;
+    public int LoteId { get; set; }
     
     // Ubicación actual
     public int GranjaId { get; set; }

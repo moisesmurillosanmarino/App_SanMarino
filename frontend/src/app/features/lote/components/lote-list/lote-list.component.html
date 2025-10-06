@@ -402,7 +402,7 @@
             <div><strong class="text-warm-gray-800">📊 Fase:</strong> {{ calcularFase(selectedLote.fechaEncaset) }}</div>
             <div><strong class="text-warm-gray-800">⏳ Edad:</strong> {{ calcularEdadDias(selectedLote.fechaEncaset) }} días</div>
             <div><strong class="text-warm-gray-800">📄 Lote ERP:</strong> {{ selectedLote.loteErp || '—' }}</div>
-            <div><strong class="text-warm-gray-800">🧬 Línea genética:</strong> {{ selectedLote.lineaGenetica || '—' }}</div>
+            <div><strong class="text-warm-gray-800">🧬 Línea genética:</strong> {{ getLineaGeneticaDescripcion(selectedLote.lineaGeneticaId) || '—' }}</div>
             <div><strong class="text-warm-gray-800">🐔 Hembras L:</strong> {{ formatNumber(selectedLote.hembrasL || 0) }}</div>
             <div><strong class="text-warm-gray-800">🐓 Machos L:</strong> {{ formatNumber(selectedLote.machosL || 0) }}</div>
             <div><strong class="text-warm-gray-800">🐥 Mixtas:</strong> {{ formatNumber(selectedLote.mixtas || 0) }}</div>

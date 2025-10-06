@@ -15,7 +15,7 @@ public class LoteReproductoraConfiguration : IEntityTypeConfiguration<LoteReprod
     b.HasKey(x => new { x.LoteId, x.ReproductoraId });
 
 
-    b.Property(x => x.LoteId).HasColumnName("lote_id").HasMaxLength(64).IsRequired();
+    b.Property(x => x.LoteId).HasColumnName("lote_id").IsRequired();
     b.Property(x => x.ReproductoraId).HasColumnName("reproductora_id").HasMaxLength(64).IsRequired();
     b.Property(x => x.NombreLote).HasColumnName("nombre_lote").HasMaxLength(200).IsRequired();
     b.Property(x => x.FechaEncasetamiento).HasColumnName("fecha_encasetamiento");

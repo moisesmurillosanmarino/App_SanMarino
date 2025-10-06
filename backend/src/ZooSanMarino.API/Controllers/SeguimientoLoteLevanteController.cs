@@ -15,7 +15,7 @@ public class SeguimientoLoteLevanteController : ControllerBase
     /// <summary>Obtener todos los registros de un lote (ordenados por fecha asc).</summary>
     [HttpGet("por-lote/{loteId}")]
     [ProducesResponseType(typeof(IEnumerable<SeguimientoLoteLevanteDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<SeguimientoLoteLevanteDto>>> GetByLote(string loteId)
+    public async Task<ActionResult<IEnumerable<SeguimientoLoteLevanteDto>>> GetByLote(int loteId)
     {
         var items = await _svc.GetByLoteAsync(loteId);
         return Ok(items);
@@ -75,7 +75,7 @@ public class SeguimientoLoteLevanteController : ControllerBase
     [HttpGet("filtro")]
     [ProducesResponseType(typeof(IEnumerable<SeguimientoLoteLevanteDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<SeguimientoLoteLevanteDto>>> Filter(
-        [FromQuery] string? loteId,
+        [FromQuery] int? loteId,
         [FromQuery] DateTime? desde,
         [FromQuery] DateTime? hasta)
     {
@@ -87,7 +87,7 @@ public class SeguimientoLoteLevanteController : ControllerBase
     [HttpGet("por-lote/{loteId}/resultado")]
     [ProducesResponseType(typeof(ResultadoLevanteResponse), StatusCodes.Status200OK)]
     public async Task<ActionResult<ResultadoLevanteResponse>> GetResultadoPorLote(
-        string loteId,
+        int loteId,
         [FromQuery] DateTime? desde,
         [FromQuery] DateTime? hasta,
         [FromQuery] bool recalcular = true)

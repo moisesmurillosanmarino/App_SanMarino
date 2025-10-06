@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Observable, throwError } from 'rxjs';
+import { Observable, throwError, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
+import { MockGuiaGeneticaService } from './mock-guia-genetica.service';
 
 // ==================== INTERFACES ====================
 
@@ -102,8 +103,12 @@ export interface LineaGeneticaOption {
 })
 export class GuiaGeneticaService {
   private baseUrl = `${environment.apiUrl}/ProduccionAvicolaRaw`;
+  private useMock = true; // Cambiar a false cuando la API esté disponible
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    private mockService: MockGuiaGeneticaService
+  ) {}
 
   // =====================================================
   // MÉTODOS PARA LOTES - RAZAS Y LÍNEAS GENÉTICAS
@@ -113,6 +118,10 @@ export class GuiaGeneticaService {
    * Obtener todas las razas disponibles
    */
   getRazasDisponibles(): Observable<string[]> {
+    if (this.useMock) {
+      return this.mockService.getRazasDisponibles();
+    }
+    
     return this.http.get<ProduccionAvicolaRawDto[]>(this.baseUrl).pipe(
       map(data => {
         const razas = new Set<string>();
@@ -157,6 +166,10 @@ export class GuiaGeneticaService {
    * Obtener líneas genéticas disponibles para una raza
    */
   getLineasGeneticasPorRaza(raza: string): Observable<LineaGeneticaOption[]> {
+    if (this.useMock) {
+      return this.mockService.getLineasGeneticasPorRaza(raza);
+    }
+    
     const request: ProduccionAvicolaRawSearchRequest = {
       raza: raza,
       page: 1,

@@ -4,7 +4,7 @@ namespace ZooSanMarino.Application.DTOs
 {
     public record ProduccionLoteDto(
         int Id,
-        string LoteId,
+        int LoteId,
         DateTime FechaInicioProduccion,
         int HembrasIniciales,
         int MachosIniciales,
@@ -16,7 +16,7 @@ namespace ZooSanMarino.Application.DTOs
     );
 
     public record CreateProduccionLoteDto(
-        string LoteId,
+        int LoteId,
         DateTime FechaInicioProduccion,
         int HembrasIniciales,
         int MachosIniciales,
@@ -29,7 +29,7 @@ namespace ZooSanMarino.Application.DTOs
 
     public record UpdateProduccionLoteDto(
         int Id,
-        string LoteId,
+        int LoteId,
         DateTime FechaInicioProduccion,
         int HembrasIniciales,
         int MachosIniciales,
@@ -41,7 +41,7 @@ namespace ZooSanMarino.Application.DTOs
     );
 
     public record FilterProduccionLoteDto(
-        string? LoteId,
+        int? LoteId,
         DateTime? Desde,
         DateTime? Hasta
     );

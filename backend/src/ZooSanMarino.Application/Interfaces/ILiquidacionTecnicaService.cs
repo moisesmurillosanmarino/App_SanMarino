@@ -27,5 +27,5 @@ public interface ILiquidacionTecnicaService
     /// </summary>
     /// <param name="loteId">ID del lote</param>
     /// <returns>True si el lote existe y tiene seguimiento</returns>
-    Task<bool> ValidarLoteParaLiquidacionAsync(string loteId);
+    Task<bool> ValidarLoteParaLiquidacionAsync(int loteId);
 }

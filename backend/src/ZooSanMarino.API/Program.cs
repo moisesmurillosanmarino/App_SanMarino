@@ -161,6 +161,9 @@ builder.Services.AddScoped<IExcelImportService, ExcelImportService>();
 // Liquidación Técnica Service
 builder.Services.AddScoped<ILiquidacionTecnicaService, LiquidacionTecnicaService>();
 
+// Liquidación Técnica Comparación Service
+builder.Services.AddScoped<ILiquidacionTecnicaComparacionService, LiquidacionTecnicaComparacionService>();
+
 // Sistema de Inventario de Aves
 builder.Services.AddScoped<IInventarioAvesService, InventarioAvesService>();
 builder.Services.AddScoped<IMovimientoAvesService, MovimientoAvesService>();
@@ -174,6 +177,9 @@ builder.Services.AddScoped<IGramajeProvider, NullGramajeProvider>();
 builder.Services.AddScoped<IDbIntrospectionService, DbIntrospectionService>();
 builder.Services.AddScoped<IDbSchemaService, DbSchemaService>();
 builder.Services.AddScoped<IReadOnlyQueryService, ReadOnlyQueryService>();
+
+// DB Studio Service
+builder.Services.AddScoped<IDbStudioService, DbStudioService>();
 
 
 // ─────────────────────────────────────

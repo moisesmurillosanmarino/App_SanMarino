@@ -1,6 +1,7 @@
 // src/ZooSanMarino.API/Controllers/LiquidacionTecnicaController.cs
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using ZooSanMarino.Application.DTOs;
 using ZooSanMarino.Application.Interfaces;
 
@@ -30,7 +31,7 @@ public class LiquidacionTecnicaController : ControllerBase
     /// <returns>Resultados de la liquidación técnica</returns>
     [HttpGet("{loteId}")]
     public async Task<ActionResult<LiquidacionTecnicaDto>> CalcularLiquidacion(
-        string loteId,
+        int loteId,
         [FromQuery] DateTime? fechaHasta = null)
     {
         try
@@ -59,7 +60,7 @@ public class LiquidacionTecnicaController : ControllerBase
     /// <returns>Liquidación completa con detalles</returns>
     [HttpGet("{loteId}/completa")]
     public async Task<ActionResult<LiquidacionTecnicaCompletaDto>> ObtenerLiquidacionCompleta(
-        string loteId,
+        int loteId,
         [FromQuery] DateTime? fechaHasta = null)
     {
         try
@@ -112,7 +113,7 @@ public class LiquidacionTecnicaController : ControllerBase
     /// <param name="loteId">ID del lote</param>
     /// <returns>True si el lote es válido para liquidación</returns>
     [HttpGet("{loteId}/validar")]
-    public async Task<ActionResult<bool>> ValidarLote(string loteId)
+    public async Task<ActionResult<bool>> ValidarLote(int loteId)
     {
         try
         {
@@ -127,12 +128,71 @@ public class LiquidacionTecnicaController : ControllerBase
     }
 
     /// <summary>
+    /// Endpoint de debug para verificar datos del lote y seguimientos
+    /// </summary>
+    /// <param name="loteId">ID del lote</param>
+    /// <returns>Información de debug</returns>
+    [HttpGet("{loteId}/debug")]
+    public async Task<ActionResult> DebugLote(int loteId)
+    {
+        try
+        {
+            using var scope = HttpContext.RequestServices.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<ZooSanMarino.Infrastructure.Persistence.ZooSanMarinoContext>();
+            
+            // Verificar si el lote existe
+            var lote = await context.Lotes
+                .AsNoTracking()
+                .FirstOrDefaultAsync(l => l.LoteId == loteId);
+            
+            if (lote == null)
+            {
+                return Ok(new { 
+                    loteId, 
+                    loteExiste = false, 
+                    mensaje = "Lote no encontrado" 
+                });
+            }
+            
+            // Verificar seguimientos
+            var seguimientos = await context.SeguimientoLoteLevante
+                .AsNoTracking()
+                .Where(s => s.LoteId == loteId)
+                .ToListAsync();
+            
+            return Ok(new { 
+                loteId, 
+                loteExiste = true,
+                loteNombre = lote.LoteNombre,
+                fechaEncaset = lote.FechaEncaset,
+                raza = lote.Raza,
+                anoTablaGenetica = lote.AnoTablaGenetica,
+                totalSeguimientos = seguimientos.Count,
+                seguimientos = seguimientos.Take(5).Select(s => new {
+                    s.Id,
+                    s.FechaRegistro,
+                    s.MortalidadHembras,
+                    s.MortalidadMachos,
+                    s.ConsumoKgHembras,
+                    s.PesoPromH,
+                    s.PesoPromM
+                })
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error en debug para lote {LoteId}", loteId);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Obtiene un resumen de múltiples lotes para liquidación
     /// </summary>
     /// <param name="loteIds">Lista de IDs de lotes</param>
     /// <returns>Resumen de validación de lotes</returns>
     [HttpPost("validar-multiples")]
-    public async Task<ActionResult> ValidarMultiplesLotes([FromBody] List<string> loteIds)
+    public async Task<ActionResult> ValidarMultiplesLotes([FromBody] List<int> loteIds)
     {
         try
         {

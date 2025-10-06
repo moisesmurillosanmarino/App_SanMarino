@@ -2,7 +2,7 @@
 namespace ZooSanMarino.Application.DTOs;
 
 public record LoteReproductoraDto(
-    string    LoteId,
+    int       LoteId,
     string    ReproductoraId,
     string    NombreLote,
     DateTime? FechaEncasetamiento,
@@ -19,7 +19,7 @@ public record LoteReproductoraDto(
 );
 
 public record CreateLoteReproductoraDto(
-    string    LoteId,
+    int       LoteId,
     string    ReproductoraId,
     string    NombreLote,
     DateTime? FechaEncasetamiento,
@@ -36,7 +36,7 @@ public record CreateLoteReproductoraDto(
 );
 
 public record UpdateLoteReproductoraDto(
-    string    LoteId,
+    int       LoteId,
     string    ReproductoraId,
     string    NombreLote,
     DateTime? FechaEncasetamiento,

@@ -12,12 +12,12 @@ public interface IHistorialInventarioService
     // Consultas de historial
     Task<ZooSanMarino.Application.DTOs.Common.PagedResult<HistorialInventarioDto>> SearchAsync(HistorialInventarioSearchRequest request);
     Task<IEnumerable<HistorialInventarioDto>> GetByInventarioIdAsync(int inventarioId);
-    Task<IEnumerable<HistorialInventarioDto>> GetByLoteIdAsync(string loteId);
+    Task<IEnumerable<HistorialInventarioDto>> GetByLoteIdAsync(int loteId);
     Task<IEnumerable<HistorialInventarioDto>> GetByMovimientoIdAsync(int movimientoId);
     
     // Trazabilidad
-    Task<TrazabilidadLoteDto> GetTrazabilidadLoteAsync(string loteId);
-    Task<IEnumerable<EventoTrazabilidadDto>> GetEventosLoteAsync(string loteId, DateTime? fechaDesde = null, DateTime? fechaHasta = null);
+    Task<TrazabilidadLoteDto> GetTrazabilidadLoteAsync(int loteId);
+    Task<IEnumerable<EventoTrazabilidadDto>> GetEventosLoteAsync(int loteId, DateTime? fechaDesde = null, DateTime? fechaHasta = null);
     
     // Resúmenes y estadísticas
     Task<ResumenCambiosDto> GetResumenCambiosAsync(DateTime fechaDesde, DateTime fechaHasta, int? granjaId = null);

@@ -28,8 +28,8 @@ public class HistorialInventarioService : IHistorialInventarioService
         if (request.InventarioId.HasValue)
             query = query.Where(h => h.InventarioId == request.InventarioId.Value);
 
-        if (!string.IsNullOrEmpty(request.LoteId))
-            query = query.Where(h => h.LoteId == request.LoteId);
+        if (request.LoteId.HasValue)
+            query = query.Where(h => h.LoteId == request.LoteId.Value);
 
         if (!string.IsNullOrEmpty(request.TipoCambio))
             query = query.Where(h => h.TipoCambio == request.TipoCambio);
@@ -83,7 +83,7 @@ public class HistorialInventarioService : IHistorialInventarioService
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<HistorialInventarioDto>> GetByLoteIdAsync(string loteId)
+    public async Task<IEnumerable<HistorialInventarioDto>> GetByLoteIdAsync(int loteId)
     {
         return await _context.HistorialInventario
             .AsNoTracking()
@@ -103,7 +103,7 @@ public class HistorialInventarioService : IHistorialInventarioService
             .ToListAsync();
     }
 
-    public async Task<TrazabilidadLoteDto> GetTrazabilidadLoteAsync(string loteId)
+    public async Task<TrazabilidadLoteDto> GetTrazabilidadLoteAsync(int loteId)
     {
         var historial = await GetByLoteIdAsync(loteId);
         var eventos = historial.Select(h => new EventoTrazabilidadDto(
@@ -129,7 +129,7 @@ public class HistorialInventarioService : IHistorialInventarioService
 
         return new TrazabilidadLoteDto(
             loteId,
-            loteId, // LoteNombre - se puede obtener de la BD
+            loteId.ToString(), // Convert int to string for LoteNombre
             historial.Any() ? historial.Min(h => h.FechaCambio) : DateTime.UtcNow,
             null, // FechaFin
             eventos,
@@ -137,7 +137,7 @@ public class HistorialInventarioService : IHistorialInventarioService
         );
     }
 
-    public async Task<IEnumerable<EventoTrazabilidadDto>> GetEventosLoteAsync(string loteId, DateTime? fechaDesde = null, DateTime? fechaHasta = null)
+    public async Task<IEnumerable<EventoTrazabilidadDto>> GetEventosLoteAsync(int loteId, DateTime? fechaDesde = null, DateTime? fechaHasta = null)
     {
         var query = _context.HistorialInventario
             .AsNoTracking()

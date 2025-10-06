@@ -2,7 +2,7 @@
 namespace ZooSanMarino.Application.DTOs;
 
 public record LoteDto(
-    string    LoteId,
+    int       LoteId,  // Cambiado a int para secuencia numérica
     string    LoteNombre,
     int       GranjaId,
     string?   NucleoId,
@@ -22,6 +22,7 @@ public record LoteDto(
     string?   Linea,
     string?   TipoLinea,
     string?   CodigoGuiaGenetica,
+    int?      LineaGeneticaId,  // ← NUEVO: ID de la línea genética
 
     // 👇 Campos agregados
     int?      Mixtas,

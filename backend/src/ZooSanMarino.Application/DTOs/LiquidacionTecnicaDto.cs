@@ -68,7 +68,7 @@ public record LiquidacionTecnicaDto(
 /// DTO para solicitar el cálculo de liquidación técnica
 /// </summary>
 public record LiquidacionTecnicaRequest(
-    string LoteId,
+    int LoteId,
     DateTime? FechaHasta = null // Si no se especifica, usa la fecha actual
 );
 

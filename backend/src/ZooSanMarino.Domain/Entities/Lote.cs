@@ -4,7 +4,7 @@ namespace ZooSanMarino.Domain.Entities;
 // src/ZooSanMarino.Domain/Entities/Lote.cs
 public class Lote : AuditableEntity
 {
-    public string LoteId      { get; set; } = null!;
+    public int? LoteId      { get; set; } // Auto-incremento numérico simple
     public string LoteNombre  { get; set; } = null!;
     public int    GranjaId    { get; set; }
     public string? NucleoId   { get; set; }
@@ -28,6 +28,7 @@ public class Lote : AuditableEntity
     public string?   Linea              { get; set; }
     public string?   TipoLinea          { get; set; }
     public string?   CodigoGuiaGenetica { get; set; }
+    public int?      LineaGeneticaId    { get; set; }  // ← NUEVO: ID de la línea genética
     public string?   Tecnico            { get; set; }
 
     public int?      Mixtas             { get; set; }

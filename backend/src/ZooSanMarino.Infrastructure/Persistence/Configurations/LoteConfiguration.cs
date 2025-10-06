@@ -12,7 +12,7 @@ public class LoteConfiguration : IEntityTypeConfiguration<Lote>
         b.ToTable("lotes", schema: "public"); // ← coincide con lo que muestra el log
         b.HasKey(x => x.LoteId);
 
-        b.Property(x => x.LoteId).HasColumnName("lote_id").HasMaxLength(64).IsRequired();
+        b.Property(x => x.LoteId).HasColumnName("lote_id").ValueGeneratedOnAdd(); // Auto-incremento numérico
         b.Property(x => x.LoteNombre).HasColumnName("lote_nombre").HasMaxLength(200).IsRequired();
         b.Property(x => x.GranjaId).HasColumnName("granja_id").IsRequired();
         b.Property(x => x.NucleoId).HasColumnName("nucleo_id").HasMaxLength(64);

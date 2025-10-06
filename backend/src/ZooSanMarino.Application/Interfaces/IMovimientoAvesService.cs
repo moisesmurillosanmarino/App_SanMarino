@@ -18,7 +18,7 @@ public interface IMovimientoAvesService
     // Búsqueda y filtrado
     Task<ZooSanMarino.Application.DTOs.Common.PagedResult<MovimientoAvesDto>> SearchAsync(MovimientoAvesSearchRequest request);
     Task<IEnumerable<MovimientoAvesDto>> GetMovimientosPendientesAsync();
-    Task<IEnumerable<MovimientoAvesDto>> GetMovimientosByLoteAsync(string loteId);
+    Task<IEnumerable<MovimientoAvesDto>> GetMovimientosByLoteAsync(int loteId);  // Changed from string to int
     Task<IEnumerable<MovimientoAvesDto>> GetMovimientosByUsuarioAsync(int usuarioId);
     
     // Operaciones de movimiento
@@ -27,10 +27,10 @@ public interface IMovimientoAvesService
     Task<ResultadoMovimientoDto> TrasladoRapidoAsync(TrasladoRapidoDto dto);
     
     // Traslados específicos
-    Task<ResultadoMovimientoDto> TrasladarEntreGranjasAsync(string loteId, int granjaOrigenId, int granjaDestinoId, int hembras, int machos, int mixtas, string? motivo = null);
-    Task<ResultadoMovimientoDto> TrasladarDentroGranjaAsync(string loteId, int granjaId, string? nucleoOrigenId, string? galponOrigenId, string? nucleoDestinoId, string? galponDestinoId, int hembras, int machos, int mixtas, string? motivo = null);
-    Task<ResultadoMovimientoDto> DividirLoteAsync(string loteOrigenId, string loteDestinoId, int hembras, int machos, int mixtas, string? motivo = null);
-    Task<ResultadoMovimientoDto> UnificarLotesAsync(string loteOrigenId, string loteDestinoId, string? motivo = null);
+    Task<ResultadoMovimientoDto> TrasladarEntreGranjasAsync(int loteId, int granjaOrigenId, int granjaDestinoId, int hembras, int machos, int mixtas, string? motivo = null);  // Changed from string to int
+    Task<ResultadoMovimientoDto> TrasladarDentroGranjaAsync(int loteId, int granjaId, string? nucleoOrigenId, string? galponOrigenId, string? nucleoDestinoId, string? galponDestinoId, int hembras, int machos, int mixtas, string? motivo = null);  // Changed from string to int
+    Task<ResultadoMovimientoDto> DividirLoteAsync(int loteOrigenId, int loteDestinoId, int hembras, int machos, int mixtas, string? motivo = null);  // Changed from string to int
+    Task<ResultadoMovimientoDto> UnificarLotesAsync(int loteOrigenId, int loteDestinoId, string? motivo = null);  // Changed from string to int
     
     // Validaciones
     Task<bool> ValidarMovimientoAsync(CreateMovimientoAvesDto dto);

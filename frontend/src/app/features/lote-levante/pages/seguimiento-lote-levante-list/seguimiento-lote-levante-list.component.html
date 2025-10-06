@@ -645,9 +645,16 @@
 
     <section class="liquidacion-modal-content">
       <app-liquidacion-tecnica
-        [loteId]="selectedLoteId"
+        [loteId]="selectedLoteId?.toString() || ''"
         [loteNombre]="selectedLoteNombre">
       </app-liquidacion-tecnica>
+      
+      <!-- Comparación con Guía Genética -->
+      <div class="comparacion-guia-section" *ngIf="selectedLoteId">
+        <app-liquidacion-comparacion
+          [loteId]="selectedLoteId">
+        </app-liquidacion-comparacion>
+      </div>
     </section>
 
     <footer class="ux-modal__footer">
