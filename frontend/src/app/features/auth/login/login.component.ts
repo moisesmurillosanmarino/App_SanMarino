@@ -46,7 +46,7 @@ export class LoginComponent implements OnInit {
     this.auth.login(this.loginForm.value, this.remember).subscribe({
       next: () => {
         this.loading = false;
-        this.router.navigate(['/dashboard']); // ← redirección post-login
+        this.router.navigate(['/home']); // ← redirección post-login al Home
       },
       error: (err) => {
         this.loading = false;

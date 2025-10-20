@@ -48,6 +48,7 @@ namespace ZooSanMarino.Infrastructure.Persistence
         public DbSet<Menu> Menus => Set<Menu>();
         public DbSet<MenuPermission> MenuPermissions => Set<MenuPermission>();
         public DbSet<CatalogItem> CatalogItems { get; set; } = null!;
+        public DbSet<SystemConfiguration> SystemConfigurations { get; set; } = null!;
         public DbSet<FarmProductInventory> FarmProductInventory => Set<FarmProductInventory>();
         public DbSet<FarmInventoryMovement> FarmInventoryMovements => Set<FarmInventoryMovement>();
         public DbSet<ProduccionResultadoLevante> ProduccionResultadoLevante => Set<ProduccionResultadoLevante>();

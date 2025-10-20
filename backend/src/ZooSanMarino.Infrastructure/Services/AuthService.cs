@@ -20,20 +20,20 @@ public class AuthService : IAuthService
     private readonly IPasswordHasher<Login> _hasher;
     private readonly JwtOptions _jwt;
     private readonly IRoleCompositeService _acl; // ← reemplaza a IMenuService
-    private readonly IEmailService _emailService;
+    // private readonly IEmailService _emailService; // Temporalmente comentado para debug
 
     public AuthService(
         ZooSanMarinoContext ctx,
         IPasswordHasher<Login> hasher,
         JwtOptions jwt,
-        IRoleCompositeService acl, // ← inyectamos el orquestador
-        IEmailService emailService)
+        IRoleCompositeService acl) // ← inyectamos el orquestador
+        // IEmailService emailService) // Temporalmente comentado para debug
     {
         _ctx = ctx;
         _hasher = hasher;
         _jwt = jwt;
         _acl = acl;
-        _emailService = emailService;
+        // _emailService = emailService; // Temporalmente comentado para debug
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterDto dto)
@@ -358,6 +358,8 @@ public class AuthService : IAuthService
         );
     }
 
+    // Método temporalmente comentado para debug
+    /*
     public async Task<PasswordRecoveryResponseDto> RecoverPasswordAsync(PasswordRecoveryRequestDto dto)
     {
         try
@@ -434,6 +436,7 @@ public class AuthService : IAuthService
             };
         }
     }
+    */
 
     private string GenerateRandomPassword(int length = 12)
     {

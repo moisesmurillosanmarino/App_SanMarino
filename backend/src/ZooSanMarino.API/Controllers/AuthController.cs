@@ -180,6 +180,8 @@ public class AuthController : ControllerBase
         });
     }
 
+    // Endpoint temporalmente comentado para debug
+    /*
     /// <summary>Recuperación de contraseña por email.</summary>
     [AllowAnonymous]
     [HttpPost("recover-password")]
@@ -202,6 +204,12 @@ public class AuthController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Error interno" });
         }
     }
+    */
+
+    /// <summary>Ping simple para debug (sin autorización).</summary>
+    [AllowAnonymous]
+    [HttpGet("ping-simple")]
+    public IActionResult PingSimple() => Ok(new { ok = true, at = DateTime.UtcNow });
 
     /// <summary>Ping autenticado (para probar token desde el front).</summary>
     [Authorize]

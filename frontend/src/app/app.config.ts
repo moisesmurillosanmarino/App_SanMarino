@@ -10,6 +10,7 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { LoginComponent } from './features/auth/login/login.component';
 import { PasswordRecoveryComponent } from './features/auth/password-recovery/password-recovery.component';
 import { ProfileComponent } from './features/profile/profile.component';
+import { HomeComponent } from './features/home/home.component';
 
 // Rutas “config” que usas con component (no-lazy)
 import { ConfigComponent }            from './features/config/config.component';
@@ -45,14 +46,15 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withInterceptors([authInterceptor])),
 
     provideRouter([
-      { path: '', redirectTo: 'login', pathMatch: 'full' },
+      { path: '', redirectTo: 'home', pathMatch: 'full' },
 
       // Público
       { path: 'login', component: LoginComponent },
       { path: 'password-recovery', component: PasswordRecoveryComponent },
-      { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
-
+      
       // Protegido
+      { path: 'home', component: HomeComponent, canActivate: [authGuard] },
+      { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
       {
         path: 'dashboard',
         canActivate: [authGuard],

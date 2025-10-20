@@ -19,6 +19,7 @@ using Swashbuckle.AspNetCore.SwaggerUI;       // Opciones UI
 
 using ZooSanMarino.API.Extensions;
 using ZooSanMarino.API.Infrastructure;
+using ZooSanMarino.API.Configuration;
 using ZooSanMarino.Application.Interfaces;
 using ZooSanMarino.Application.Options;
 using ZooSanMarino.Application.Validators;
@@ -151,7 +152,11 @@ builder.Services.AddScoped<IProduccionService, ProduccionService>();
 builder.Services.AddScoped<ISeguimientoProduccionService, SeguimientoProduccionService>();
 builder.Services.AddScoped<ICatalogItemService, CatalogItemService>();
 builder.Services.AddScoped<IFarmInventoryService, FarmInventoryService>();
-builder.Services.AddScoped<IEmailService, EmailService>();
+// builder.Services.AddScoped<IEmailService, EmailService>(); // Temporalmente comentado para debug
+// builder.Services.AddScoped<IConfigurationService, ConfigurationService>(); // Temporalmente comentado para debug
+
+// Configuración segura de credenciales - temporalmente comentada para debug
+// builder.Services.AddSecureConfiguration(builder.Configuration);
 builder.Services.AddScoped<IFarmInventoryMovementService, FarmInventoryMovementService>();
 builder.Services.AddScoped<IFarmInventoryReportService, FarmInventoryReportService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>(); 
