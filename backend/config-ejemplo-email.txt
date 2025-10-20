@@ -1,0 +1,76 @@
+# Configuración de Email para Recuperación de Contraseña
+# ========================================================
+
+# 1. Configuración en appsettings.json o appsettings.Development.json
+# Agregar la siguiente sección:
+
+{
+  "EmailSettings": {
+    "SmtpHost": "smtp.gmail.com",
+    "SmtpPort": 587,
+    "SmtpUsername": "tu-email@gmail.com",
+    "SmtpPassword": "tu-app-password",
+    "FromEmail": "tu-email@gmail.com",
+    "FromName": "Zoo San Marino"
+  }
+}
+
+# 2. Variables de entorno (alternativa)
+# Puedes usar variables de entorno en lugar de appsettings.json:
+
+# SMTP_HOST=smtp.gmail.com
+# SMTP_PORT=587
+# SMTP_USERNAME=tu-email@gmail.com
+# SMTP_PASSWORD=tu-app-password
+# FROM_EMAIL=tu-email@gmail.com
+# FROM_NAME=Zoo San Marino
+
+# 3. Configuración para Gmail
+# ============================
+# Para usar Gmail, necesitas:
+# 1. Habilitar la verificación en 2 pasos en tu cuenta de Google
+# 2. Generar una "Contraseña de aplicación" específica para esta aplicación
+# 3. Usar esa contraseña en lugar de tu contraseña normal
+
+# Pasos para Gmail:
+# 1. Ve a https://myaccount.google.com/security
+# 2. Habilita la verificación en 2 pasos si no está habilitada
+# 3. Ve a "Contraseñas de aplicaciones"
+# 4. Genera una nueva contraseña para "Correo"
+# 5. Usa esa contraseña en la configuración
+
+# 4. Configuración para otros proveedores
+# =======================================
+
+# Outlook/Hotmail:
+# SmtpHost: smtp-mail.outlook.com
+# SmtpPort: 587
+
+# Yahoo:
+# SmtpHost: smtp.mail.yahoo.com
+# SmtpPort: 587
+
+# SendGrid (recomendado para producción):
+# SmtpHost: smtp.sendgrid.net
+# SmtpPort: 587
+# SmtpUsername: apikey
+# SmtpPassword: tu-api-key-de-sendgrid
+
+# 5. Pruebas
+# ==========
+# Para probar la funcionalidad:
+# 1. Configura las credenciales de email
+# 2. Inicia el backend
+# 3. Ve a /swagger y prueba el endpoint POST /api/Auth/recover-password
+# 4. O usa el frontend en /password-recovery
+
+# 6. Seguridad
+# ============
+# - Nunca hardcodees las credenciales en el código
+# - Usa variables de entorno en producción
+# - Considera usar un servicio de email profesional como SendGrid o AWS SES
+# - Implementa rate limiting para evitar spam
+# - Considera agregar un token de expiración para las contraseñas temporales
+
+
+

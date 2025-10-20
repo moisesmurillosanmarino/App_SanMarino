@@ -37,4 +37,7 @@ public interface IInventarioAvesService
     // Inicialización desde lote existente
     Task<InventarioAvesDto> InicializarDesdeLotelAsync(int loteId);
     Task<IEnumerable<InventarioAvesDto>> SincronizarInventariosAsync();
+    
+    // Debug
+    Task<int> GetTotalCountAsync();
 }

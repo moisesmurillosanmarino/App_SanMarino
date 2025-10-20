@@ -39,8 +39,7 @@ public class MovimientoAvesConfiguration : IEntityTypeConfiguration<MovimientoAv
             .HasColumnName("inventario_origen_id");
 
         builder.Property(x => x.LoteOrigenId)
-            .HasColumnName("lote_origen_id")
-            .HasMaxLength(50);
+            .HasColumnName("lote_origen_id");
 
         builder.Property(x => x.GranjaOrigenId)
             .HasColumnName("granja_origen_id");
@@ -58,8 +57,7 @@ public class MovimientoAvesConfiguration : IEntityTypeConfiguration<MovimientoAv
             .HasColumnName("inventario_destino_id");
 
         builder.Property(x => x.LoteDestinoId)
-            .HasColumnName("lote_destino_id")
-            .HasMaxLength(50);
+            .HasColumnName("lote_destino_id");
 
         builder.Property(x => x.GranjaDestinoId)
             .HasColumnName("granja_destino_id");

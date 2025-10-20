@@ -34,12 +34,15 @@ namespace ZooSanMarino.Infrastructure.Persistence
         public DbSet<Role> Roles { get; set; } = null!;
         public DbSet<RoleCompany> RoleCompanies { get; set; } = null!;
         public DbSet<SeguimientoLoteLevante> SeguimientoLoteLevante { get; set; } = null!;
+        public DbSet<SeguimientoProduccion> SeguimientoProduccion { get; set; } = null!;
         public DbSet<ProduccionLote> ProduccionLotes { get; set; } = null!;
+        public DbSet<ProduccionSeguimiento> ProduccionSeguimientos { get; set; } = null!;
         public DbSet<ProduccionDiaria> ProduccionDiaria { get; set; } = null!;
         public DbSet<Login> Logins { get; set; } = null!;
         public DbSet<UserLogin> UserLogins { get; set; } = null!;
         public DbSet<UserCompany> UserCompanies { get; set; } = null!;
         public DbSet<UserRole> UserRoles { get; set; } = null!;
+        public DbSet<UserFarm> UserFarms { get; set; } = null!;
         public DbSet<Permission> Permissions { get; set; } = null!;
         public DbSet<RolePermission> RolePermissions { get; set; } = null!;
         public DbSet<Menu> Menus => Set<Menu>();
@@ -185,6 +188,10 @@ namespace ZooSanMarino.Infrastructure.Persistence
 
                     case UserLogin ul:
                         TouchUserUpdatedAt(ul.UserId, nowDto, nowDt);
+                        break;
+
+                    case UserFarm uf:
+                        TouchUserUpdatedAt(uf.UserId, nowDto, nowDt);
                         break;
                 }
             }

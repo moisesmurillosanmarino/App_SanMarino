@@ -23,9 +23,9 @@ public class FarmController : ControllerBase
     [HttpGet]
     [HttpGet("/Farm")]
     [ProducesResponseType(typeof(IEnumerable<FarmDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<FarmDto>>> GetAll()
+    public async Task<ActionResult<IEnumerable<FarmDto>>> GetAll([FromQuery] Guid? id_user_session = null)
     {
-        var items = await _svc.GetAllAsync();
+        var items = await _svc.GetAllAsync(id_user_session);
         return Ok(items);
     }
 

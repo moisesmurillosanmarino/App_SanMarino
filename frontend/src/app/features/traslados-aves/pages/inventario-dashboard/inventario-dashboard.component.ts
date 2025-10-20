@@ -22,6 +22,8 @@ import { NucleoService, NucleoDto } from '../../../nucleo/services/nucleo.servic
 import { GalponService } from '../../../galpon/services/galpon.service';
 import { GalponDetailDto } from '../../../galpon/models/galpon.models';
 import { Company, CompanyService } from '../../../../core/services/company/company.service';
+// 🔴 Importa el servicio de Lotes
+import { LoteService } from '../../../lote/services/lote.service';
 
 @Component({
   selector: 'app-inventario-dashboard',
@@ -33,12 +35,6 @@ import { Company, CompanyService } from '../../../../core/services/company/compa
 export class InventarioDashboardComponent implements OnInit {
   // ====== State (signals) ======
   resumen = signal<ResumenInventarioDto | null>(null);
-  
-  // ===== Helpers (signals derivados) =====
-hasError   = computed(() => !!this.error());
-isLoading  = computed(() => this.loading());
-totalPages = computed(() => Math.ceil(this.totalRecords() / this.filtros.pageSize));
-
 
   private inventariosBase = signal<InventarioAvesDto[]>([]);
   inventarios = signal<InventarioAvesDto[]>([]);
@@ -56,23 +52,29 @@ totalPages = computed(() => Math.ceil(this.totalRecords() / this.filtros.pageSiz
     pageSize: 20
   };
 
+  // Helpers
+  hasError   = computed(() => !!this.error());
+  isLoading  = computed(() => this.loading());
+  totalPages = computed(() => Math.max(1, Math.ceil((this.totalRecords() || 0) / (this.filtros.pageSize || 20))));
+
   // Catálogos
   farms: FarmDto[] = [];
   nucleos: NucleoDto[] = [];
   galpones: GalponDetailDto[] = [];
   companies: Company[] = [];
+
   farmMap: Record<number, string> = {};
   nucleoMap: Record<string, string> = {};
   galponMap: Record<string, string> = {};
   private farmById: Record<number, FarmDto> = {};
 
-  // Cascada
+  // Filtros cascada
   selectedCompanyId: number | null = null;
   selectedFarmId: number | null = null;
   selectedNucleoId: string | null = null;
   selectedGalponId: string | null = null;
 
-  // Búsqueda/orden (cliente)
+  // Búsqueda / orden
   filtro = '';
   sortKey: 'edad' | 'fecha' = 'edad';
   sortDir: 'asc' | 'desc' = 'desc';
@@ -91,6 +93,11 @@ totalPages = computed(() => Math.ceil(this.totalRecords() / this.filtros.pageSiz
   errorTraslado = signal<string | null>(null);
   exitoTraslado = signal<boolean>(false);
 
+  // 🔴 Estado para el filtro de lote (fuera del modal)
+  selectedLoteId: string | null = null;
+  lotesForGalpon = signal<Array<{ id: string; label: string }>>([]); // lista final de lotes para el select
+  lotesLoading = signal<boolean>(false);                              // loading del select
+
   constructor(
     private trasladosService: TrasladosAvesService,
     private farmService: FarmService,
@@ -99,24 +106,24 @@ totalPages = computed(() => Math.ceil(this.totalRecords() / this.filtros.pageSiz
     private companyService: CompanyService,
     private router: Router,
     private route: ActivatedRoute,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    // 🔴 Inyecta LoteService
+    private loteService: LoteService
   ) {
     this.initTrasladoForm();
 
-    // Revalidar cuando llegue inventario origen
     effect(() => {
       if (this.inventarioOrigen()) this.validarCantidades();
     });
   }
 
-  // ===================== Ciclo de vida ======================
   ngOnInit(): void {
     this.cargarDatosMaestros();
     this.cargarResumen();
     this.cargarInventarios();
   }
 
-  // ===================== API load ===========================
+  // ===================== Cargas API =========================
   async cargarResumen(): Promise<void> {
     try {
       this.error.set(null);
@@ -134,16 +141,24 @@ totalPages = computed(() => Math.ceil(this.totalRecords() / this.filtros.pageSiz
     try {
       const result = await firstValueFrom(this.trasladosService.searchInventarios(this.filtros));
       if (result) {
-        this.inventariosBase.set(result.items);
-        this.totalRecords.set(result.total);
-        this.currentPage.set(result.page);
+        this.inventariosBase.set(result.items || []);
+        this.totalRecords.set(result.total || 0);
+        this.currentPage.set(result.page || 1);
         this.recomputeList();
+
+        // 🔴 Si hay galpón seleccionado, recargar lotes de ese galpón
+        if (this.selectedGalponId) {
+          this.cargarLotesParaGalpon(this.selectedGalponId);
+        }
       }
     } catch (err: any) {
       console.error('Error al cargar inventarios:', err);
       this.error.set(err.message || 'Error al cargar los inventarios');
       this.inventariosBase.set([]);
       this.inventarios.set([]);
+      this.totalRecords.set(0);
+      this.currentPage.set(1);
+      this.lotesForGalpon.set([]);
     } finally {
       this.loading.set(false);
     }
@@ -156,32 +171,33 @@ totalPages = computed(() => Math.ceil(this.totalRecords() / this.filtros.pageSiz
       galpones: this.galponService.getAll(),
       companies: this.companyService.getAll()
     }).subscribe(({ farms, nucleos, galpones, companies }) => {
-      this.farms = farms;
+      this.farms = farms || [];
       this.farmById = {};
-      farms.forEach(f => {
+      this.farmMap = {};
+      this.farms.forEach(f => {
         this.farmById[f.id] = f;
         this.farmMap[f.id] = f.name;
       });
 
-      this.nucleos = nucleos;
-      nucleos.forEach(n => (this.nucleoMap[n.nucleoId] = n.nucleoNombre));
+      this.nucleos = nucleos || [];
+      this.nucleoMap = {};
+      this.nucleos.forEach(n => (this.nucleoMap[n.nucleoId] = n.nucleoNombre));
 
-      this.galpones = galpones;
-      galpones.forEach(g => (this.galponMap[g.galponId] = g.galponNombre));
+      this.galpones = galpones || [];
+      this.galponMap = {};
+      this.galpones.forEach(g => (this.galponMap[g.galponId] = g.galponNombre));
 
-      this.companies = companies;
+      this.companies = companies || [];
     });
   }
 
-  // ===================== Server sorting =====================
-  onFiltroChangeLegacy(): void {
-    this.filtros.page = 1;
-    this.cargarInventarios();
-  }
+  // ===================== Paginación/orden (server) =========
   onPageChange(page: number): void {
+    if (page < 1 || page > this.totalPages()) return;
     this.filtros.page = page;
     this.cargarInventarios();
   }
+
   onSortChange(sortBy: string): void {
     if (this.filtros.sortBy === sortBy) {
       this.filtros.sortDesc = !this.filtros.sortDesc;
@@ -189,14 +205,16 @@ totalPages = computed(() => Math.ceil(this.totalRecords() / this.filtros.pageSiz
       this.filtros.sortBy = sortBy;
       this.filtros.sortDesc = false;
     }
-    this.onFiltroChangeLegacy();
+    this.filtros.page = 1;
+    this.cargarInventarios();
   }
 
-  // ===================== Filtros cliente ====================
+  // ===================== Filtros cliente (cascada) =========
   get farmsFiltered(): FarmDto[] {
     if (this.selectedCompanyId == null) return this.farms;
     return this.farms.filter(f => f.companyId === this.selectedCompanyId);
   }
+
   get nucleosFiltered(): NucleoDto[] {
     if (this.selectedFarmId != null) return this.nucleos.filter(n => n.granjaId === this.selectedFarmId);
     if (this.selectedCompanyId != null) {
@@ -205,6 +223,7 @@ totalPages = computed(() => Math.ceil(this.totalRecords() / this.filtros.pageSiz
     }
     return this.nucleos;
   }
+
   get galponesFiltered(): GalponDetailDto[] {
     let arr = this.galpones;
     if (this.selectedFarmId != null) {
@@ -222,29 +241,49 @@ totalPages = computed(() => Math.ceil(this.totalRecords() / this.filtros.pageSiz
     if (this.selectedFarmId != null && !this.farmsFiltered.some(f => f.id === this.selectedFarmId)) this.selectedFarmId = null;
     if (this.selectedNucleoId != null && !this.nucleosFiltered.some(n => n.nucleoId === this.selectedNucleoId)) this.selectedNucleoId = null;
     if (this.selectedGalponId != null && !this.galponesFiltered.some(g => g.galponId === this.selectedGalponId)) this.selectedGalponId = null;
+
+    this.resetLoteIfNotInContext();
+    this.cargarLotesParaGalpon(this.selectedGalponId); // 🔴 recarga/limpia lotes
     this.recomputeList();
   }
+
   onFarmChange(val: number | null): void {
     this.selectedFarmId = val;
     if (this.selectedNucleoId != null && !this.nucleosFiltered.some(n => n.nucleoId === this.selectedNucleoId)) this.selectedNucleoId = null;
     if (this.selectedGalponId != null && !this.galponesFiltered.some(g => g.galponId === this.selectedGalponId)) this.selectedGalponId = null;
+
+    this.resetLoteIfNotInContext();
+    this.cargarLotesParaGalpon(this.selectedGalponId); // 🔴
     this.recomputeList();
   }
+
   onNucleoChange(val: string | null): void {
     this.selectedNucleoId = val;
     if (this.selectedGalponId != null && !this.galponesFiltered.some(g => g.galponId === this.selectedGalponId)) this.selectedGalponId = null;
+
+    this.resetLoteIfNotInContext();
+    this.cargarLotesParaGalpon(this.selectedGalponId); // 🔴
     this.recomputeList();
   }
+
   onGalponChange(val: string | null): void {
     this.selectedGalponId = val;
+    this.resetLoteIfNotInContext();
+    this.cargarLotesParaGalpon(val); // 🔴 carga real por galpón
     this.recomputeList();
   }
+
   resetFilters(): void {
     this.filtro = '';
     this.selectedCompanyId = null;
     this.selectedFarmId = null;
     this.selectedNucleoId = null;
     this.selectedGalponId = null;
+
+    this.selectedLoteId = null;
+    delete this.filtros.loteId;
+
+    this.lotesForGalpon.set([]); // 🔴
     this.recomputeList();
   }
 
@@ -257,14 +296,23 @@ totalPages = computed(() => Math.ceil(this.totalRecords() / this.filtros.pageSiz
     this.sortDir = v;
     this.recomputeList();
   }
+
   recomputeList(): void {
     const term = this.normalize(this.filtro);
     let res = [...this.inventariosBase()];
-    if (this.selectedCompanyId != null) res = res.filter(inv => this.farmById[inv.granjaId]?.companyId === this.selectedCompanyId);
-    if (this.selectedFarmId != null) res = res.filter(inv => inv.granjaId === this.selectedFarmId);
-    if (this.selectedNucleoId != null) res = res.filter(inv => (inv.nucleoId ?? null) === this.selectedNucleoId);
-    if (this.selectedGalponId != null) res = res.filter(inv => (inv.galponId ?? null) === this.selectedGalponId);
 
+    // Cascada
+    if (this.selectedCompanyId != null) res = res.filter(inv => this.farmById[inv.granjaId]?.companyId === this.selectedCompanyId);
+    if (this.selectedFarmId != null)    res = res.filter(inv => inv.granjaId === this.selectedFarmId);
+    if (this.selectedNucleoId != null)  res = res.filter(inv => String(inv.nucleoId ?? '') === String(this.selectedNucleoId ?? ''));
+    if (this.selectedGalponId != null)  res = res.filter(inv => String(inv.galponId ?? '') === String(this.selectedGalponId ?? ''));
+
+    // 🔴 Filtrar por LOTE si viene del select superior
+    if (this.filtros.loteId) {
+      res = res.filter(inv => String(inv.loteId) === String(this.filtros.loteId));
+    }
+
+    // Búsqueda libre
     if (term) {
       res = res.filter(inv => {
         const haystack = [
@@ -278,9 +326,11 @@ totalPages = computed(() => Math.ceil(this.totalRecords() / this.filtros.pageSiz
       });
     }
 
+    // Orden en cliente
     res = this.sortInventarios(res);
     this.inventarios.set(res);
   }
+
   private sortInventarios(arr: InventarioAvesDto[]): InventarioAvesDto[] {
     const val = (inv: InventarioAvesDto): number | null => {
       if (!inv.fechaUltimoConteo) return null;
@@ -300,6 +350,63 @@ totalPages = computed(() => Math.ceil(this.totalRecords() / this.filtros.pageSiz
     });
   }
 
+  // 🔴 Cargar lotes por galpón (robusto)
+  private async cargarLotesParaGalpon(galponId: string | null): Promise<void> {
+    // limpiar lista y selección si no hay galpón
+    if (!galponId) {
+      this.lotesForGalpon.set([]);
+      this.selectedLoteId = null;
+      delete this.filtros.loteId;
+      return;
+    }
+
+    // 1) Primer intento: derivar de inventariosBase (rápido)
+    const fromInventarios = Array.from(
+      new Map(
+        this.inventariosBase()
+          .filter(inv => String(inv.galponId ?? '') === String(galponId))
+          .map(inv => [String(inv.loteId), String(inv.loteId)])
+      ).entries()
+    ).map(([id, label]) => ({ id, label }));
+
+    if (fromInventarios.length > 0) {
+      this.lotesForGalpon.set(fromInventarios);
+      // Validar que el lote seleccionado siga existiendo
+      if (this.selectedLoteId && !fromInventarios.some(l => l.id === this.selectedLoteId)) {
+        this.selectedLoteId = null;
+        delete this.filtros.loteId;
+      }
+      return;
+    }
+
+    // 2) Segundo intento: pedirlo al backend (LoteService)
+    try {
+      this.lotesLoading.set(true);
+      // Asumo que existe un endpoint tipo: getByGalponId(galponId: string)
+      // DESPUÉS
+      const lotes: LoteDto[] = await firstValueFrom(this.loteService.getByGalpon(galponId));
+
+      const mapped = (lotes || []).map(l => ({
+        id: String(l.loteId),
+        label: l.loteNombre ? `${l.loteNombre} (#${l.loteId})` : String(l.loteId)
+      }));
+      this.lotesForGalpon.set(mapped);
+
+      // Validar selección vigente
+      if (this.selectedLoteId && !mapped.some(l => l.id === this.selectedLoteId)) {
+        this.selectedLoteId = null;
+        delete this.filtros.loteId;
+      }
+    } catch (e) {
+      console.warn('No se pudieron obtener lotes por galpón vía servicio. Detalle:', e);
+      this.lotesForGalpon.set([]);
+      this.selectedLoteId = null;
+      delete this.filtros.loteId;
+    } finally {
+      this.lotesLoading.set(false);
+    }
+  }
+
   // ===================== Modal Traslado ======================
   private initTrasladoForm(): void {
     this.trasladoForm = this.fb.group({
@@ -316,7 +423,6 @@ totalPages = computed(() => Math.ceil(this.totalRecords() / this.filtros.pageSiz
     this.trasladoForm.get('cantidadMachos')?.valueChanges.subscribe(() => this.validarCantidades());
   }
 
-  // ⚠️ Nuevo: función (no computed) que sí reacciona al form
   isSubmitEnabled(): boolean {
     const f = this.trasladoForm;
     if (!f) return false;
@@ -324,7 +430,6 @@ totalPages = computed(() => Math.ceil(this.totalRecords() / this.filtros.pageSiz
     const h = Number(f.get('cantidadHembras')?.value) || 0;
     const m = Number(f.get('cantidadMachos')?.value) || 0;
 
-    // si hay errores de “exceedsAvailable” tampoco habilitamos
     const hErr = !!f.get('cantidadHembras')?.errors;
     const mErr = !!f.get('cantidadMachos')?.errors;
 
@@ -370,10 +475,16 @@ totalPages = computed(() => Math.ceil(this.totalRecords() / this.filtros.pageSiz
     try {
       const inv = await firstValueFrom(this.trasladosService.getInventarioByLote(String(loteId)));
       this.inventarioDestino.set(inv || null);
-    } catch (err) {
-      console.error('Error cargando inventario destino:', err);
+      this.errorTraslado.set(null);
+    } catch (err: any) {
+      // Si 404, deja inv=null sin bloquear
+      if (err?.status === 404) {
+        this.inventarioDestino.set(null);
+        this.errorTraslado.set(null);
+        return;
+      }
+      console.error('Error cargando inventario DESTINO:', err);
       this.inventarioDestino.set(null);
-      // Nota: no bloquea el submit
       this.errorTraslado.set('Error al cargar el inventario del lote destino');
     }
   }
@@ -383,7 +494,6 @@ totalPages = computed(() => Math.ceil(this.totalRecords() / this.filtros.pageSiz
     const hCtrl = this.trasladoForm.get('cantidadHembras');
     const mCtrl = this.trasladoForm.get('cantidadMachos');
 
-    // limpiar solo nuestro error, sin borrar otros (como min/required)
     const clean = (ctrl: any) => {
       const errs = { ...(ctrl?.errors || {}) };
       delete (errs as any).exceedsAvailable;
@@ -398,14 +508,10 @@ totalPages = computed(() => Math.ceil(this.totalRecords() / this.filtros.pageSiz
     const m = Number(mCtrl?.value) || 0;
 
     if (h > inv.cantidadHembras) {
-      const errs = { ...(hCtrl?.errors || {}) };
-      (errs as any).exceedsAvailable = { max: inv.cantidadHembras, actual: h };
-      hCtrl?.setErrors(errs);
+      hCtrl?.setErrors({ ...(hCtrl?.errors || {}), exceedsAvailable: { max: inv.cantidadHembras, actual: h } });
     }
     if (m > inv.cantidadMachos) {
-      const errs = { ...(mCtrl?.errors || {}) };
-      (errs as any).exceedsAvailable = { max: inv.cantidadMachos, actual: m };
-      mCtrl?.setErrors(errs);
+      mCtrl?.setErrors({ ...(mCtrl?.errors || {}), exceedsAvailable: { max: inv.cantidadMachos, actual: m } });
     }
 
     if (h + m === 0) {
@@ -457,11 +563,11 @@ totalPages = computed(() => Math.ceil(this.totalRecords() / this.filtros.pageSiz
     this.errorTraslado.set(null);
 
     try {
-      const f = this.trasladoForm.value;
+      const f = this.trasladoForm.value as any;
       const fechaIso = this.ymdToIsoNoon(f.fechaMovimiento);
 
       const obsExtras = `Realiza:${f.usuarioRealizaId} | Recibe:${f.usuarioRecibeId}`;
-      const observaciones = [f.observaciones?.trim(), obsExtras].filter(Boolean).join(' — ');
+      const observaciones = [String(f.observaciones || '').trim(), obsExtras].filter(Boolean).join(' — ');
 
       const payload: CreateMovimientoAvesDto = {
         loteOrigenId: String(origen.loteId),
@@ -511,19 +617,26 @@ totalPages = computed(() => Math.ceil(this.totalRecords() / this.filtros.pageSiz
 
   // ===================== Utilidades ==========================
   calcularTotalAves(inv: InventarioAvesDto): number {
-    return inv.cantidadHembras + inv.cantidadMachos;
+    return (inv?.cantidadHembras || 0) + (inv?.cantidadMachos || 0);
   }
+
   formatearFecha(fecha: Date | string): string {
     if (!fecha) return '—';
     const d = typeof fecha === 'string' ? new Date(fecha) : fecha;
-    return d.toLocaleDateString('es-CO', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleDateString('es-CO', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit'
+    });
   }
+
   formatearNumero(n: number): string {
     return (n ?? 0).toLocaleString('es-CO', { maximumFractionDigits: 0 });
   }
+
   private normalize(s: string): string {
     return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
+
   calcularEdadDias(fecha?: string | Date | null): number {
     if (!fecha) return 0;
     const inicio = new Date(fecha);
@@ -539,6 +652,7 @@ totalPages = computed(() => Math.ceil(this.totalRecords() / this.filtros.pageSiz
     const day = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
   }
+
   private ymdToIsoNoon(ymd: string): string {
     return new Date(`${ymd}T12:00:00`).toISOString();
   }
@@ -547,7 +661,6 @@ totalPages = computed(() => Math.ceil(this.totalRecords() / this.filtros.pageSiz
   trackByInventarioId(_: number, item: InventarioAvesDto): number { return item.id; }
   trackByGranjaId(_: number, item: any): number { return item.granjaId; }
 
-  // === Acciones de fila (tabla) ===
   async editarInventario(id: number): Promise<void> {
     try {
       await this.router.navigate(['../inventario', id, 'editar'], { relativeTo: this.route });
@@ -558,10 +671,11 @@ totalPages = computed(() => Math.ceil(this.totalRecords() / this.filtros.pageSiz
   }
 
   async ajustarInventario(loteId: string): Promise<void> {
+    if (!loteId) return;
     try {
-      const hStr = window.prompt('Nuevo valor de HEMBRAS para el lote ' + loteId + ' (número entero):', '0');
+      const hStr = window.prompt(`Nuevo valor de HEMBRAS para el lote ${loteId} (número entero):`, '0');
       if (hStr === null) return;
-      const mStr = window.prompt('Nuevo valor de MACHOS para el lote ' + loteId + ' (número entero):', '0');
+      const mStr = window.prompt(`Nuevo valor de MACHOS para el lote ${loteId} (número entero):`, '0');
       if (mStr === null) return;
 
       const cantidadHembras = Number(hStr);
@@ -613,6 +727,13 @@ totalPages = computed(() => Math.ceil(this.totalRecords() / this.filtros.pageSiz
     if (granjaId == null) return '—';
     return this.farmMap?.[granjaId] ?? `Granja ${granjaId}`;
   }
+
+  obtenerNombreCompania(companyId: number | null | undefined): string {
+    if (companyId == null) return '—';
+    const c = this.companies?.find(x => x.id === companyId);
+    return c ? c.name : `Compañía ${companyId}`;
+  }
+
   tieneFiltrosAplicados(): boolean {
     return !!(
       this.selectedCompanyId ||
@@ -632,9 +753,24 @@ totalPages = computed(() => Math.ceil(this.totalRecords() / this.filtros.pageSiz
       this.filtros.soloActivos === false
     );
   }
-  obtenerNombreCompania(companyId: number | null | undefined): string {
-    if (companyId == null) return '—';
-    const c = this.companies?.find(x => x.id === companyId);
-    return c ? c.name : `Compañía ${companyId}`;
+
+  // 🔴 Cambios al seleccionar un lote en el filtro superior
+  onLoteSelectChange(val: string | null): void {
+    this.selectedLoteId = val;
+    if (val) {
+      this.filtros.loteId = val;
+    } else {
+      delete this.filtros.loteId;
+    }
+    this.recomputeList();
+  }
+
+  private resetLoteIfNotInContext(): void {
+    if (!this.selectedLoteId) return;
+    const stillExists = this.lotesForGalpon().some(l => l.id === this.selectedLoteId);
+    if (!stillExists) {
+      this.selectedLoteId = null;
+      delete this.filtros.loteId;
+    }
   }
 }

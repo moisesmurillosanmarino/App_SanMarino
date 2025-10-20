@@ -62,3 +62,9 @@ if (Test-Path $seguimientoPath) {
 
 Write-Host "Correcciones completadas. Intenta compilar nuevamente."
 
+
+
+
+
+
+

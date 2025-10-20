@@ -1,111 +1,135 @@
 // src/app/core/services/user/user.service.ts
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
+import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
+import { BaseHttpService } from '../base-http.service';
+
+export interface User {
+  id?: string;
+  firstName: string;
+  lastName: string;
+  surName?: string;
+  email: string;
+  phone?: string;
+  telefono?: string;
+  cedula?: string;
+  ubicacion?: string;
+  isActive: boolean;
+  companyIds?: number[];
+  companyNames?: string[];
+  roles?: string[];
+  roleIds?: number[];
+  password?: string;
+}
 
 export interface UserListItem {
   id: string;
   firstName: string;
-  surName: string;
-  email: string;
-  isActive: boolean;
-  cedula: string;
-  telefono: string;
-  ubicacion: string;
-  roles: string[];
-
-    // NUEVOS:
-    companyNames?: string[];
-    primaryCompany?: string;
-    primaryRole?: string;
-}
-
-// Detalle devuelto por GET /api/Users/{id}
-export interface UserDetailDto {
-  id: string;
-  surName: string;
-  firstName: string;
-  cedula: string;
-  telefono: string;
-  ubicacion: string;
-  roles: string[];
-  companyIds: number[];
-  isActive: boolean;
-  isLocked: boolean;
-  createdAt: string;
-  lastLoginAt?: string | null;
-  // Nota: el backend no devuelve email en el detalle.
-}
-
-// Alias retrocompatible
-export type UserDto = UserListItem;
-
-export interface CreateUserDto {
-  email: string;
-  password: string;
-  surName: string;
-  firstName: string;
-  cedula: string;
-  telefono: string;
-  ubicacion: string;
-  companyIds: number[];
-  roleIds: number[];
-}
-
-export interface UpdateUserDto {
+  lastName: string;
   surName?: string;
-  firstName?: string;
-  cedula?: string;
+  email: string;
+  phone?: string;
   telefono?: string;
+  cedula?: string;
   ubicacion?: string;
-  isActive?: boolean;
-  isLocked?: boolean;
+  isActive: boolean;
   companyIds?: number[];
+  companyNames?: string[];
+  roles?: string[];
   roleIds?: number[];
 }
 
-export interface CreateUserResponse {
-  userId: string;
-  username: string;
-  fullName: string;
-  token: string;
-  roles: string[];
-  empresas: string[];
-  permisos: string[];
+export interface UserDto {
+  id: string;
+  firstName: string;
+  lastName: string;
+  surName?: string;
+  email: string;
+  phone?: string;
+  telefono?: string;
+  cedula?: string;
+  ubicacion?: string;
+  isActive: boolean;
+  companyIds?: number[];
+  companyNames?: string[];
+  roles?: string[];
+  roleIds?: number[];
+}
+
+export interface CreateUserDto {
+  firstName: string;
+  lastName: string;
+  surName?: string;
+  email: string;
+  phone?: string;
+  telefono?: string;
+  cedula?: string;
+  ubicacion?: string;
+  password?: string;
+  companyIds?: number[];
+  roles?: string[];
+  roleIds?: number[];
+  isActive?: boolean;
+}
+
+export interface UpdateUserDto {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  surName?: string;
+  email?: string;
+  phone?: string;
+  telefono?: string;
+  cedula?: string;
+  ubicacion?: string;
+  isActive?: boolean;
+  companyIds?: number[];
+  roles?: string[];
+  roleIds?: number[];
 }
 
 @Injectable({ providedIn: 'root' })
-export class UserService {
+export class UserService extends BaseHttpService {
   private readonly baseUrl = `${environment.apiUrl}/Users`;
 
-  constructor(private http: HttpClient) {}
-
-  getAll(): Observable<UserListItem[]> {
-    return this.http.get<UserListItem[]>(this.baseUrl);
+  /** Obtener todos los usuarios */
+  getAll(): Observable<User[]> {
+    return this.get<User[]>(this.baseUrl, { context: 'UserService.getAll' });
   }
 
-  getById(id: string): Observable<UserDetailDto> {
-    return this.http.get<UserDetailDto>(`${this.baseUrl}/${id}`);
+  /** Obtener usuario por ID */
+  getById(id: string): Observable<User> {
+    return this.get<User>(`${this.baseUrl}/${id}`, { context: 'UserService.getById' });
   }
 
-  create(dto: CreateUserDto): Observable<CreateUserResponse> {
-    return this.http.post<CreateUserResponse>(this.baseUrl, dto);
+  /** Crear nuevo usuario */
+  create(user: CreateUserDto): Observable<User> {
+    return this.post<User>(this.baseUrl, user, { context: 'UserService.create' });
   }
 
-  // UDDI genérico (partial update)
-  update(id: string, dto: UpdateUserDto): Observable<UserDetailDto> {
-    return this.http.patch<UserDetailDto>(`${this.baseUrl}/${id}`, dto);
+  /** Actualizar usuario */
+  update(id: string, user: UpdateUserDto): Observable<User> {
+    return this.put<User>(`${this.baseUrl}/${id}`, user, { context: 'UserService.update' });
   }
 
+  /** Eliminar usuario */
   delete(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/${id}`);
+    return this.deleteRequest<void>(`${this.baseUrl}/${id}`, { context: 'UserService.delete' });
   }
 
-  // Cambiar contraseña (admin resetea la clave)
-  updatePassword(id: string, newPassword: string): Observable<void> {
-    // Enviamos ambas keys por compatibilidad con el backend
-    const body = { password: newPassword, newPassword };
-    return this.http.patch<void>(`${this.baseUrl}/${id}/password`, body);
+  /** Buscar usuarios por empresa */
+  getByCompany(companyId: number): Observable<User[]> {
+    const params = this.createParams({ companyId });
+    return this.get<User[]>(`${this.baseUrl}/by-company`, { 
+      params, 
+      context: 'UserService.getByCompany' 
+    });
+  }
+
+  /** Activar/Desactivar usuario */
+  toggleActive(id: string): Observable<User> {
+    return this.patch<User>(`${this.baseUrl}/${id}/toggle-active`, {}, { 
+      context: 'UserService.toggleActive' 
+    });
   }
 }

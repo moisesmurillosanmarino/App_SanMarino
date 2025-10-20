@@ -60,8 +60,7 @@
   --input-border-focus: var(--corporate-red);
   --input-border-error: #d32f2f;
 }
-
-/* ========== 2) Layout base ========== */
+/* ========== 2) Layout base (ajustado) ========== */
 .ux-page {
   display: flex;
   min-height: 100vh;
@@ -69,17 +68,19 @@
 }
 
 .ux-sidebar {
+  flex: 0 0 280px;       /* <— en vez de usar margin-left en .ux-main */
   width: 280px;
   background: var(--white);
   box-shadow: var(--shadow-lg);
   z-index: 50;
 }
 
+/* Main ahora no tiene margin-left; llena todo el espacio restante */
 .ux-main {
-  flex: 1;
-  margin-left: 280px;
+  flex: 1 1 auto;
+  min-width: 0;          /* <— permite que tablas flexibles no desborden */
   padding: var(--space-8);
-  overflow: hidden; /* evita scroll-x global */
+  overflow: hidden;       /* evita scroll-x global */
 }
 
 /* ========== 3) Header ========== */
@@ -467,10 +468,9 @@ textarea:focus {
   .ux-main { padding: var(--space-6); }
 }
 @media (max-width: 1024px) {
-  .ux-main { margin-left: 0; }
+  .ux-main { /* sin margin-left */ }
   .ux-sidebar { position: fixed; left: -280px; top: 0; bottom: 0; transition: left .25s; }
   .ux-sidebar.open { left: 0; }
-  .lote-selection-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 768px) {
   .ux-header { flex-direction: column; align-items: stretch; }

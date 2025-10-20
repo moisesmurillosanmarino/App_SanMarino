@@ -201,17 +201,11 @@ dotnet ef database update -s backend/src/ZooSanMarino.API
 cd backend/src/ZooSanMarino.API
 dotnet run
 
+Cómo ejecutarlo despliegue a aws back
 
-aws moises : 
-
-Clave de acceso:  AKIAQKGGXGJBX3RGBJGO
-
-Clave de acceso secreta : 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
-
-
-
+Ejemplo estándar (con build normal):
 
 .\deploy-ecs.ps1 -Profile sanmarino -Region us-east-2 `
   -Cluster sanmarino-cluster -Service sanmarino-api-svc `
-  -Family sanmarino-backend -RepoName sanmarino-backend `
-  -Container api
+  -Family sanmarino-backend -Container api `
+  -EcrUri 021891592771.dkr.ecr.us-east-2.amazonaws.com/sanmarino-backend

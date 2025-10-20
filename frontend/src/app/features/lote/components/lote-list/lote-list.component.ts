@@ -19,7 +19,7 @@ import { FarmService, FarmDto } from '../../../farm/services/farm.service';
 import { NucleoService, NucleoDto } from '../../../nucleo/services/nucleo.service';
 import { GalponService } from '../../../galpon/services/galpon.service';
 import { GalponDetailDto } from '../../../galpon/models/galpon.models';
-import { UserService, UserDto } from '../../../../core/services/user/user.service';
+import { UserService, UserDto, User } from '../../../../core/services/user/user.service';
 import { Company, CompanyService } from '../../../../core/services/company/company.service';
 import { MasterListService } from '../../../../core/services/master-list/master-list.service';
 import { GuiaGeneticaService, LineaGeneticaOption } from '../../services/guia-genetica.service';
@@ -122,7 +122,7 @@ export class LoteListComponent implements OnInit {
   farms:    FarmDto[]   = [];
   nucleos:  NucleoDto[] = [];
   galpones: GalponDetailDto[] = [];
-  tecnicos: UserDto[]   = [];
+  tecnicos: User[]   = [];
 
   // Datos para raza y línea genética
   razasDisponibles: string[] = [];
@@ -196,7 +196,11 @@ export class LoteListComponent implements OnInit {
       galpones.forEach(g => this.galponMap[g.galponId] = g.galponNombre);
 
       this.tecnicos = tecnicos;
-      tecnicos.forEach(u => this.techMap[u.id] = `${u.surName} ${u.firstName}`);
+      tecnicos.forEach(u => {
+        if (u.id) {
+          this.techMap[u.id] = `${u.surName || ''} ${u.firstName}`;
+        }
+      });
 
       this.companies = companies;
 
@@ -352,8 +356,8 @@ export class LoteListComponent implements OnInit {
   }
   resetListFilters() {
     this.filtro = '';
+    // No resetear selectedFarmId ya que es obligatorio
     this.selectedCompanyId = null;
-       this.selectedFarmId = null;
     this.selectedNucleoId = null;
     this.selectedGalponId = null;
     this.recomputeList();
@@ -365,11 +369,20 @@ export class LoteListComponent implements OnInit {
 
   // ===================== Recompute (filtros + orden) ========
   recomputeList() {
+    // Si no hay granja seleccionada, no mostrar lotes
+    if (!this.selectedFarmId) {
+      this.viewLotes = [];
+      return;
+    }
+
     const term = this.normalize(this.filtro);
     let res = [...this.lotes];
 
+    // Filtrar obligatoriamente por granja seleccionada
+    res = res.filter(l => l.granjaId === this.selectedFarmId);
+
+    // Filtros adicionales (opcionales)
     if (this.selectedCompanyId != null) res = res.filter(l => this.farmById[l.granjaId]?.companyId === this.selectedCompanyId);
-    if (this.selectedFarmId != null)    res = res.filter(l => l.granjaId === this.selectedFarmId);
     if (this.selectedNucleoId != null)  res = res.filter(l => (l.nucleoId ?? null) === this.selectedNucleoId);
     if (this.selectedGalponId != null)  res = res.filter(l => (l.galponId ?? null) === this.selectedGalponId);
 
@@ -522,6 +535,11 @@ export class LoteListComponent implements OnInit {
   }
 
   // ===================== Helpers ===========================
+  get selectedFarmName(): string {
+    if (!this.selectedFarmId) return '';
+    return this.farmMap[this.selectedFarmId] || '';
+  }
+
   calcularEdadDias(fechaEncaset?: string | Date | null): number {
     if (!fechaEncaset) return 0;
     const inicio = new Date(fechaEncaset);

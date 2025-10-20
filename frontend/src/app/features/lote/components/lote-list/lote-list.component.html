@@ -103,11 +103,35 @@
       </div>
     </div>
 
-    <!-- Tabla -->
-    <div class="ux-card">
+    <!-- Mensaje cuando no hay granja seleccionada -->
+    <div *ngIf="!selectedFarmId" class="ux-card">
+      <div class="text-center py-12">
+        <div class="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+          <fa-icon [icon]="faEye" class="text-blue-600 text-2xl"></fa-icon>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-900 mb-2">Selecciona una granja</h3>
+        <p class="text-gray-600 mb-4">Para ver los lotes disponibles, primero selecciona una granja del filtro superior.</p>
+        <div class="text-sm text-gray-500">
+          <p>Una vez seleccionada la granja, podrás ver todos los lotes asociados a esa ubicación.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla de lotes (solo cuando hay granja seleccionada) -->
+    <div *ngIf="selectedFarmId" class="ux-card">
+      <!-- Header de la tabla con nombre de granja -->
+      <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+        <h3 class="text-lg font-semibold text-gray-900">
+          Lotes de la granja: <span class="text-blue-600">{{ selectedFarmName }}</span>
+        </h3>
+        <p class="text-sm text-gray-600 mt-1">
+          Mostrando {{ viewLotes.length }} lote(s) de esta granja
+        </p>
+      </div>
+      
       <div class="ux-scroll">
         <table class="ux-table">
-          <caption class="sr-only">Listado de lotes</caption>
+          <caption class="sr-only">Listado de lotes para la granja {{ selectedFarmName }}</caption>
 
           <thead>
             <tr>
@@ -155,7 +179,7 @@
             <tr *ngIf="!loading && viewLotes.length === 0">
               <td colspan="10" class="empty-state">
                 <div class="empty-illustration">📦</div>
-                <p>No hay lotes que coincidan con los filtros.</p>
+                <p>No hay lotes registrados en esta granja.</p>
                 <button (click)="openModal()" class="btn-secondary mt-2">
                   <fa-icon [icon]="faPlus" aria-hidden="true"></fa-icon>
                   Crear el primero

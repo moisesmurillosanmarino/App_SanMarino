@@ -55,3 +55,9 @@ AND NOT EXISTS (SELECT 1 FROM lotes l WHERE l.lote_id = s.lote_id::INTEGER)
 GROUP BY s.lote_id
 ORDER BY s.lote_id::INTEGER;
 
+
+
+
+
+
+

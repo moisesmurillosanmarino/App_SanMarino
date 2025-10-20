@@ -357,6 +357,28 @@ public class InventarioAvesController : ControllerBase
             return StatusCode(500, new { error = "Error interno del servidor" });
         }
     }
+
+    /// <summary>
+    /// Endpoint de debug para verificar datos en la BD
+    /// </summary>
+    [HttpGet("debug/count")]
+    public async Task<IActionResult> GetDebugCount()
+    {
+        try
+        {
+            // Consulta directa sin filtros para debug
+            var totalCount = await _inventarioService.GetTotalCountAsync();
+            return Ok(new { 
+                totalCount = totalCount,
+                message = "Debug: Total de registros en inventario_aves"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error en debug count");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
 }
 
 /// <summary>

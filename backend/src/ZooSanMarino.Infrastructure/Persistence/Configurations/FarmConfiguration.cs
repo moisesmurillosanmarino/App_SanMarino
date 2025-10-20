@@ -11,7 +11,9 @@ public class FarmConfiguration : IEntityTypeConfiguration<Farm>
         e.ToTable("farms");
 
         e.HasKey(x => x.Id);
-        e.Property(x => x.Id).HasColumnName("id");
+        e.Property(x => x.Id)
+            .HasColumnName("id")
+            .HasColumnType("integer");
 
         e.Property(x => x.CompanyId)
             .HasColumnName("company_id")

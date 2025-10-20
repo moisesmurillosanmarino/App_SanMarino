@@ -1,92 +1,140 @@
-// src/app/features/dashboard/dashboard.component.ts
-import { Component, OnInit, OnDestroy, signal, computed } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, inject, HostListener, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { SidebarComponent } from '../../shared/components/sidebar/sidebar.component';
-import { LazyObserveDirective } from '../../shared/directives/lazy-observe.directive';
 import { NgChartsModule } from 'ng2-charts';
 import { ChartConfiguration, ChartData, ChartType } from 'chart.js';
-
-import { UserService, UserListItem } from '../../core/services/user/user.service';
-import { FarmService, FarmDto } from '../farm/services/farm.service';
-import { LoteReproductoraService, LoteDto, LoteDtoExtendido } from '../lote-reproductora/services/lote-reproductora.service';
-import { LoteProduccionService, LoteProduccionDto } from '../lote-produccion/services/lote-produccion.service';
-import { SeguimientoLoteLevanteService, SeguimientoLoteLevanteDto } from '../lote-levante/services/seguimiento-lote-levante.service';
-
-import { forkJoin, of, interval, Subscription } from 'rxjs';
-import { catchError, finalize, map, switchMap, startWith } from 'rxjs/operators';
-
-interface Activity { time: string; description: string; }
-interface DailyLog { date: string; entries: number; }
-interface FarmStat { name: string; production: number; }
-interface Mortality { date: string; deaths: number; }
-
-type SectionKey = 'summary' | 'activities' | 'daily' | 'production' | 'mortality';
+import { DashboardService, 
+         DashboardEstadisticasGeneralesDto, 
+         ProduccionGranjaDto, 
+         RegistroDiarioDto, 
+         ActividadRecienteDto, 
+         MortalidadDto, 
+         DistribucionLotesDto, 
+         InventarioEstadisticasDto, 
+         MetricasRendimientoDto } from '../../core/services/dashboard/dashboard.service';
+import { interval, Subscription, forkJoin, of, BehaviorSubject, debounceTime, distinctUntilChanged, fromEvent } from 'rxjs';
+import { catchError, finalize, switchMap, takeUntil, throttleTime } from 'rxjs/operators';
 
 @Component({
   standalone: true,
   selector: 'app-dashboard',
-  imports: [CommonModule, SidebarComponent, LazyObserveDirective, NgChartsModule],
+  imports: [CommonModule, FormsModule, SidebarComponent, NgChartsModule],
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss']
 })
-export class DashboardComponent implements OnInit, OnDestroy {
-  // loading por bloque
-  loadingSummary = true;
-  loadingActivities = false;
-  loadingDaily = false;
-  loadingProduction = false;
-  loadingMortality = false;
+export class DashboardComponent implements OnInit, OnDestroy, AfterViewInit {
+  private dashboardService = inject(DashboardService);
+  private elementRef = inject(ElementRef);
 
-  // errores por bloque
-  errorSummary: string | null = null;
-  errorActivities: string | null = null;
-  errorDaily: string | null = null;
-  errorProduction: string | null = null;
-  errorMortality: string | null = null;
-
-  // datos
-  activities: Activity[] = [];
-  dailyLogs: DailyLog[] = [];
-  farms: FarmStat[] = [];
-  mortalities: Mortality[] = [];
-  averageProduction = 0;
-
-  // contadores
-  totalUsers = 0;
-  activeUsers = 0;
-  totalFarms = 0;
-  totalLotes = 0;
-
-  // caches
-  private lotesIndex = new Map<string, LoteDto>();
-  private farmsIndex = new Map<number, FarmDto>();
-
-  // Real-time updates
-  private refreshSubscription?: Subscription;
-  private readonly REFRESH_INTERVAL = 30000; // 30 segundos
-
-  // Signals para estado reactivo
-  isRealTimeEnabled = signal(true);
+  // ====== ESTADO ======
+  loading = signal<boolean>(true);
+  error = signal<string | null>(null);
   lastUpdated = signal<Date>(new Date());
+  isRealTimeEnabled = signal<boolean>(true);
+  
+  // ====== EFECTOS VISUALES ======
+  isScrolled = signal<boolean>(false);
+  isSidebarOpen = signal<boolean>(false);
+  animationDelay = signal<number>(0);
 
-  // Chart configurations
+  // ====== CARGA LENTA (LAZY LOADING) ======
+  private loadTrigger$ = new BehaviorSubject<boolean>(false);
+  private destroy$ = new BehaviorSubject<boolean>(false);
+  
+  // Estados de carga por sección
+  loadingKPIs = signal<boolean>(true);
+  loadingCharts = signal<boolean>(true);
+  loadingActivities = signal<boolean>(true);
+  loadingMetrics = signal<boolean>(true);
+  loadingReports = signal<boolean>(true);
+  
+  // Control de carga progresiva
+  loadedSections = signal<Set<string>>(new Set());
+  loadingQueue = signal<string[]>(['kpis', 'charts', 'activities', 'metrics', 'reports']);
+
+  // ====== DATOS ======
+  estadisticasGenerales = signal<DashboardEstadisticasGeneralesDto | null>(null);
+  produccionPorGranja = signal<ProduccionGranjaDto[]>([]);
+  registrosDiarios = signal<RegistroDiarioDto[]>([]);
+  actividadesRecientes = signal<ActividadRecienteDto[]>([]);
+  mortalidades = signal<MortalidadDto[]>([]);
+  distribucionLotes = signal<DistribucionLotesDto[]>([]);
+  estadisticasInventario = signal<InventarioEstadisticasDto | null>(null);
+  metricasRendimiento = signal<MetricasRendimientoDto | null>(null);
+
+  // ====== CONFIGURACIÓN DE GRÁFICOS CON COLORES CORPORATIVOS ======
   public lineChartType: ChartType = 'line';
   public barChartType: ChartType = 'bar';
   public doughnutChartType: ChartType = 'doughnut';
   public pieChartType: ChartType = 'pie';
 
-  // Chart options
+  // Colores corporativos: Amarillo suave, Rojo, Gris
+  private readonly CORPORATE_COLORS = {
+    primary: '#f59e0b',      // Amarillo suave
+    secondary: '#ef4444',    // Rojo
+    accent: '#6b7280',      // Gris
+    success: '#10b981',     // Verde para éxito
+    warning: '#f59e0b',     // Amarillo para advertencias
+    danger: '#ef4444',      // Rojo para peligro
+    info: '#3b82f6',       // Azul para información
+    light: '#f9fafb',      // Gris claro
+    dark: '#374151'        // Gris oscuro
+  };
+
+  // ====== OPCIONES DE GRÁFICOS CON COLORES CORPORATIVOS ======
   public chartOptions: ChartConfiguration['options'] = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: {
         position: 'top',
+        labels: {
+          usePointStyle: true,
+          padding: 20,
+          color: this.CORPORATE_COLORS.dark,
+          font: {
+            family: 'Inter, sans-serif',
+            size: 12,
+            weight: 'normal'
+          }
+        }
+      },
+      tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleColor: 'white',
+        bodyColor: 'white',
+        borderColor: this.CORPORATE_COLORS.primary,
+        borderWidth: 2,
+        cornerRadius: 8,
+        displayColors: true
       }
     },
     scales: {
       y: {
-        beginAtZero: true
+        beginAtZero: true,
+        grid: {
+          color: 'rgba(107, 114, 128, 0.1)'
+        },
+        ticks: {
+          color: this.CORPORATE_COLORS.dark,
+          font: {
+            family: 'Inter, sans-serif',
+            size: 11
+          }
+        }
+      },
+      x: {
+        grid: {
+          color: 'rgba(107, 114, 128, 0.1)'
+        },
+        ticks: {
+          color: this.CORPORATE_COLORS.dark,
+          font: {
+            family: 'Inter, sans-serif',
+            size: 11
+          }
+        }
       }
     }
   };
@@ -97,513 +145,686 @@ export class DashboardComponent implements OnInit, OnDestroy {
     plugins: {
       legend: {
         position: 'right',
+        labels: {
+          usePointStyle: true,
+          padding: 20,
+          color: this.CORPORATE_COLORS.dark,
+          font: {
+            family: 'Inter, sans-serif',
+            size: 12,
+            weight: 'normal'
+          }
+        }
+      },
+      tooltip: {
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        titleColor: 'white',
+        bodyColor: 'white',
+        borderColor: this.CORPORATE_COLORS.primary,
+        borderWidth: 2,
+        cornerRadius: 8
       }
     }
   };
 
-  // Chart data
-  public dailyRegistersChart: ChartData<'line'> = {
+  // ====== DATOS DE GRÁFICOS CON COLORES CORPORATIVOS ======
+  public registrosDiariosChart: ChartData<'line'> = {
     labels: [],
     datasets: [{
       label: 'Registros Diarios',
       data: [],
-      borderColor: '#d32f2f',
-      backgroundColor: 'rgba(211, 47, 47, 0.1)',
+      borderColor: this.CORPORATE_COLORS.primary,
+      backgroundColor: 'rgba(245, 158, 11, 0.1)',
       tension: 0.4,
-      fill: true
+      fill: true,
+      pointBackgroundColor: this.CORPORATE_COLORS.primary,
+      pointBorderColor: '#ffffff',
+      pointBorderWidth: 3,
+      pointRadius: 6,
+      pointHoverRadius: 8
     }]
   };
 
-  public productionChart: ChartData<'bar'> = {
+  public produccionGranjaChart: ChartData<'bar'> = {
     labels: [],
     datasets: [{
       label: 'Producción por Granja',
       data: [],
       backgroundColor: [
-        '#d32f2f',
-        '#f6d860',
-        '#16a34a',
-        '#3b82f6',
+        this.CORPORATE_COLORS.primary,
+        this.CORPORATE_COLORS.secondary,
+        this.CORPORATE_COLORS.accent,
+        this.CORPORATE_COLORS.success,
+        this.CORPORATE_COLORS.info,
         '#8b5cf6',
-        '#f59e0b',
-        '#ef4444',
-        '#06b6d4'
-      ]
+        '#06b6d4',
+        '#84cc16'
+      ],
+      borderColor: [
+        '#d97706',
+        '#dc2626',
+        '#4b5563',
+        '#059669',
+        '#2563eb',
+        '#7c3aed',
+        '#0891b2',
+        '#65a30d'
+      ],
+      borderWidth: 2,
+      borderRadius: 8,
+      borderSkipped: false
     }]
   };
 
-  public mortalityChart: ChartData<'doughnut'> = {
+  public mortalidadChart: ChartData<'doughnut'> = {
     labels: [],
     datasets: [{
       label: 'Mortalidad por Fecha',
       data: [],
       backgroundColor: [
-        '#ef4444',
-        '#f97316',
-        '#eab308',
-        '#84cc16',
-        '#22c55e',
+        this.CORPORATE_COLORS.secondary,
+        this.CORPORATE_COLORS.primary,
+        this.CORPORATE_COLORS.accent,
+        this.CORPORATE_COLORS.success,
+        this.CORPORATE_COLORS.info,
+        '#8b5cf6',
         '#06b6d4',
-        '#3b82f6',
-        '#8b5cf6'
-      ]
+        '#84cc16'
+      ],
+      borderWidth: 3,
+      borderColor: '#ffffff'
     }]
   };
 
-  public farmDistributionChart: ChartData<'pie'> = {
+  public distribucionLotesChart: ChartData<'pie'> = {
     labels: [],
     datasets: [{
-      label: 'Distribución de Lotes por Granja',
+      label: 'Distribución de Lotes',
       data: [],
       backgroundColor: [
-        '#d32f2f',
-        '#f6d860',
-        '#16a34a',
-        '#3b82f6',
-        '#8b5cf6',
-        '#f59e0b'
-      ]
+        this.CORPORATE_COLORS.primary,
+        this.CORPORATE_COLORS.secondary,
+        this.CORPORATE_COLORS.accent,
+        this.CORPORATE_COLORS.success,
+        this.CORPORATE_COLORS.info,
+        '#8b5cf6'
+      ],
+      borderWidth: 3,
+      borderColor: '#ffffff'
     }]
   };
 
-  constructor(
-    private userSvc: UserService,
-    private farmSvc: FarmService,
-    private loteRepSvc: LoteReproductoraService,
-    private loteProdSvc: LoteProduccionService,
-    private levanteSvc: SeguimientoLoteLevanteService
-  ) {}
+  public inventarioChart: ChartData<'doughnut'> = {
+    labels: ['Hembras', 'Machos', 'Mixtas'],
+    datasets: [{
+      label: 'Inventario de Aves',
+      data: [],
+      backgroundColor: [
+        this.CORPORATE_COLORS.primary,
+        this.CORPORATE_COLORS.secondary,
+        this.CORPORATE_COLORS.accent
+      ],
+      borderWidth: 3,
+      borderColor: '#ffffff'
+    }]
+  };
 
-  // ============ helpers error =============
-  private describeError(err: unknown, fallback = 'No se pudo cargar la información'): string {
-    const anyErr = err as any;
-    const status: number | undefined = anyErr?.status ?? anyErr?.code;
-    const msg: string | undefined = anyErr?.error?.message || anyErr?.error?.error || anyErr?.message;
-    const base = msg ? `${fallback}: ${msg}` : fallback;
-    return status ? `${base} (HTTP ${status})` : base;
-  }
+  // ====== COMPUTED PROPERTIES ======
+  eficienciaPromedio = computed(() => {
+    const metricas = this.metricasRendimiento();
+    return metricas ? metricas.eficienciaPromedio : 0;
+  });
 
-  private setError(section: SectionKey, message: string | null) {
-    switch (section) {
-      case 'summary':    this.errorSummary = message; break;
-      case 'activities': this.errorActivities = message; break;
-      case 'daily':      this.errorDaily = message; break;
-      case 'production': this.errorProduction = message; break;
-      case 'mortality':  this.errorMortality = message; break;
-    }
-  }
+  tasaMortalidadPromedio = computed(() => {
+    const metricas = this.metricasRendimiento();
+    return metricas ? metricas.tasaMortalidadPromedio : 0;
+  });
 
-  // ============ init ============
+  totalAves = computed(() => {
+    const inventario = this.estadisticasInventario();
+    return inventario ? inventario.totalAvesHembras + inventario.totalAvesMachos + inventario.totalAvesMixtas : 0;
+  });
+
+  // ====== REAL-TIME UPDATES ======
+  private refreshSubscription?: Subscription;
+  private readonly REFRESH_INTERVAL = 30000; // 30 segundos
+
   ngOnInit(): void {
-    this.loadSummary();
+    this.setupLazyLoading();
+    this.loadInitialData();
     this.startRealTimeUpdates();
   }
 
   ngOnDestroy(): void {
-    this.stopRealTimeUpdates();
-  }
-
-  // ============ Real-time updates ============
-  private startRealTimeUpdates(): void {
-    if (!this.isRealTimeEnabled()) return;
-    
-    this.refreshSubscription = interval(this.REFRESH_INTERVAL)
-      .pipe(startWith(0))
-      .subscribe(() => {
-        this.refreshAllData();
-        this.lastUpdated.set(new Date());
-      });
-  }
-
-  private stopRealTimeUpdates(): void {
     this.refreshSubscription?.unsubscribe();
+    this.destroy$.next(true);
+    this.destroy$.complete();
   }
 
-  public toggleRealTime(): void {
-    this.isRealTimeEnabled.update(enabled => !enabled);
-    if (this.isRealTimeEnabled()) {
-      this.startRealTimeUpdates();
-    } else {
-      this.stopRealTimeUpdates();
-    }
+  // ====== CONFIGURACIÓN DE CARGA LENTA ======
+  private setupLazyLoading(): void {
+    this.loadTrigger$.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      switchMap(() => this.loadDataProgressively()),
+      takeUntil(this.destroy$)
+    ).subscribe();
   }
 
-  public refreshAllData(): void {
-    // Solo refrescar si no hay errores críticos
-    if (!this.errorSummary) {
-      this.loadSummary();
-    }
+  // ====== CARGA INICIAL ======
+  private loadInitialData(): void {
+    this.loading.set(true);
+    this.error.set(null);
     
-    // Refrescar secciones visibles
-    if (this.activities.length && !this.errorActivities) {
-      this.activities = [];
-      this.onActivitiesVisible();
-    }
-    
-    if (this.dailyLogs.length && !this.errorDaily) {
-      this.dailyLogs = [];
-      this.onDailyVisible();
-    }
-    
-    if (this.farms.length && !this.errorProduction) {
-      this.farms = [];
-      this.onProductionVisible();
-    }
-    
-    if (this.mortalities.length && !this.errorMortality) {
-      this.mortalities = [];
-      this.onMortalityVisible();
-    }
+    this.loadKPIsData();
+    setTimeout(() => this.loadTrigger$.next(true), 100);
   }
 
-  // ============ SUMMARY ============
-  private loadSummary(): void {
-    this.loadingSummary = true;
-    this.errorSummary = null;
-    const summaryErrParts: string[] = [];
+  // ====== CARGA PROGRESIVA ======
+  private loadDataProgressively() {
+    const queue = this.loadingQueue();
+    const loaded = this.loadedSections();
+    
+    if (queue.length === 0) {
+      this.loading.set(false);
+      return of(null);
+    }
 
-    forkJoin({
-      users: this.userSvc.getAll().pipe(
-        catchError((err) => { 
-          console.error('Dashboard: Error cargando usuarios:', err);
-          summaryErrParts.push('usuarios'); 
-          return of([] as UserListItem[]); 
-        })
-      ),
-      farms: this.farmSvc.getAll().pipe(
-        catchError((err) => { 
-          console.error('Dashboard: Error cargando granjas:', err);
-          summaryErrParts.push('granjas'); 
-          return of([] as FarmDto[]); 
-        })
-      ),
-      lotes: this.loteRepSvc.getLotes().pipe(
-        catchError((err) => { 
-          console.error('Dashboard: Error cargando lotes:', err);
-          summaryErrParts.push('lotes'); 
-          return of([] as LoteDto[]); 
-        })
-      ),
-    })
-    .pipe(finalize(() => { this.loadingSummary = false; }))
-    .subscribe({
-      next: ({ users, farms, lotes }: { users: UserListItem[]; farms: FarmDto[]; lotes: LoteDto[] | readonly LoteDto[] }) => {
-        lotes = [...lotes]; // Ensure lotes is mutable
-        // índices
-        this.farmsIndex.clear(); this.lotesIndex.clear();
-        farms.forEach(f => this.farmsIndex.set(f.id, f));
-        lotes.forEach(l => this.lotesIndex.set(l.loteId, l));
+    const nextSection = queue[0];
+    const newQueue = queue.slice(1);
+    this.loadingQueue.set(newQueue);
 
-        this.totalUsers = users.length;
-        this.activeUsers = users.filter(u => u.isActive).length;
-        this.totalFarms = farms.length;
-        this.totalLotes = lotes.length;
-        
-        // Actualizar gráfica de distribución de granjas
-        this.updateFarmDistributionChart();
+    switch (nextSection) {
+      case 'charts':
+        this.loadChartsData();
+        break;
+      case 'activities':
+        this.loadActivitiesData();
+        break;
+      case 'metrics':
+        this.loadMetricsData();
+        break;
+      case 'reports':
+        this.loadReportsData();
+        break;
+    }
+    
+    return of(null);
+  }
 
-        if (summaryErrParts.length) {
-          this.errorSummary = `Algunos datos no cargaron: ${summaryErrParts.join(', ')}.`;
-        }
-      },
-      error: (err: unknown) => {
-        console.error('Dashboard: Error crítico en loadSummary:', err);
-        this.setError('summary', this.describeError(err));
+  // ====== CARGA POR SECCIONES ======
+  private loadKPIsData(): void {
+    this.loadingKPIs.set(true);
+    
+    this.dashboardService.getEstadisticasGenerales().pipe(
+      catchError(error => {
+        this.error.set(this.getErrorMessage(error));
+        return of(null);
+      }),
+      finalize(() => {
+        this.loadingKPIs.set(false);
+        this.markSectionLoaded('kpis');
+      })
+    ).subscribe(data => {
+      if (data) {
+        this.estadisticasGenerales.set(data);
       }
     });
   }
 
-  // ============ HANDLERS LAZY ============
-  onActivitiesVisible(): void {
-    if (this.loadingActivities || this.activities.length) return;
-    this.loadingActivities = true;
-    this.errorActivities = null;
-
-    forkJoin({
-      lotes: of(this.lotesIndex.size ? Array.from(this.lotesIndex.values()) : []).pipe(
-        switchMap((ls: LoteDto[]) => ls.length
-          ? of(ls)
-          : this.loteRepSvc.getLotes().pipe(
-              catchError((err) => { this.setError('activities', this.describeError(err, 'Fallo al cargar lotes')); return of([] as LoteDto[]); })
-            )
-        )
-      ),
-      levante: this.levanteSvc.getAll().pipe(
-        catchError((err) => { this.setError('activities', this.describeError(err, 'Fallo al cargar actividades (levante)')); return of([] as SeguimientoLoteLevanteDto[]); })
-      )
-    })
-    .pipe(finalize(() => this.loadingActivities = false))
-    .subscribe({
-      next: ({ lotes, levante }: { lotes: readonly LoteDto[] | LoteDto[]; levante: SeguimientoLoteLevanteDto[] }) => {
-        lotes = [...lotes]; // Ensure lotes is mutable
-        if (!this.lotesIndex.size) lotes.forEach(l => this.lotesIndex.set(l.loteId, l));
-
-        const actsLevante: Activity[] = (levante ?? [])
-          .sort((a: SeguimientoLoteLevanteDto, b: SeguimientoLoteLevanteDto) =>
-            +new Date(b.fechaRegistro) - +new Date(a.fechaRegistro)
-          )
-          .slice(0, 12)
-          .map((s: SeguimientoLoteLevanteDto) => ({
-            time: new Date(s.fechaRegistro).toLocaleString(),
-            description: `Levante – Lote ${s.loteId}: Consumo ${s.consumoKgHembras} kg, Mort H ${s.mortalidadHembras}, Mort M ${s.mortalidadMachos}`
-          }));
-
-        this.activities = actsLevante;
-      },
-      error: (err: unknown) => this.setError('activities', this.describeError(err))
+  private loadChartsData() {
+    this.loadingCharts.set(true);
+    
+    return forkJoin({
+      produccion: this.dashboardService.getProduccionPorGranja(),
+      registros: this.dashboardService.getRegistrosDiarios(7),
+      mortalidad: this.dashboardService.getEstadisticasMortalidad(30),
+      distribucion: this.dashboardService.getDistribucionLotes(),
+      inventario: this.dashboardService.getEstadisticasInventario()
+    }).pipe(
+      catchError(error => {
+        this.error.set(this.getErrorMessage(error));
+        return of({
+          produccion: null,
+          registros: null,
+          mortalidad: null,
+          distribucion: null,
+          inventario: null
+        });
+      }),
+      finalize(() => {
+        this.loadingCharts.set(false);
+        this.markSectionLoaded('charts');
+        setTimeout(() => this.loadTrigger$.next(true), 200);
+      })
+    ).subscribe(data => {
+      if (data.produccion) {
+        this.produccionPorGranja.set(data.produccion);
+        this.updateProduccionChart(data.produccion);
+      }
+      if (data.registros) {
+        this.registrosDiarios.set(data.registros);
+        this.updateRegistrosChart(data.registros);
+      }
+      if (data.mortalidad) {
+        this.mortalidades.set(data.mortalidad);
+        this.updateMortalidadChart(data.mortalidad);
+      }
+      if (data.distribucion) {
+        this.distribucionLotes.set(data.distribucion);
+        this.updateDistribucionChart(data.distribucion);
+      }
+      if (data.inventario) {
+        this.estadisticasInventario.set(data.inventario);
+        this.updateInventarioChart(data.inventario);
+      }
     });
   }
 
-  onDailyVisible(): void {
-    if (this.loadingDaily || this.dailyLogs.length) return;
-    this.loadingDaily = true;
-    this.errorDaily = null;
-
-    this.levanteSvc.getAll().pipe(
-      map((rows: SeguimientoLoteLevanteDto[]) => {
-        const mapByDate = new Map<string, number>();
-        for (const r of rows ?? []) {
-          const d = (r.fechaRegistro || '').slice(0, 10);
-          if (!d) continue;
-          mapByDate.set(d, (mapByDate.get(d) || 0) + 1);
-        }
-        const list: DailyLog[] = Array.from(mapByDate.entries())
-          .map(([date, entries]) => ({ date, entries }))
-          .sort((a: DailyLog, b: DailyLog) => a.date < b.date ? 1 : -1)
-          .slice(0, 7);
-        
-        // Actualizar gráfica de registros diarios
-        this.updateDailyRegistersChart(list);
-        
-        return list;
+  private loadActivitiesData() {
+    this.loadingActivities.set(true);
+    
+    this.dashboardService.getActividadesRecientes(10).pipe(
+      catchError(error => {
+        this.error.set(this.getErrorMessage(error));
+        return of([]);
       }),
-      catchError((err) => {
-        this.setError('daily', this.describeError(err, 'Fallo al cargar registros diarios'));
-        return of([] as DailyLog[]);
-      }),
-      finalize(() => this.loadingDaily = false)
-    )
-    .subscribe({
-      next: (list: DailyLog[]) => { this.dailyLogs = list; },
-      error: (err: unknown) => this.setError('daily', this.describeError(err))
+      finalize(() => {
+        this.loadingActivities.set(false);
+        this.markSectionLoaded('activities');
+        setTimeout(() => this.loadTrigger$.next(true), 200);
+      })
+    ).subscribe(data => {
+      this.actividadesRecientes.set(data);
     });
+  }
+
+  private loadMetricsData() {
+    this.loadingMetrics.set(true);
+    
+    this.dashboardService.getMetricasRendimiento().pipe(
+      catchError(error => {
+        this.error.set(this.getErrorMessage(error));
+        return of(null);
+      }),
+      finalize(() => {
+        this.loadingMetrics.set(false);
+        this.markSectionLoaded('metrics');
+        setTimeout(() => this.loadTrigger$.next(true), 200);
+      })
+    ).subscribe(data => {
+      if (data) {
+        this.metricasRendimiento.set(data);
+      }
+    });
+  }
+
+  private loadReportsData() {
+    this.loadingReports.set(true);
+    
+    // Aquí se pueden cargar reportes adicionales
+    setTimeout(() => {
+      this.loadingReports.set(false);
+      this.markSectionLoaded('reports');
+      this.lastUpdated.set(new Date());
+    }, 500);
+  }
+
+  private markSectionLoaded(section: string): void {
+    const loaded = new Set(this.loadedSections());
+    loaded.add(section);
+    this.loadedSections.set(loaded);
+  }
+
+  // ====== CARGA COMPLETA (PARA REFRESH MANUAL) ======
+  loadAllData(): void {
+    this.loading.set(true);
+    this.error.set(null);
+    this.loadedSections.set(new Set());
+    this.loadingQueue.set(['kpis', 'charts', 'activities', 'metrics', 'reports']);
+    
+    this.loadInitialData();
+  }
+
+  // ====== ACTUALIZACIÓN DE GRÁFICOS ======
+  updateRegistrosChart(registros: RegistroDiarioDto[]): void {
+    this.registrosDiariosChart = {
+      labels: registros.map(r => this.dashboardService.formatDate(r.fecha)),
+      datasets: [{
+        label: 'Registros Diarios',
+        data: registros.map(r => r.totalRegistros),
+        borderColor: this.CORPORATE_COLORS.primary,
+        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        tension: 0.4,
+        fill: true,
+        pointBackgroundColor: this.CORPORATE_COLORS.primary,
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 3,
+        pointRadius: 6,
+        pointHoverRadius: 8
+      }]
+    };
+  }
+
+  updateProduccionChart(produccion: ProduccionGranjaDto[]): void {
+    this.produccionGranjaChart = {
+      labels: produccion.map(p => p.granjaNombre),
+      datasets: [{
+        label: 'Producción por Granja',
+        data: produccion.map(p => p.totalHuevos),
+        backgroundColor: [
+          this.CORPORATE_COLORS.primary,
+          this.CORPORATE_COLORS.secondary,
+          this.CORPORATE_COLORS.accent,
+          this.CORPORATE_COLORS.success,
+          this.CORPORATE_COLORS.info,
+          '#8b5cf6',
+          '#06b6d4',
+          '#84cc16'
+        ],
+        borderColor: [
+          '#d97706',
+          '#dc2626',
+          '#4b5563',
+          '#059669',
+          '#2563eb',
+          '#7c3aed',
+          '#0891b2',
+          '#65a30d'
+        ],
+        borderWidth: 2,
+        borderRadius: 8,
+        borderSkipped: false
+      }]
+    };
+  }
+
+  updateMortalidadChart(mortalidades: MortalidadDto[]): void {
+    const agrupadas = mortalidades.reduce((acc, m) => {
+      const fecha = this.dashboardService.formatDate(m.fecha);
+      acc[fecha] = (acc[fecha] || 0) + m.cantidadMuertas;
+      return acc;
+    }, {} as Record<string, number>);
+
+    this.mortalidadChart = {
+      labels: Object.keys(agrupadas),
+      datasets: [{
+        label: 'Mortalidad por Fecha',
+        data: Object.values(agrupadas),
+        backgroundColor: [
+          this.CORPORATE_COLORS.secondary,
+          this.CORPORATE_COLORS.primary,
+          this.CORPORATE_COLORS.accent,
+          this.CORPORATE_COLORS.success,
+          this.CORPORATE_COLORS.info,
+          '#8b5cf6',
+          '#06b6d4',
+          '#84cc16'
+        ],
+        borderWidth: 3,
+        borderColor: '#ffffff'
+      }]
+    };
+  }
+
+  updateDistribucionChart(distribucion: DistribucionLotesDto[]): void {
+    this.distribucionLotesChart = {
+      labels: distribucion.map(d => d.granjaNombre),
+      datasets: [{
+        label: 'Distribución de Lotes',
+        data: distribucion.map(d => d.totalLotes),
+        backgroundColor: [
+          this.CORPORATE_COLORS.primary,
+          this.CORPORATE_COLORS.secondary,
+          this.CORPORATE_COLORS.accent,
+          this.CORPORATE_COLORS.success,
+          this.CORPORATE_COLORS.info,
+          '#8b5cf6'
+        ],
+        borderWidth: 3,
+        borderColor: '#ffffff'
+      }]
+    };
+  }
+
+  updateInventarioChart(inventario: InventarioEstadisticasDto): void {
+    this.inventarioChart = {
+      labels: ['Hembras', 'Machos', 'Mixtas'],
+      datasets: [{
+        label: 'Inventario de Aves',
+        data: [inventario.totalAvesHembras, inventario.totalAvesMachos, inventario.totalAvesMixtas],
+        backgroundColor: [
+          this.CORPORATE_COLORS.primary,
+          this.CORPORATE_COLORS.secondary,
+          this.CORPORATE_COLORS.accent
+        ],
+        borderWidth: 3,
+        borderColor: '#ffffff'
+      }]
+    };
+  }
+
+  // ====== REAL-TIME UPDATES ======
+  startRealTimeUpdates(): void {
+    if (this.isRealTimeEnabled()) {
+      this.refreshSubscription = interval(this.REFRESH_INTERVAL)
+        .subscribe(() => {
+          this.loadAllData();
+        });
+    }
+  }
+
+  toggleRealTime(): void {
+    this.isRealTimeEnabled.set(!this.isRealTimeEnabled());
+    
+    if (this.isRealTimeEnabled()) {
+      this.startRealTimeUpdates();
+    } else {
+      this.refreshSubscription?.unsubscribe();
+    }
+  }
+
+  // ====== UTILIDADES ======
+  private getErrorMessage(error: any): string {
+    return error?.error?.message || 
+           error?.error?.title || 
+           error?.message || 
+           'Error desconocido';
+  }
+
+  formatNumber(num: number): string {
+    return this.dashboardService.formatNumber(num);
+  }
+
+  formatPercentage(num: number): string {
+    return this.dashboardService.formatPercentage(num);
+  }
+
+  formatDate(date: string): string {
+    return this.dashboardService.formatDate(date);
+  }
+
+  formatDateTime(date: string): string {
+    return this.dashboardService.formatDateTime(date);
+  }
+
+  getTimeAgo(date: string): string {
+    return this.dashboardService.getTimeAgo(date);
+  }
+
+  refreshData(): void {
+    this.loadAllData();
+  }
+
+  // ====== NAVEGACIÓN LAZY ======
+  onDailyVisible(): void {
+    // Implementar carga lazy si es necesario
   }
 
   onProductionVisible(): void {
-    if (this.loadingProduction || this.farms.length) return;
-    this.loadingProduction = true;
-    this.errorProduction = null;
-
-    const lotesArr = this.lotesIndex.size ? Array.from(this.lotesIndex.values()) : [];
-    const sample = lotesArr.slice(0, 10);
-
-    const loadLotes$ = sample.length
-      ? of(sample)
-      : this.loteRepSvc.getLotes().pipe(
-          map((ls: readonly LoteDto[]) => [...ls].slice(0, 10)),
-          catchError((err) => { this.setError('production', this.describeError(err, 'Fallo al cargar lotes')); return of([] as LoteDto[]); })
-        );
-
-    loadLotes$.pipe(
-      switchMap((lotes: LoteDto[]) => {
-        if (!lotes.length) return of([] as { lote: LoteDto; data: LoteProduccionDto[] }[]);
-        return forkJoin(
-          lotes.map((l) =>
-            this.loteProdSvc.getByLote(l.loteId).pipe(
-              catchError((err) => {
-                this.setError('production', this.describeError(err, `Fallo al cargar producción del lote ${l.loteId}`));
-                return of([] as LoteProduccionDto[]);
-              }),
-              map((data: LoteProduccionDto[]) => ({ lote: l, data }))
-            )
-          )
-        );
-      }),
-      finalize(() => this.loadingProduction = false)
-    )
-    .subscribe({
-      next: (packs: { lote: LoteDto; data: LoteProduccionDto[] }[]) => {
-        const byFarm = new Map<number, number>();
-        for (const { lote, data } of packs) {
-          const sumInc = data.reduce((s, x) => s + (x.huevoInc || 0), 0);
-          byFarm.set(lote.granjaId, (byFarm.get(lote.granjaId) || 0) + sumInc);
-        }
-        const items: FarmStat[] = Array.from(byFarm.entries()).map(([farmId, inc]) => ({
-          name: this.farmsIndex.get(farmId)?.name || `Granja ${farmId}`,
-          production: inc
-        }));
-
-        const max = items.reduce((m, i) => Math.max(m, i.production), 0) || 1;
-        this.farms = items
-          .map(i => ({ name: i.name, production: Math.round((i.production / max) * 100) }))
-          .sort((a, b) => b.production - a.production);
-
-        const total = this.farms.reduce((s, f) => s + f.production, 0);
-        this.averageProduction = this.farms.length ? Math.round(total / this.farms.length) : 0;
-        
-        // Actualizar gráfica de producción
-        this.updateProductionChart(this.farms);
-      },
-      error: (err: unknown) => this.setError('production', this.describeError(err))
-    });
+    // Implementar carga lazy si es necesario
   }
 
   onMortalityVisible(): void {
-    if (this.loadingMortality || this.mortalities.length) return;
-    this.loadingMortality = true;
-    this.errorMortality = null;
+    // Implementar carga lazy si es necesario
+  }
 
-    forkJoin({
-      lotes: this.loteRepSvc.getLotes().pipe(
-        map((ls: readonly LoteDto[]) => [...ls].slice(0, 10)),
-        catchError((err) => { this.setError('mortality', this.describeError(err, 'Fallo al cargar lotes')); return of([] as LoteDto[]); })
-      ),
-      levante: this.levanteSvc.getAll().pipe(
-        catchError((err) => { this.setError('mortality', this.describeError(err, 'Fallo al cargar levante')); return of([] as SeguimientoLoteLevanteDto[]); })
+  onActivitiesVisible(): void {
+    // Implementar carga lazy si es necesario
+  }
+
+  // ====== EFECTOS VISUALES ======
+  @HostListener('window:scroll', ['$event'])
+  onWindowScroll(): void {
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    this.isScrolled.set(scrollTop > 50);
+  }
+
+  @HostListener('window:resize', ['$event'])
+  onWindowResize(): void {
+    this.handleResponsiveLayout();
+  }
+
+  ngAfterViewInit(): void {
+    this.initializeAnimations();
+    this.setupScrollEffects();
+    this.handleResponsiveLayout();
+  }
+
+  private initializeAnimations(): void {
+    // Configurar delays escalonados para las animaciones
+    const sections = ['kpis', 'charts', 'activities', 'metrics', 'reports'];
+    sections.forEach((section, index) => {
+      setTimeout(() => {
+        this.animationDelay.set(index * 100);
+      }, index * 100);
+    });
+  }
+
+  private setupScrollEffects(): void {
+    // Efecto de parallax sutil en el header
+    fromEvent(window, 'scroll')
+      .pipe(
+        throttleTime(10),
+        takeUntil(this.destroy$)
       )
-    }).pipe(
-      switchMap(({ lotes, levante }: { lotes: LoteDto[]; levante: SeguimientoLoteLevanteDto[] }) => {
-        const prods$ = lotes.length
-          ? forkJoin(lotes.map((l) =>
-              this.loteProdSvc.getByLote(l.loteId).pipe(
-                catchError((err) => {
-                  this.setError('mortality', this.describeError(err, `Fallo al cargar producción del lote ${l.loteId}`));
-                  return of([] as LoteProduccionDto[]);
-                })
-              )
-            ))
-          : of([] as LoteProduccionDto[][]);
-
-        return of({ levante }).pipe(
-          switchMap((ctx) => prods$.pipe(map((packs) => ({ ...ctx, packs }))))
-        );
-      }),
-      finalize(() => this.loadingMortality = false)
-    )
-    .subscribe({
-      next: ({ levante, packs }: { levante: SeguimientoLoteLevanteDto[]; packs: LoteProduccionDto[][] }) => {
-        const byDate = new Map<string, number>();
-
-        for (const s of levante ?? []) {
-          const d = (s.fechaRegistro || '').slice(0, 10);
-          if (!d) continue;
-          const deaths = (s.mortalidadHembras || 0) + (s.mortalidadMachos || 0);
-          byDate.set(d, (byDate.get(d) || 0) + deaths);
+      .subscribe(() => {
+        const scrollTop = window.pageYOffset;
+        const header = this.elementRef.nativeElement.querySelector('.main-header') as HTMLElement;
+        if (header) {
+          const parallaxOffset = scrollTop * 0.1;
+          header.style.transform = `translateY(${parallaxOffset}px)`;
         }
-
-        for (const arr of packs ?? []) {
-          for (const r of arr) {
-            const d = (r.fecha || '').slice(0, 10);
-            if (!d) continue;
-            const deaths = (r.mortalidadH || 0) + (r.mortalidadM || 0);
-            byDate.set(d, (byDate.get(d) || 0) + deaths);
-          }
-        }
-
-        this.mortalities = Array.from(byDate.entries())
-          .map(([date, deaths]) => ({ date, deaths }))
-          .sort((a, b) => a.date < b.date ? 1 : -1)
-          .slice(0, 10);
-        
-        // Actualizar gráfica de mortalidad
-        this.updateMortalityChart(this.mortalities);
-      },
-      error: (err: unknown) => this.setError('mortality', this.describeError(err))
-    });
+      });
   }
 
-  // ============ retry ============
-  retrySummary()    { this.loadSummary(); }
-  retryActivities() { this.activities = []; this.onActivitiesVisible(); }
-  retryDaily()      { this.dailyLogs  = []; this.onDailyVisible(); }
-  retryProduction() { this.farms      = []; this.averageProduction = 0; this.onProductionVisible(); }
-  retryMortality()  { this.mortalities = []; this.onMortalityVisible(); }
-
-  // ============ Chart Updates ============
-  private updateDailyRegistersChart(dailyLogs: DailyLog[]): void {
-    this.dailyRegistersChart = {
-      ...this.dailyRegistersChart,
-      labels: dailyLogs.map(d => d.date),
-      datasets: [{
-        ...this.dailyRegistersChart.datasets[0],
-        data: dailyLogs.map(d => d.entries)
-      }]
-    };
+  private handleResponsiveLayout(): void {
+    const width = window.innerWidth;
+    if (width <= 768) {
+      this.isSidebarOpen.set(false);
+    }
   }
 
-  private updateProductionChart(farms: FarmStat[]): void {
-    this.productionChart = {
-      ...this.productionChart,
-      labels: farms.map(f => f.name),
-      datasets: [{
-        ...this.productionChart.datasets[0],
-        data: farms.map(f => f.production)
-      }]
-    };
+  toggleSidebar(): void {
+    this.isSidebarOpen.set(!this.isSidebarOpen());
   }
 
-  private updateMortalityChart(mortalities: Mortality[]): void {
-    this.mortalityChart = {
-      ...this.mortalityChart,
-      labels: mortalities.map(m => m.date),
-      datasets: [{
-        ...this.mortalityChart.datasets[0],
-        data: mortalities.map(m => m.deaths)
-      }]
-    };
+  // ====== EFECTOS DE HOVER Y INTERACCIÓN ======
+  onCardHover(event: Event, cardType: string): void {
+    const card = event.currentTarget as HTMLElement;
+    if (card) {
+      card.style.transform = 'translateY(-8px) scale(1.02)';
+      card.style.boxShadow = '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)';
+      
+      // Efecto de brillo
+      const glow = document.createElement('div');
+      glow.className = 'card-glow';
+      glow.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(45deg, transparent 30%, rgba(220, 38, 38, 0.1) 50%, transparent 70%);
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      `;
+      card.appendChild(glow);
+      
+      setTimeout(() => {
+        glow.style.opacity = '1';
+      }, 10);
+    }
   }
 
-  private updateFarmDistributionChart(): void {
-    const farmLoteCounts = new Map<string, number>();
+  onCardLeave(event: Event): void {
+    const card = event.currentTarget as HTMLElement;
+    if (card) {
+      card.style.transform = 'translateY(0) scale(1)';
+      card.style.boxShadow = '';
+      
+      const glow = card.querySelector('.card-glow') as HTMLElement;
+      if (glow) {
+        glow.style.opacity = '0';
+        setTimeout(() => {
+          glow.remove();
+        }, 300);
+      }
+    }
+  }
+
+  // ====== EFECTOS DE NOTIFICACIÓN ======
+  showNotification(message: string, type: 'success' | 'error' | 'info' = 'info'): void {
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+      color: white;
+      padding: 1rem 1.5rem;
+      border-radius: 0.5rem;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      z-index: 1000;
+      transform: translateX(100%);
+      transition: transform 0.3s ease;
+    `;
+    notification.textContent = message;
     
-    // Contar lotes por granja
-    Array.from(this.lotesIndex.values()).forEach(lote => {
-      const farmName = this.farmsIndex.get(lote.granjaId)?.name || `Granja ${lote.granjaId}`;
-      farmLoteCounts.set(farmName, (farmLoteCounts.get(farmName) || 0) + 1);
-    });
-
-    const entries = Array.from(farmLoteCounts.entries());
-    this.farmDistributionChart = {
-      ...this.farmDistributionChart,
-      labels: entries.map(([name]) => name),
-      datasets: [{
-        ...this.farmDistributionChart.datasets[0],
-        data: entries.map(([, count]) => count)
-      }]
-    };
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.style.transform = 'translateX(0)';
+    }, 10);
+    
+    setTimeout(() => {
+      notification.style.transform = 'translateX(100%)';
+      setTimeout(() => {
+        notification.remove();
+      }, 300);
+    }, 3000);
   }
 
-  // ============ Computed Properties ============
-  totalAvesActivas = computed(() => {
-    return Array.from(this.lotesIndex.values())
-      .reduce((total, lote) => {
-        const loteExt = lote as any; // Type assertion para acceder a propiedades extendidas
-        return total + (loteExt.hembrasL || 0) + (loteExt.machosL || 0);
-      }, 0);
-  });
+  // ====== EFECTOS DE PULSO ======
+  addPulseEffect(element: HTMLElement): void {
+    element.style.animation = 'pulse 1s ease-in-out';
+    setTimeout(() => {
+      element.style.animation = '';
+    }, 1000);
+  }
 
-  promedioEdadLotes = computed(() => {
-    const lotes = Array.from(this.lotesIndex.values());
-    if (lotes.length === 0) return 0;
-    
-    const totalDias = lotes.reduce((sum, lote) => {
-      if (!lote.fechaEncaset) return sum;
-      const fechaEncaset = new Date(lote.fechaEncaset);
-      const hoy = new Date();
-      const dias = Math.floor((hoy.getTime() - fechaEncaset.getTime()) / (1000 * 60 * 60 * 24));
-      return sum + Math.max(0, dias);
-    }, 0);
-    
-    return Math.round(totalDias / lotes.length);
-  });
+  // ====== EFECTOS DE SHIMMER ======
+  addShimmerEffect(element: HTMLElement): void {
+    element.style.background = 'linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%)';
+    element.style.backgroundSize = '200% 100%';
+    element.style.animation = 'shimmer 1.5s infinite';
+  }
 
-  eficienciaPromedio = computed(() => {
-    if (this.farms.length === 0) return 0;
-    return Math.round(this.farms.reduce((sum, f) => sum + f.production, 0) / this.farms.length);
-  });
-
-  // ============ TrackBy Functions ============
-  trackByActivity(index: number, activity: Activity): string {
-    return `${activity.time}-${activity.description}`;
+  removeShimmerEffect(element: HTMLElement): void {
+    element.style.background = '';
+    element.style.backgroundSize = '';
+    element.style.animation = '';
   }
 }

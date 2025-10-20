@@ -11,6 +11,7 @@ public interface IAuthService
     Task<AuthResponseDto> LoginAsync(LoginDto dto);
     Task ChangePasswordAsync(Guid userId, ChangePasswordDto dto);
     Task ChangeEmailAsync(Guid userId, ChangeEmailDto dto);
+    Task<PasswordRecoveryResponseDto> RecoverPasswordAsync(PasswordRecoveryRequestDto dto);
 
     // Nuevo: bootstrap de sesión para el front
     Task<SessionBootstrapDto> GetSessionAsync(Guid userId, int? companyId = null);

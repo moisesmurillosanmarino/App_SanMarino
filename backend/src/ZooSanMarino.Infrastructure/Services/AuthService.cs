@@ -20,17 +20,20 @@ public class AuthService : IAuthService
     private readonly IPasswordHasher<Login> _hasher;
     private readonly JwtOptions _jwt;
     private readonly IRoleCompositeService _acl; // ← reemplaza a IMenuService
+    private readonly IEmailService _emailService;
 
     public AuthService(
         ZooSanMarinoContext ctx,
         IPasswordHasher<Login> hasher,
         JwtOptions jwt,
-        IRoleCompositeService acl) // ← inyectamos el orquestador
+        IRoleCompositeService acl, // ← inyectamos el orquestador
+        IEmailService emailService)
     {
         _ctx = ctx;
         _hasher = hasher;
         _jwt = jwt;
         _acl = acl;
+        _emailService = emailService;
     }
 
     public async Task<AuthResponseDto> RegisterAsync(RegisterDto dto)
@@ -353,5 +356,90 @@ public class AuthService : IAuthService
             permissions,
             menuList
         );
+    }
+
+    public async Task<PasswordRecoveryResponseDto> RecoverPasswordAsync(PasswordRecoveryRequestDto dto)
+    {
+        try
+        {
+            // Buscar el usuario por email
+            var login = await _ctx.Logins
+                .Include(l => l.UserLogins).ThenInclude(ul => ul.User)
+                .FirstOrDefaultAsync(l => l.email == dto.Email && !l.IsDeleted);
+
+            if (login == null)
+            {
+                return new PasswordRecoveryResponseDto
+                {
+                    Success = false,
+                    Message = "No se encontró un usuario con ese correo electrónico",
+                    UserFound = false,
+                    EmailSent = false
+                };
+            }
+
+            var user = login.UserLogins.FirstOrDefault()?.User;
+            if (user == null || !user.IsActive)
+            {
+                return new PasswordRecoveryResponseDto
+                {
+                    Success = false,
+                    Message = "El usuario está inactivo o no existe",
+                    UserFound = true,
+                    EmailSent = false
+                };
+            }
+
+            // Generar nueva contraseña aleatoria
+            var newPassword = GenerateRandomPassword();
+
+            // Actualizar la contraseña en la base de datos
+            login.PasswordHash = _hasher.HashPassword(login, newPassword);
+            await _ctx.SaveChangesAsync();
+
+            // Enviar email con la nueva contraseña
+            try
+            {
+                await _emailService.SendPasswordRecoveryEmailAsync(dto.Email, newPassword);
+                
+                return new PasswordRecoveryResponseDto
+                {
+                    Success = true,
+                    Message = "Se ha enviado una nueva contraseña a tu correo electrónico",
+                    UserFound = true,
+                    EmailSent = true
+                };
+            }
+            catch (Exception)
+            {
+                // Si falla el envío del email, revertir el cambio de contraseña
+                // (opcional: podrías mantener la nueva contraseña y solo reportar el error)
+                return new PasswordRecoveryResponseDto
+                {
+                    Success = false,
+                    Message = "Se generó una nueva contraseña pero hubo un error al enviar el email. Contacta al administrador.",
+                    UserFound = true,
+                    EmailSent = false
+                };
+            }
+        }
+        catch (Exception)
+        {
+            return new PasswordRecoveryResponseDto
+            {
+                Success = false,
+                Message = "Ocurrió un error interno. Intenta nuevamente más tarde.",
+                UserFound = false,
+                EmailSent = false
+            };
+        }
+    }
+
+    private string GenerateRandomPassword(int length = 12)
+    {
+        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+        var random = new Random();
+        return new string(Enumerable.Repeat(chars, length)
+            .Select(s => s[random.Next(s.Length)]).ToArray());
     }
 }

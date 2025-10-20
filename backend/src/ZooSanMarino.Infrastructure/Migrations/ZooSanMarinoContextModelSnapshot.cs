@@ -588,10 +588,8 @@ namespace ZooSanMarino.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("inventario_id");
 
-                    b.Property<string>("LoteId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
+                    b.Property<int>("LoteId")
+                        .HasColumnType("integer")
                         .HasColumnName("lote_id");
 
                     b.Property<string>("Motivo")
@@ -736,10 +734,8 @@ namespace ZooSanMarino.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("granja_id");
 
-                    b.Property<string>("LoteId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
+                    b.Property<int>("LoteId")
+                        .HasColumnType("integer")
                         .HasColumnName("lote_id");
 
                     b.Property<string>("NucleoId")
@@ -831,10 +827,12 @@ namespace ZooSanMarino.Infrastructure.Migrations
 
             modelBuilder.Entity("ZooSanMarino.Domain.Entities.Lote", b =>
                 {
-                    b.Property<string>("LoteId")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
+                    b.Property<int>("LoteId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
                         .HasColumnName("lote_id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("LoteId"));
 
                     b.Property<int?>("AnoTablaGenetica")
                         .HasColumnType("integer")
@@ -890,6 +888,10 @@ namespace ZooSanMarino.Infrastructure.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)")
                         .HasColumnName("linea");
+
+                    b.Property<int?>("LineaGeneticaId")
+                        .HasColumnType("integer")
+                        .HasColumnName("linea_genetica_id");
 
                     b.Property<string>("LoteNombre")
                         .IsRequired()
@@ -991,9 +993,8 @@ namespace ZooSanMarino.Infrastructure.Migrations
 
             modelBuilder.Entity("ZooSanMarino.Domain.Entities.LoteGalpon", b =>
                 {
-                    b.Property<string>("LoteId")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
+                    b.Property<int>("LoteId")
+                        .HasColumnType("integer")
                         .HasColumnName("lote_id");
 
                     b.Property<string>("ReproductoraId")
@@ -1028,9 +1029,8 @@ namespace ZooSanMarino.Infrastructure.Migrations
 
             modelBuilder.Entity("ZooSanMarino.Domain.Entities.LoteReproductora", b =>
                 {
-                    b.Property<string>("LoteId")
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
+                    b.Property<int>("LoteId")
+                        .HasColumnType("integer")
                         .HasColumnName("lote_id");
 
                     b.Property<string>("ReproductoraId")
@@ -1153,10 +1153,8 @@ namespace ZooSanMarino.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("fecha");
 
-                    b.Property<string>("LoteId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)")
+                    b.Property<int>("LoteId")
+                        .HasColumnType("integer")
                         .HasColumnName("lote_id");
 
                     b.Property<int?>("MortalidadH")
@@ -1448,14 +1446,12 @@ namespace ZooSanMarino.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("inventario_origen_id");
 
-                    b.Property<string>("LoteDestinoId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
+                    b.Property<int?>("LoteDestinoId")
+                        .HasColumnType("integer")
                         .HasColumnName("lote_destino_id");
 
-                    b.Property<string>("LoteOrigenId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
+                    b.Property<int?>("LoteOrigenId")
+                        .HasColumnType("integer")
                         .HasColumnName("lote_origen_id");
 
                     b.Property<string>("MotivoMovimiento")
@@ -1463,31 +1459,15 @@ namespace ZooSanMarino.Infrastructure.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("motivo_movimiento");
 
-                    b.Property<int?>("NucleoDestinoGranjaId")
-                        .HasColumnType("integer")
-                        .HasColumnName("nucleo_destino_granja_id");
-
                     b.Property<string>("NucleoDestinoId")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("nucleo_destino_id");
 
-                    b.Property<string>("NucleoDestinoNucleoId")
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("nucleo_destino_nucleo_id");
-
-                    b.Property<int?>("NucleoOrigenGranjaId")
-                        .HasColumnType("integer")
-                        .HasColumnName("nucleo_origen_granja_id");
-
                     b.Property<string>("NucleoOrigenId")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("nucleo_origen_id");
-
-                    b.Property<string>("NucleoOrigenNucleoId")
-                        .HasColumnType("character varying(64)")
-                        .HasColumnName("nucleo_origen_nucleo_id");
 
                     b.Property<string>("NumeroMovimiento")
                         .IsRequired()
@@ -1535,12 +1515,6 @@ namespace ZooSanMarino.Infrastructure.Migrations
                     b.HasIndex("FechaMovimiento")
                         .HasDatabaseName("ix_movimiento_aves_fecha_movimiento");
 
-                    b.HasIndex("GalponDestinoId")
-                        .HasDatabaseName("ix_movimiento_aves_galpon_destino_id");
-
-                    b.HasIndex("GalponOrigenId")
-                        .HasDatabaseName("ix_movimiento_aves_galpon_origen_id");
-
                     b.HasIndex("GranjaDestinoId")
                         .HasDatabaseName("ix_movimiento_aves_granja_destino_id");
 
@@ -1568,12 +1542,6 @@ namespace ZooSanMarino.Infrastructure.Migrations
 
                     b.HasIndex("GranjaOrigenId", "GranjaDestinoId")
                         .HasDatabaseName("ix_movimiento_aves_granjas");
-
-                    b.HasIndex("NucleoDestinoNucleoId", "NucleoDestinoGranjaId")
-                        .HasDatabaseName("ix_movimiento_aves_nucleo_destino_nucleo_id_nucleo_destino_gra");
-
-                    b.HasIndex("NucleoOrigenNucleoId", "NucleoOrigenGranjaId")
-                        .HasDatabaseName("ix_movimiento_aves_nucleo_origen_nucleo_id_nucleo_origen_granj");
 
                     b.ToTable("movimiento_aves", (string)null);
                 });
@@ -2066,15 +2034,19 @@ namespace ZooSanMarino.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Ciclo")
-                        .IsRequired()
+                    b.Property<int>("AvesInicialesH")
                         .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("Normal")
-                        .HasColumnName("ciclo");
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("aves_iniciales_h");
+
+                    b.Property<int>("AvesInicialesM")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("aves_iniciales_m");
 
                     b.Property<int>("CompanyId")
                         .HasColumnType("integer")
@@ -2092,48 +2064,18 @@ namespace ZooSanMarino.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_at");
 
-                    b.Property<DateTime>("FechaInicioProduccion")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("fecha_inicio_produccion");
+                    b.Property<DateTime>("FechaInicio")
+                        .HasColumnType("date")
+                        .HasColumnName("fecha_inicio");
 
-                    b.Property<string>("GalponId")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("galpon_id");
-
-                    b.Property<int>("GranjaId")
+                    b.Property<int>("LoteId")
                         .HasColumnType("integer")
-                        .HasColumnName("granja_id");
-
-                    b.Property<int>("HembrasIniciales")
-                        .HasColumnType("integer")
-                        .HasColumnName("hembras_iniciales");
-
-                    b.Property<int>("HuevosIniciales")
-                        .HasColumnType("integer")
-                        .HasColumnName("huevos_iniciales");
-
-                    b.Property<string>("LoteId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
                         .HasColumnName("lote_id");
 
-                    b.Property<int>("MachosIniciales")
-                        .HasColumnType("integer")
-                        .HasColumnName("machos_iniciales");
-
-                    b.Property<string>("NucleoId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("nucleo_id");
-
-                    b.Property<string>("TipoNido")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("tipo_nido");
+                    b.Property<string>("Observaciones")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("observaciones");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -2144,18 +2086,16 @@ namespace ZooSanMarino.Infrastructure.Migrations
                         .HasColumnName("updated_by_user_id");
 
                     b.HasKey("Id")
-                        .HasName("pk_produccion_lotes");
+                        .HasName("pk_produccion_lote");
 
-                    b.HasIndex("GalponId")
-                        .HasDatabaseName("ix_produccion_lotes_galpon_id");
+                    b.HasIndex("FechaInicio")
+                        .HasDatabaseName("IX_produccion_lote_fecha_inicio");
 
                     b.HasIndex("LoteId")
-                        .HasDatabaseName("ix_produccion_lotes_lote_id");
+                        .IsUnique()
+                        .HasDatabaseName("IX_produccion_lote_lote_id_unique");
 
-                    b.HasIndex("NucleoId", "GranjaId")
-                        .HasDatabaseName("ix_produccion_lotes_nucleo_id_granja_id");
-
-                    b.ToTable("produccion_lotes", (string)null);
+                    b.ToTable("produccion_lote", (string)null);
                 });
 
             modelBuilder.Entity("ZooSanMarino.Domain.Entities.ProduccionResultadoLevante", b =>
@@ -2292,9 +2232,8 @@ namespace ZooSanMarino.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("hembra_viva");
 
-                    b.Property<string>("LoteId")
-                        .IsRequired()
-                        .HasColumnType("text")
+                    b.Property<int>("LoteId")
+                        .HasColumnType("integer")
                         .HasColumnName("lote_id");
 
                     b.Property<int?>("MachoVivo")
@@ -2402,6 +2341,103 @@ namespace ZooSanMarino.Infrastructure.Migrations
                         .HasColumnName("unif_m_guia");
 
                     b.ToTable("produccion_resultado_levante", (string)null);
+                });
+
+            modelBuilder.Entity("ZooSanMarino.Domain.Entities.ProduccionSeguimiento", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CompanyId")
+                        .HasColumnType("integer")
+                        .HasColumnName("company_id");
+
+                    b.Property<decimal>("ConsumoKg")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("consumo_kg");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<DateTime>("FechaRegistro")
+                        .HasColumnType("date")
+                        .HasColumnName("fecha_registro");
+
+                    b.Property<int>("HuevosIncubables")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("huevos_incubables");
+
+                    b.Property<int>("HuevosTotales")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("huevos_totales");
+
+                    b.Property<int>("MortalidadH")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("mortalidad_h");
+
+                    b.Property<int>("MortalidadM")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("mortalidad_m");
+
+                    b.Property<string>("Observaciones")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("observaciones");
+
+                    b.Property<decimal>("PesoHuevo")
+                        .ValueGeneratedOnAdd()
+                        .HasPrecision(8, 2)
+                        .HasColumnType("numeric(8,2)")
+                        .HasDefaultValue(0m)
+                        .HasColumnName("peso_huevo");
+
+                    b.Property<int>("ProduccionLoteId")
+                        .HasColumnType("integer")
+                        .HasColumnName("produccion_lote_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int?>("UpdatedByUserId")
+                        .HasColumnType("integer")
+                        .HasColumnName("updated_by_user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_produccion_seguimiento");
+
+                    b.HasIndex("FechaRegistro")
+                        .HasDatabaseName("IX_produccion_seguimiento_fecha_registro");
+
+                    b.HasIndex("ProduccionLoteId", "FechaRegistro")
+                        .IsUnique()
+                        .HasDatabaseName("IX_produccion_seguimiento_lote_fecha_unique");
+
+                    b.ToTable("produccion_seguimiento", (string)null);
                 });
 
             modelBuilder.Entity("ZooSanMarino.Domain.Entities.Regional", b =>
@@ -2584,10 +2620,8 @@ namespace ZooSanMarino.Infrastructure.Migrations
                         .HasColumnType("double precision")
                         .HasColumnName("kcal_ave_h");
 
-                    b.Property<string>("LoteId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
+                    b.Property<int>("LoteId")
+                        .HasColumnType("integer")
                         .HasColumnName("lote_id");
 
                     b.Property<int>("MortalidadHembras")
@@ -2654,6 +2688,83 @@ namespace ZooSanMarino.Infrastructure.Migrations
                         .HasDatabaseName("ix_seguimiento_lote_levante_lote_id");
 
                     b.ToTable("seguimiento_lote_levante", (string)null);
+                });
+
+            modelBuilder.Entity("ZooSanMarino.Domain.Entities.SeguimientoProduccion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("ConsKgH")
+                        .HasPrecision(12, 3)
+                        .HasColumnType("numeric(12,3)")
+                        .HasColumnName("cons_kg_h");
+
+                    b.Property<decimal>("ConsKgM")
+                        .HasPrecision(12, 3)
+                        .HasColumnType("numeric(12,3)")
+                        .HasColumnName("cons_kg_m");
+
+                    b.Property<int>("Etapa")
+                        .HasColumnType("integer")
+                        .HasColumnName("etapa");
+
+                    b.Property<DateTime>("Fecha")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("fecha");
+
+                    b.Property<int>("HuevoInc")
+                        .HasColumnType("integer")
+                        .HasColumnName("huevo_inc");
+
+                    b.Property<int>("HuevoTot")
+                        .HasColumnType("integer")
+                        .HasColumnName("huevo_tot");
+
+                    b.Property<int>("LoteId")
+                        .HasColumnType("integer")
+                        .HasColumnName("lote_id");
+
+                    b.Property<int>("MortalidadH")
+                        .HasColumnType("integer")
+                        .HasColumnName("mortalidad_h");
+
+                    b.Property<int>("MortalidadM")
+                        .HasColumnType("integer")
+                        .HasColumnName("mortalidad_m");
+
+                    b.Property<string>("Observaciones")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("observaciones");
+
+                    b.Property<decimal>("PesoHuevo")
+                        .HasPrecision(8, 2)
+                        .HasColumnType("numeric(8,2)")
+                        .HasColumnName("peso_huevo");
+
+                    b.Property<int>("SelH")
+                        .HasColumnType("integer")
+                        .HasColumnName("sel_h");
+
+                    b.Property<string>("TipoAlimento")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("tipo_alimento");
+
+                    b.HasKey("Id")
+                        .HasName("pk_seguimiento_produccion");
+
+                    b.HasIndex("LoteId", "Fecha")
+                        .IsUnique()
+                        .HasDatabaseName("ix_seguimiento_produccion_lote_id_fecha");
+
+                    b.ToTable("seguimiento_produccion", (string)null);
                 });
 
             modelBuilder.Entity("ZooSanMarino.Domain.Entities.User", b =>
@@ -2759,6 +2870,57 @@ namespace ZooSanMarino.Infrastructure.Migrations
                         .HasDatabaseName("ix_user_companies_company_id");
 
                     b.ToTable("user_companies", (string)null);
+                });
+
+            modelBuilder.Entity("ZooSanMarino.Domain.Entities.UserFarm", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<int>("FarmId")
+                        .HasColumnType("integer")
+                        .HasColumnName("farm_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<bool>("IsAdmin")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_admin");
+
+                    b.Property<bool>("IsDefault")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_default");
+
+                    b.HasKey("UserId", "FarmId")
+                        .HasName("pk_user_farms");
+
+                    b.HasIndex("FarmId")
+                        .HasDatabaseName("ix_user_farms_farm_id");
+
+                    b.HasIndex("IsDefault")
+                        .HasDatabaseName("ix_user_farms_is_default");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_user_farms_user_id");
+
+                    b.HasIndex("UserId", "FarmId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_user_farms_user_farm");
+
+                    b.ToTable("user_farms", (string)null);
                 });
 
             modelBuilder.Entity("ZooSanMarino.Domain.Entities.UserLogin", b =>
@@ -3178,16 +3340,6 @@ namespace ZooSanMarino.Infrastructure.Migrations
 
             modelBuilder.Entity("ZooSanMarino.Domain.Entities.MovimientoAves", b =>
                 {
-                    b.HasOne("ZooSanMarino.Domain.Entities.Galpon", "GalponDestino")
-                        .WithMany()
-                        .HasForeignKey("GalponDestinoId")
-                        .HasConstraintName("fk_movimiento_aves_galpones_galpon_destino_id");
-
-                    b.HasOne("ZooSanMarino.Domain.Entities.Galpon", "GalponOrigen")
-                        .WithMany()
-                        .HasForeignKey("GalponOrigenId")
-                        .HasConstraintName("fk_movimiento_aves_galpones_galpon_origen_id");
-
                     b.HasOne("ZooSanMarino.Domain.Entities.Farm", "GranjaDestino")
                         .WithMany()
                         .HasForeignKey("GranjaDestinoId")
@@ -3224,20 +3376,6 @@ namespace ZooSanMarino.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_movimiento_aves_lote_origen_id");
 
-                    b.HasOne("ZooSanMarino.Domain.Entities.Nucleo", "NucleoDestino")
-                        .WithMany()
-                        .HasForeignKey("NucleoDestinoNucleoId", "NucleoDestinoGranjaId")
-                        .HasConstraintName("fk_movimiento_aves_nucleos_nucleo_destino_nucleo_id_nucleo_des");
-
-                    b.HasOne("ZooSanMarino.Domain.Entities.Nucleo", "NucleoOrigen")
-                        .WithMany()
-                        .HasForeignKey("NucleoOrigenNucleoId", "NucleoOrigenGranjaId")
-                        .HasConstraintName("fk_movimiento_aves_nucleos_nucleo_origen_nucleo_id_nucleo_orig");
-
-                    b.Navigation("GalponDestino");
-
-                    b.Navigation("GalponOrigen");
-
                     b.Navigation("GranjaDestino");
 
                     b.Navigation("GranjaOrigen");
@@ -3249,10 +3387,6 @@ namespace ZooSanMarino.Infrastructure.Migrations
                     b.Navigation("LoteDestino");
 
                     b.Navigation("LoteOrigen");
-
-                    b.Navigation("NucleoDestino");
-
-                    b.Navigation("NucleoOrigen");
                 });
 
             modelBuilder.Entity("ZooSanMarino.Domain.Entities.Municipio", b =>
@@ -3306,31 +3440,26 @@ namespace ZooSanMarino.Infrastructure.Migrations
 
             modelBuilder.Entity("ZooSanMarino.Domain.Entities.ProduccionLote", b =>
                 {
-                    b.HasOne("ZooSanMarino.Domain.Entities.Galpon", "Galpon")
-                        .WithMany()
-                        .HasForeignKey("GalponId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_produccion_lotes_galpones_galpon_id");
-
                     b.HasOne("ZooSanMarino.Domain.Entities.Lote", "Lote")
                         .WithMany()
                         .HasForeignKey("LoteId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_produccion_lotes_lotes_lote_id");
-
-                    b.HasOne("ZooSanMarino.Domain.Entities.Nucleo", "Nucleo")
-                        .WithMany()
-                        .HasForeignKey("NucleoId", "GranjaId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_produccion_lotes_nucleos_nucleo_id_granja_id");
-
-                    b.Navigation("Galpon");
+                        .HasConstraintName("fk_produccion_lote_lotes_lote_id");
 
                     b.Navigation("Lote");
+                });
 
-                    b.Navigation("Nucleo");
+            modelBuilder.Entity("ZooSanMarino.Domain.Entities.ProduccionSeguimiento", b =>
+                {
+                    b.HasOne("ZooSanMarino.Domain.Entities.ProduccionLote", "ProduccionLote")
+                        .WithMany("Seguimientos")
+                        .HasForeignKey("ProduccionLoteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_produccion_seguimiento_produccion_lote_produccion_lote_id");
+
+                    b.Navigation("ProduccionLote");
                 });
 
             modelBuilder.Entity("ZooSanMarino.Domain.Entities.Regional", b =>
@@ -3420,6 +3549,18 @@ namespace ZooSanMarino.Infrastructure.Migrations
                     b.Navigation("Lote");
                 });
 
+            modelBuilder.Entity("ZooSanMarino.Domain.Entities.SeguimientoProduccion", b =>
+                {
+                    b.HasOne("ZooSanMarino.Domain.Entities.Lote", "Lote")
+                        .WithMany()
+                        .HasForeignKey("LoteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_seguimiento_produccion_lotes_lote_id");
+
+                    b.Navigation("Lote");
+                });
+
             modelBuilder.Entity("ZooSanMarino.Domain.Entities.UserCompany", b =>
                 {
                     b.HasOne("ZooSanMarino.Domain.Entities.Company", "Company")
@@ -3437,6 +3578,27 @@ namespace ZooSanMarino.Infrastructure.Migrations
                         .HasConstraintName("fk_user_companies_users_user_id");
 
                     b.Navigation("Company");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("ZooSanMarino.Domain.Entities.UserFarm", b =>
+                {
+                    b.HasOne("ZooSanMarino.Domain.Entities.Farm", "Farm")
+                        .WithMany("UserFarms")
+                        .HasForeignKey("FarmId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_farms_farms_farm_id");
+
+                    b.HasOne("ZooSanMarino.Domain.Entities.User", "User")
+                        .WithMany("UserFarms")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_farms_users_user_id");
+
+                    b.Navigation("Farm");
 
                     b.Navigation("User");
                 });
@@ -3529,6 +3691,8 @@ namespace ZooSanMarino.Infrastructure.Migrations
                     b.Navigation("Lotes");
 
                     b.Navigation("Nucleos");
+
+                    b.Navigation("UserFarms");
                 });
 
             modelBuilder.Entity("ZooSanMarino.Domain.Entities.InventarioAves", b =>
@@ -3588,6 +3752,11 @@ namespace ZooSanMarino.Infrastructure.Migrations
                     b.Navigation("RolePermissions");
                 });
 
+            modelBuilder.Entity("ZooSanMarino.Domain.Entities.ProduccionLote", b =>
+                {
+                    b.Navigation("Seguimientos");
+                });
+
             modelBuilder.Entity("ZooSanMarino.Domain.Entities.Role", b =>
                 {
                     b.Navigation("RoleCompanies");
@@ -3602,6 +3771,8 @@ namespace ZooSanMarino.Infrastructure.Migrations
             modelBuilder.Entity("ZooSanMarino.Domain.Entities.User", b =>
                 {
                     b.Navigation("UserCompanies");
+
+                    b.Navigation("UserFarms");
 
                     b.Navigation("UserLogins");
 

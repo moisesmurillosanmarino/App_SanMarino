@@ -34,8 +34,6 @@ export class TrasladoFormComponent implements OnInit {
   // Filtros de lotes
   loteOrigenSeleccionado = signal<LoteDto | null>(null);
   loteDestinoSeleccionado = signal<LoteDto | null>(null);
-  filtrosOrigen = signal<HierarchicalFilterCriteria>({});
-  filtrosDestino = signal<HierarchicalFilterCriteria>({});
 
   // Computed properties
   isFormValid = computed(() => this.form?.valid || false);
@@ -112,13 +110,14 @@ export class TrasladoFormComponent implements OnInit {
     }
   }
 
-  async cargarInventarioOrigen(loteId: number): Promise<void> {  // Changed from string to number
+  async cargarInventarioOrigen(loteId: number): Promise<void> {
     try {
       this.validandoLotes.set(true);
-      const inventario = await this.trasladosService.getInventarioByLote(loteId.toString()).toPromise();  // Convert to string for API call
+      const inventario = await this.trasladosService.getInventarioByLote(String(loteId)).toPromise();
       this.inventarioOrigen.set(inventario || null);
+      this.validarCantidades();
     } catch (error: any) {
-      console.error('Error al cargar inventario origen:', error);
+      console.error('Error cargando inventario ORIGEN:', error);
       this.inventarioOrigen.set(null);
       this.error.set('Error al cargar el inventario del lote origen');
     } finally {
@@ -277,23 +276,6 @@ export class TrasladoFormComponent implements OnInit {
 
 
  
-  onFiltrosOrigenChange(filtros: HierarchicalFilterCriteria): void {
-    this.filtrosOrigen.set(filtros);
-  }
-
-  onFiltrosDestinoChange(filtros: HierarchicalFilterCriteria): void {
-    this.filtrosDestino.set(filtros);
-  }
-
-  onEstadoOrigenChange(estado: HierarchicalFilterState): void {
-    // Manejar cambios de estado del filtro origen
-    console.log('Estado origen:', estado);
-  }
-
-  onEstadoDestinoChange(estado: HierarchicalFilterState): void {
-    // Manejar cambios de estado del filtro destino
-    console.log('Estado destino:', estado);
-  }
 
 
   // Navegación
@@ -374,5 +356,50 @@ export class TrasladoFormComponent implements OnInit {
   trasladarTodo(): void {
     this.trasladarTodasLasHembras();
     this.trasladarTodosLosMachos();
+  }
+
+  async procesarTraslado(): Promise<void> {
+    if (!this.form.valid) {
+      this.error.set('Por favor complete todos los campos requeridos');
+      return;
+    }
+
+    const { loteOrigenId, loteDestinoId, cantidadHembras, cantidadMachos, observaciones } = this.form.value;
+
+    if ((cantidadHembras ?? 0) + (cantidadMachos ?? 0) === 0) {
+      this.error.set('Debe trasladar al menos una ave');
+      return;
+    }
+
+    this.loading.set(true);
+    this.error.set(null);
+    this.success.set(null);
+
+    try {
+      const req: TrasladoRapidoRequest = {
+        loteOrigenId: String(loteOrigenId),
+        loteDestinoId: String(loteDestinoId),
+        cantidadHembras: Number(cantidadHembras) || 0,
+        cantidadMachos: Number(cantidadMachos) || 0,
+        observaciones: observaciones || undefined
+      };
+
+      const result = await this.trasladosService.trasladoRapido(req).toPromise();
+
+      if (result?.success) {
+        this.success.set(result);
+        // refresca inventarios mostrados
+        if (this.loteOrigenSeleccionado()) await this.cargarInventarioOrigen(this.loteOrigenSeleccionado()!.loteId);
+        if (this.loteDestinoSeleccionado()) await this.cargarInventarioDestino(this.loteDestinoSeleccionado()!.loteId);
+        // limpia cantidades (mantén lotes para ver nuevos saldos)
+        this.form.patchValue({ cantidadHembras: 0, cantidadMachos: 0, observaciones: '' });
+      } else {
+        this.error.set(result?.message || 'Error al realizar el traslado');
+      }
+    } catch (e: any) {
+      this.error.set(e?.message || 'Error al realizar el traslado');
+    } finally {
+      this.loading.set(false);
+    }
   }
 }

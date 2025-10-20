@@ -1,215 +1,125 @@
-<div class="ux-page" [attr.aria-busy]="loading() ? 'true' : null">
-  <app-sidebar class="ux-sidebar"></app-sidebar>
+<!-- src/app/features/db-studio/pages/db-studio-main/db-studio-main.component.html -->
+<div class="db-studio-container">
+  <!-- Header Principal -->
+  <app-db-studio-header
+    [loading]="loading()"
+    [error]="error()"
+    [databaseName]="databaseName()"
+    [connectionStatus]="connectionStatus()"
+    (action)="onHeaderAction($event)">
+  </app-db-studio-header>
 
-  <div class="ux-main">
-    <!-- Header -->
-    <header class="ux-header">
-      <div class="ux-header__title">
-        <h1>🗄️ DB Studio</h1>
-        <p class="ux-header__subtitle">Administración completa de base de datos</p>
-      </div>
-      <div class="ux-header__actions">
-        <button type="button" class="btn btn--ghost" (click)="refreshData()">
-          🔄 Actualizar
+  <div class="db-studio-layout">
+    <!-- Sidebar -->
+    <app-db-studio-sidebar
+      [selectedSchema]="selectedSchema()"
+      [selectedTable]="selectedTable()?.name || null"
+      [loading]="loading()"
+      (action)="onSidebarAction($event)">
+    </app-db-studio-sidebar>
+
+    <!-- Contenido Principal -->
+    <main class="main-content">
+      <!-- Navegación de Vistas -->
+      <nav class="view-navigation">
+        <button 
+          class="nav-button" 
+          [class.active]="activeView() === 'overview'"
+          (click)="setActiveView('overview')">
+          <span class="nav-icon">📊</span>
+          <span class="nav-label">Resumen</span>
         </button>
-        <button type="button" class="btn btn--outline" (click)="openQueryConsole()">
-          💻 Consola SQL
+        <button 
+          class="nav-button" 
+          [class.active]="activeView() === 'tables'"
+          (click)="setActiveView('tables')">
+          <span class="nav-icon">📋</span>
+          <span class="nav-label">Tablas</span>
         </button>
-        <button type="button" class="btn btn--primary" (click)="openCreateTable()">
-          ➕ Nueva Tabla
+        <button 
+          class="nav-button" 
+          [class.active]="activeView() === 'sql'"
+          (click)="setActiveView('sql')">
+          <span class="nav-icon">💻</span>
+          <span class="nav-label">SQL</span>
         </button>
+        <button 
+          class="nav-button" 
+          [class.active]="activeView() === 'data'"
+          (click)="setActiveView('data')"
+          [disabled]="!selectedTable()">
+          <span class="nav-icon">📊</span>
+          <span class="nav-label">Datos</span>
+        </button>
+        <button 
+          class="nav-button" 
+          [class.active]="activeView() === 'explorer'"
+          (click)="setActiveView('explorer')">
+          <span class="nav-icon">🔍</span>
+          <span class="nav-label">Explorador</span>
+        </button>
+      </nav>
+
+      <!-- Contenido de Vista -->
+      <div class="view-content">
+        <!-- Vista de Resumen -->
+        <app-db-studio-overview
+          *ngIf="showOverview"
+          [loading]="loading()"
+          [selectedSchema]="selectedSchema()"
+          (action)="onOverviewAction($event)">
+        </app-db-studio-overview>
+
+        <!-- Vista de Consola SQL -->
+        <app-sql-query
+          *ngIf="showSqlConsole"
+          [loading]="loading()"
+          [selectedSchema]="selectedSchema()"
+          (action)="onSqlQueryAction($event)">
+        </app-sql-query>
+
+        <!-- Vista de Tablas -->
+        <app-table-management
+          *ngIf="showTables"
+          [loading]="loading()"
+          [selectedSchema]="selectedSchema()"
+          (action)="onTableManagementAction($event)">
+        </app-table-management>
+
+        <!-- Vista de Datos -->
+        <div *ngIf="showData && selectedTable()" class="data-view">
+          <div class="view-header">
+            <h2>Datos de {{ selectedTable()?.name }}</h2>
+            <p>Esquema: {{ selectedTable()?.schema }} | Tipo: {{ selectedTable()?.kind }}</p>
+          </div>
+          
+          <div class="data-content">
+            <div class="data-placeholder">
+              <div class="placeholder-icon">📊</div>
+              <h3>Visor de Datos</h3>
+              <p>Esta funcionalidad se implementará próximamente</p>
+              <p>Aquí podrás ver, editar y gestionar los datos de la tabla seleccionada</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Vista de Explorador -->
+        <div *ngIf="activeView() === 'explorer'" class="explorer-view">
+          <div class="view-header">
+            <h2>Explorador de Base de Datos</h2>
+            <p>Navega por la estructura completa de la base de datos</p>
+          </div>
+          
+          <div class="explorer-content">
+            <div class="explorer-placeholder">
+              <div class="placeholder-icon">🔍</div>
+              <h3>Explorador Avanzado</h3>
+              <p>Esta funcionalidad se implementará próximamente</p>
+              <p>Aquí podrás explorar relaciones, índices, vistas y más</p>
+            </div>
+          </div>
+        </div>
       </div>
-    </header>
-
-    <!-- Error -->
-    <div class="error-state" *ngIf="error()">
-      <div class="error-icon">⚠️</div>
-      <p>{{ error() }}</p>
-      <button type="button" class="btn btn--outline" (click)="refreshData()">
-        Reintentar
-      </button>
-    </div>
-
-    <!-- Contenido principal -->
-    <div class="db-studio-content" *ngIf="!error()">
-      <!-- Panel izquierdo: Esquemas y Tablas -->
-      <div class="db-panel db-panel--left">
-        <!-- Esquemas -->
-        <section class="ux-card">
-          <header class="ux-card__header">
-            <h2>📁 Esquemas</h2>
-            <span class="ux-card__badge">{{ schemas().length }}</span>
-          </header>
-          
-          <div class="ux-card__content">
-            <div class="schema-list">
-              <div 
-                *ngFor="let schema of schemas()" 
-                class="schema-item"
-                [class.active]="schema.name === selectedSchema()"
-                (click)="selectSchema(schema.name)">
-                <div class="schema-info">
-                  <h3>{{ schema.name }}</h3>
-                  <p>{{ formatNumber(schema.tables) }} tabla(s)</p>
-                </div>
-                <div class="schema-actions">
-                  <button 
-                    type="button" 
-                    class="btn-icon"
-                    (click)="exportSchema(schema.name); $event.stopPropagation()"
-                    title="Exportar esquema">
-                    📤
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Tablas -->
-        <section class="ux-card">
-          <header class="ux-card__header">
-            <h2>📊 Tablas ({{ selectedSchema() }})</h2>
-            <div class="ux-card__actions">
-              <input 
-                type="text" 
-                class="search-input"
-                placeholder="Buscar tablas..."
-                [(ngModel)]="searchTerm"
-                (ngModelChange)="searchTerm.set($event)">
-            </div>
-          </header>
-          
-          <div class="ux-card__content">
-            <div class="table-list">
-              <div 
-                *ngFor="let table of filteredTables()" 
-                class="table-item"
-                (click)="openTable(table.schema, table.name)">
-                <div class="table-info">
-                  <h3>{{ table.name }}</h3>
-                  <p class="table-meta">
-                    <span class="table-type">{{ table.kind }}</span>
-                    <span class="table-rows">{{ formatNumber(table.rows) }} filas</span>
-                  </p>
-                  <p class="table-size" *ngIf="table.size">{{ table.size }}</p>
-                </div>
-                <div class="table-actions">
-                  <button 
-                    type="button" 
-                    class="btn-icon"
-                    (click)="openTable(table.schema, table.name); $event.stopPropagation()"
-                    title="Abrir tabla">
-                    👁️
-                  </button>
-                </div>
-              </div>
-              
-              <div class="empty-state" *ngIf="filteredTables().length === 0">
-                <div class="empty-icon">📭</div>
-                <p>No hay tablas que coincidan con la búsqueda</p>
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
-
-      <!-- Panel derecho: Consola SQL y Resultados -->
-      <div class="db-panel db-panel--right">
-        <!-- Consola SQL -->
-        <section class="ux-card">
-          <header class="ux-card__header">
-            <h2>💻 Consola SQL</h2>
-            <div class="ux-card__actions">
-              <button 
-                type="button" 
-                class="btn btn--ghost btn--sm"
-                (click)="clearQuery()">
-                🗑️ Limpiar
-              </button>
-              <button 
-                type="button" 
-                class="btn btn--primary btn--sm"
-                (click)="executeQuery()"
-                [disabled]="!sqlQuery().trim() || queryLoading()">
-                {{ queryLoading() ? '⏳ Ejecutando...' : '▶️ Ejecutar' }}
-              </button>
-            </div>
-          </header>
-          
-          <div class="ux-card__content">
-            <div class="sql-editor">
-              <textarea 
-                class="sql-textarea"
-                [(ngModel)]="sqlQuery"
-                (ngModelChange)="sqlQuery.set($event)"
-                placeholder="Escribe tu consulta SQL aquí..."
-                rows="8">
-              </textarea>
-            </div>
-          </div>
-        </section>
-
-        <!-- Resultados -->
-        <section class="ux-card" *ngIf="queryResult()">
-          <header class="ux-card__header">
-            <h2>📋 Resultados</h2>
-            <div class="ux-card__actions">
-              <span class="result-info" *ngIf="queryResult()?.data">
-                {{ queryResult()?.data?.rows?.length || 0 }} fila(s)
-                <span *ngIf="queryResult()?.executionTime">
-                  • {{ queryResult()?.executionTime }}ms
-                </span>
-              </span>
-            </div>
-          </header>
-          
-          <div class="ux-card__content">
-            <!-- Error -->
-            <div class="error-state" *ngIf="queryResult()?.error">
-              <div class="error-icon">❌</div>
-              <p>{{ queryResult()?.error }}</p>
-            </div>
-
-            <!-- Datos -->
-            <div class="query-results" *ngIf="queryResult()?.data && queryResult()?.data?.rows && (queryResult()?.data?.rows?.length || 0) > 0">
-              <div class="table-scroll">
-                <table class="ux-table">
-                  <thead>
-                    <tr>
-                      <th *ngFor="let column of queryResult()?.data?.columns">{{ column }}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr *ngFor="let row of queryResult()?.data?.rows">
-                      <td *ngFor="let column of queryResult()?.data?.columns">
-                        <span class="cell-value">{{ row[column] | json }}</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <!-- Sin datos -->
-            <div class="empty-state" *ngIf="queryResult()?.data && queryResult()?.data?.rows && (queryResult()?.data?.rows?.length || 0) === 0">
-              <div class="empty-icon">📭</div>
-              <p>La consulta no devolvió resultados</p>
-            </div>
-
-            <!-- Información de filas afectadas -->
-            <div class="affected-rows" *ngIf="queryResult()?.affectedRows !== undefined">
-              <p><strong>{{ queryResult()?.affectedRows }} fila(s) afectada(s)</strong></p>
-            </div>
-          </div>
-        </section>
-      </div>
-    </div>
-
-    <!-- Loading -->
-    <div class="loading-state" *ngIf="loading()">
-      <div class="spinner"></div>
-      <p>Cargando datos de la base de datos...</p>
-    </div>
+    </main>
   </div>
 </div>

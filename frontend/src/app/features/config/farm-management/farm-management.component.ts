@@ -1,5 +1,5 @@
 // src/app/features/config/farm-management/farm-management.component.ts
-import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   ReactiveFormsModule,
@@ -8,6 +8,8 @@ import {
   FormArray,
   Validators
 } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { Subject, takeUntil, finalize } from 'rxjs';
 import { SidebarComponent } from '../../../shared/components/sidebar/sidebar.component';
 import { FontAwesomeModule, FaIconLibrary } from '@fortawesome/angular-fontawesome';
 import {
@@ -18,11 +20,13 @@ import {
   faEye,
   faTimes
 } from '@fortawesome/free-solid-svg-icons';
+import { CompanyService } from '../../../core/services/company/company.service';
+import { ActiveCompanyService } from '../../../core/auth/active-company.service';
+import { CompanySelectorComponent } from '../../../shared/components/company-selector/company-selector.component';
+import { CompanyTestComponent } from './company-test.component';
+import { CompanyAdminTestComponent } from '../../test/company-admin-test/company-admin-test.component';
+import { environment } from '../../../../environments/environment';
 
-interface Company {
-  id: number;
-  name: string;
-}
 interface House {
   id: number;
   name: string;
@@ -47,13 +51,16 @@ interface Farm {
     CommonModule,
     ReactiveFormsModule,
     SidebarComponent,
-    FontAwesomeModule
+    FontAwesomeModule,
+    CompanySelectorComponent,
+    CompanyTestComponent,
+    CompanyAdminTestComponent
   ],
   templateUrl: './farm-management.component.html',
   styleUrls: ['./farm-management.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class FarmManagementComponent implements OnInit {
+export class FarmManagementComponent implements OnInit, OnDestroy {
   // Icons (template los usa directamente)
   faTractor = faTractor;
   faPlus    = faPlus;
@@ -64,13 +71,14 @@ export class FarmManagementComponent implements OnInit {
 
   // Loading para overlays/toast
   loading = false;
+  loadingCompanies = false;
 
-  // Datos demo (puedes reemplazar por servicios cuando quieras)
-  companies: Company[] = [
-    { id: 1, name: 'Agroavicola San Marino' },
-    { id: 2, name: 'Piko' }
-  ];
+  // Empresas cargadas desde el servicio
+  companies: any[] = [];
   companyMap: Record<number, string> = {};
+  
+  // Empresa activa
+  activeCompany: string | null = null;
 
   farms: Farm[] = [
     {
@@ -112,20 +120,21 @@ export class FarmManagementComponent implements OnInit {
   selectedFarm: Farm | null = null;
 
   private nextId = 1; // se recalcula en ngOnInit
+  private destroy$ = new Subject<void>();
 
   constructor(
     private fb: FormBuilder,
+    private http: HttpClient,
+    private companyService: CompanyService,
+    private activeCompanyService: ActiveCompanyService,
     library: FaIconLibrary
   ) {
     library.addIcons(faTractor, faPlus, faTrash, faPen, faEye, faTimes);
   }
 
   ngOnInit() {
-    // Mapa de empresas para mostrar en la tabla
-    this.companyMap = this.companies.reduce((m, c) => {
-      m[c.id] = c.name;
-      return m;
-    }, {} as Record<number, string>);
+    this.loadCompanies();
+    this.setupActiveCompanySubscription();
 
     // Calcular siguiente ID disponible
     const maxId = Math.max(0, ...this.farms.map(f => f.id || 0));
@@ -139,6 +148,60 @@ export class FarmManagementComponent implements OnInit {
       address:   [''],
       nuclei:    this.fb.array([])
     });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  // ===== Carga de empresas =====
+  private loadCompanies(): void {
+    this.loadingCompanies = true;
+    this.companyService.getAll()
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => this.loadingCompanies = false)
+      )
+      .subscribe({
+        next: (companies) => {
+          this.companies = companies;
+          this.updateCompanyMap();
+          console.log('Empresas cargadas en farm-management:', companies);
+        },
+        error: (error) => {
+          console.error('Error cargando empresas:', error);
+          // Fallback a datos demo si falla la carga
+          this.companies = [
+            { id: 1, name: 'Agroavicola San Marino' },
+            { id: 2, name: 'Piko' }
+          ];
+          this.updateCompanyMap();
+        }
+      });
+  }
+
+  private updateCompanyMap(): void {
+    this.companyMap = this.companies.reduce((m, c) => {
+      m[c.id] = c.name;
+      return m;
+    }, {} as Record<number, string>);
+  }
+
+  private setupActiveCompanySubscription(): void {
+    this.activeCompanyService.activeCompany$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(company => {
+        this.activeCompany = company;
+        console.log('Empresa activa en farm-management:', company);
+        // Recargar empresas cuando cambie la empresa activa
+        this.loadCompanies();
+      });
+  }
+
+  onCompanyChanged(companyName: string): void {
+    console.log('Empresa cambiada en farm-management:', companyName);
+    // Las empresas se recargarán automáticamente por la suscripción
   }
 
   // ===== Helpers Form =====

@@ -28,6 +28,8 @@ export interface LoginResult {
   // ===== campos adicionales que devuelve tu backend =====
   userId?: string;
   username?: string;
+  firstName?: string;
+  surName?: string;
   fullName?: string;
   roles?: string[];
   empresas?: string[];       // ["Agricola sanmarino", ...]
@@ -43,6 +45,8 @@ export interface AuthSession {
   user: {
     id?: string;
     username?: string;
+    firstName?: string;
+    surName?: string;
     fullName?: string;
     roles?: string[];
     permisos?: string[];

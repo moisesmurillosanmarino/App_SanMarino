@@ -2,10 +2,9 @@
   <app-sidebar class="ux-sidebar"></app-sidebar>
 
   <div class="ux-main">
-    <!-- Header -->
     <header class="ux-header">
       <div class="ux-header__title">
-        <h1>Diario de Producción</h1>
+        <h1>Seguimiento Diario de Producción</h1>
 
         <div class="ux-header__meta">
           <ng-template #noGranjaChip>
@@ -16,415 +15,101 @@
           </ng-template>
 
           <span class="chip chip--info" *ngIf="selectedGranjaId; else noGranjaChip">
-            <span class="chip__dot" aria-hidden="true"></span>
-            Granja: {{ selectedGranjaName }}
+            <span class="chip chip--dot" aria-hidden="true"></span>
+            Granja: {{ selectedGranjaName || selectedGranjaId }}
           </span>
 
           <span class="chip chip--muted" *ngIf="selectedNucleoId">
-            Núcleo: {{ selectedNucleoNombre }}
+            Núcleo: {{ selectedNucleoNombre || selectedNucleoId }}
           </span>
 
           <span class="chip chip--muted" *ngIf="selectedGalponId">
             Galpón: {{ selectedGalponNombre }}
           </span>
 
-          <ng-container *ngIf="selectedLoteId">
-            <span class="chip chip--info">
-              <span class="chip__dot" aria-hidden="true"></span>
-              Lote: {{ selectedLoteNombre || selectedLoteId }}
-            </span>
-            <span class="chip chip--muted">{{ selectedLoteDias }} días</span>
-            <span class="chip chip--muted">{{ registros.length || 0 }} registro(s)</span>
-          </ng-container>
+          <span class="chip chip--info" *ngIf="selectedLoteId">
+            <span class="chip__dot" aria-hidden="true"></span>
+            Lote: {{ selectedLoteNombre }}
+          </span>
+
+          <span class="chip chip--muted" *ngIf="selectedLoteId && produccionLote">
+            {{ calcularEdadDias(produccionLote.fechaInicio) }} días
+          </span>
+
+          <span class="chip chip--muted" *ngIf="selectedLoteId">
+            {{ seguimientos.length || 0 }} registro(s)
+          </span>
         </div>
       </div>
 
-      <button
-        type="button"
-        (click)="create()"
-        class="btn btn--primary"
-        [disabled]="!selectedLoteId"
-        [title]="!selectedLoteId ? 'Primero selecciona un lote' : 'Crear nuevo registro'">
-        <fa-icon [icon]="faPlus" aria-hidden="true"></fa-icon>
-        Nuevo Registro
-      </button>
+      <div class="ux-header__actions">
+        <button
+          type="button"
+          class="btn btn--outline"
+          [disabled]="!selectedLoteId"
+          [title]="!selectedLoteId ? 'Primero selecciona lote' : 'Ver análisis del lote'"
+          (click)="openAnalisis()">
+          Ver análisis
+        </button>
+
+        <button
+          type="button"
+          (click)="create()"
+          class="btn btn--primary"
+          [disabled]="!selectedLoteId"
+          [title]="!selectedLoteId ? 'Primero selecciona lote' : 'Crear nuevo registro'">
+          Nuevo registro
+        </button>
+      </div>
     </header>
 
-    <!-- Filtros en cascada -->
-    <section class="ux-card" role="group" aria-label="Filtros">
-      <div class="ux-toolbar">
-        <!-- Granja -->
-        <div class="ux-field">
-          <label class="ux-label" for="granja-select">Granja</label>
-          <div class="ux-select">
-            <select
-              id="granja-select"
-              [ngModel]="selectedGranjaId"
-              (ngModelChange)="selectedGranjaId = $event; onGranjaChange()">
-              <option [ngValue]="null">— Seleccione —</option>
-              <option *ngFor="let g of granjas" [ngValue]="g.id">{{ g.name }}</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Núcleo -->
-        <div class="ux-field">
-          <label class="ux-label" for="nucleo-select">Núcleo</label>
-          <div class="ux-select">
-            <select
-              id="nucleo-select"
-              [disabled]="!selectedGranjaId || nucleos.length === 0"
-              [ngModel]="selectedNucleoId"
-              (ngModelChange)="selectedNucleoId = $event; onNucleoChange()">
-              <option [ngValue]="null">— Todos —</option>
-              <option *ngFor="let n of nucleos; trackBy: trackByNucleo" [ngValue]="n.nucleoId">
-                {{ n.nucleoNombre }}
-              </option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Galpón -->
-        <div class="ux-field">
-          <label class="ux-label" for="galpon-select">Galpón</label>
-          <div class="ux-select">
-            <select
-              id="galpon-select"
-              [disabled]="!selectedGranjaId || galpones.length === 0"
-              [ngModel]="selectedGalponId"
-              (ngModelChange)="selectedGalponId = $event; onGalponChange()">
-              <option [ngValue]="null">— Todos —</option>
-              <option *ngFor="let g of galpones" [ngValue]="g.id">{{ g.label }}</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Lote -->
-        <div class="ux-field">
-          <label class="ux-label" for="lote-select">Lote</label>
-          <div class="ux-select">
-            <select
-              id="lote-select"
-              [disabled]="!selectedGranjaId || lotes.length === 0"
-              [(ngModel)]="selectedLoteId"
-              (ngModelChange)="onLoteChange()"
-              aria-label="Selecciona lote">
-              <option [ngValue]="null" disabled>— Seleccione —</option>
-              <option *ngFor="let l of lotes; trackBy: trackByLoteId" [ngValue]="l.loteId">
-                {{ l.loteNombre || l.loteId }} ({{ l.edadDias }} días)
-              </option>
-            </select>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ========= Ficha del Lote + Estados (igual a Levante) ========= -->
-    <section class="ux-card" *ngIf="selectedLoteId">
-      <div class="grid grid-2">
-        <div>
-          <h3 class="sr-only">Ficha del Lote</h3>
-          <div class="grid grid-2" style="row-gap:.6rem; column-gap:1rem;">
-            <div class="form-field">
-              <label>📋 Nombre</label>
-              <div><strong>{{ selectedLote?.loteNombre || selectedLoteId }}</strong></div>
-            </div>
-            <div class="form-field">
-              <label>🏠 Granja</label>
-              <div>{{ selectedGranjaName || '—' }}</div>
-            </div>
-            <div class="form-field">
-              <label>🧬 Núcleo</label>
-              <div>{{ selectedNucleoNombre || '—' }}</div>
-            </div>
-            <div class="form-field">
-              <label>🏚️ Galpón</label>
-              <div>{{ selectedLote?.galponId || '—' }}</div>
-            </div>
-            <div class="form-field">
-              <label>📅 Encaset</label>
-              <div>{{ selectedLote?.fechaEncaset | date:'shortDate' }}</div>
-            </div>
-            <div class="form-field">
-              <label>⏳ Edad (días)</label>
-              <div>{{ calcularEdadDias(selectedLote?.fechaEncaset) }}</div>
-            </div>
-            <div class="form-field">
-              <label>📦 Aves encasetadas</label>
-              <div>{{ (selectedLote?.avesEncasetadas || 0) | number:'1.0-0' }}</div>
-            </div>
-            <div class="form-field">
-              <label>🐔 Hembras L (inicial)</label>
-              <div>{{ (selectedLote?.hembrasL || 0) | number:'1.0-0' }}</div>
-            </div>
-            <div class="form-field">
-              <label>🐓 Machos L (inicial)</label>
-              <div>{{ (selectedLote?.machosL || 0) | number:'1.0-0' }}</div>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <h3 class="sr-only">Estados del Lote</h3>
-          <div class="grid grid-2" style="row-gap:.8rem; column-gap:1rem;">
-            <div class="ux-card" style="padding:.75rem">
-              <div class="form-field">
-                <label>🐔 Hembras iniciales</label>
-                <div><strong>{{ (resumenSelected?.hembrasIniciales || 0) | number:'1.0-0' }}</strong></div>
-              </div>
-              <div class="form-field">
-                <label>🐓 Machos iniciales</label>
-                <div><strong>{{ (resumenSelected?.machosIniciales || 0) | number:'1.0-0' }}</strong></div>
-              </div>
-            </div>
-
-            <div class="ux-card" style="padding:.75rem">
-              <div class="form-field">
-                <label>📦 Mort. caja H</label>
-                <div>{{ (resumenSelected?.mortCajaHembras || 0) | number:'1.0-0' }}</div>
-              </div>
-              <div class="form-field">
-                <label>📦 Mort. caja M</label>
-                <div>{{ (resumenSelected?.mortCajaMachos || 0) | number:'1.0-0' }}</div>
-              </div>
-            </div>
-
-            <div class="ux-card" style="padding:.75rem">
-              <div class="form-field">
-                <label>✖ Mort. acum H</label>
-                <div>{{ (resumenSelected?.mortalidadAcumHembras || 0) | number:'1.0-0' }}</div>
-              </div>
-              <div class="form-field">
-                <label>✖ Mort. acum M</label>
-                <div>{{ (resumenSelected?.mortalidadAcumMachos || 0) | number:'1.0-0' }}</div>
-              </div>
-            </div>
-
-            <div class="ux-card" style="padding:.75rem">
-              <div class="form-field">
-                <label>✅ Vivas H</label>
-                <div><strong>{{ (resumenSelected?.saldoHembras || 0) | number:'1.0-0' }}</strong></div>
-              </div>
-              <div class="form-field">
-                <label>✅ Vivas M</label>
-                <div><strong>{{ (resumenSelected?.saldoMachos || 0) | number:'1.0-0' }}</strong></div>
-              </div>
-              <div class="form-field form-field--full" style="margin-top:.25rem">
-                <label>🔢 Vivas totales</label>
-                <div>
-                  <strong>
-                    {{ ((resumenSelected?.saldoHembras || 0) + (resumenSelected?.saldoMachos || 0)) | number:'1.0-0' }}
-                  </strong>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div> <!-- /grid -->
-    </section>
-
-    <!-- Tabla -->
-    <section class="ux-card">
-      <div class="ux-scroll">
-        <table class="ux-table">
-          <caption class="sr-only">Tabla de registros diarios de producción</caption>
-
-          <thead>
-            <tr>
-              <th scope="col">Fecha</th>
-              <th scope="col">Edad</th>
-              <th scope="col">Mort. H</th>
-              <th scope="col">Mort. M</th>
-              <th scope="col">Sel H</th>
-              <th scope="col">ConsKg H</th>
-              <th scope="col">ConsKg M</th>
-              <th scope="col">Huevo Tot</th>
-              <th scope="col">Huevo Inc</th>
-              <th scope="col">Peso Huevo</th>
-              <th scope="col">Etapa</th>
-              <th scope="col" class="text-right">Acciones</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            <tr *ngFor="let r of registros; trackBy: trackByRegistroId" class="ux-row">
-              <td>{{ r.fecha | date:'shortDate' }}</td>
-              <td>{{ edadDiasDe(r) }}</td>
-              <td>{{ r.mortalidadH }}</td>
-              <td>{{ r.mortalidadM }}</td>
-              <td>{{ r.selH }}</td>
-              <td>{{ r.consKgH }}</td>
-              <td>{{ r.consKgM }}</td>
-              <td>{{ r.huevoTot }}</td>
-              <td>{{ r.huevoInc }}</td>
-              <td>{{ r.pesoHuevo }}</td>
-              <td>{{ r.etapa }}</td>
-              <td class="text-right">
-                <div class="btn-group">
-                  <button type="button" (click)="edit(r)" class="icon-btn" title="Editar" aria-label="Editar registro">✎</button>
-                  <button type="button" (click)="delete(r.id)" class="icon-btn icon-btn--danger" title="Eliminar" aria-label="Eliminar registro">🗑</button>
-                </div>
-              </td>
-            </tr>
-
-            <tr *ngIf="!loading && (!registros || registros.length === 0)">
-              <td colspan="12" class="empty-state">
-                <div class="empty-illustration" aria-hidden="true">📄</div>
-                <p *ngIf="!selectedLoteId">Selecciona un lote para ver/crear registros.</p>
-                <p *ngIf="selectedLoteId">Sin registros para este lote.</p>
-                <button type="button" class="btn btn--outline" (click)="create()" [disabled]="!selectedLoteId">Crear el primero</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div *ngIf="loading" class="loading-overlay" aria-live="polite" role="status">
-        <div class="spinner"></div>
-        Cargando…
-      </div>
-    </section>
+    <!-- Filtros de selección -->
+    <app-filtro-select
+      [selectedGranjaId]="selectedGranjaId"
+      [selectedNucleoId]="selectedNucleoId"
+      [selectedGalponId]="selectedGalponId"
+      [selectedLoteId]="selectedLoteId"
+      (granjaChange)="onGranjaChange($event)"
+      (nucleoChange)="onNucleoChange($event)"
+      (galponChange)="onGalponChange($event)"
+      (loteChange)="onLoteChange($event)">
+    </app-filtro-select>
+    
+    <!-- Tabs Principal: General, Indicadores y Gráfica -->
+    <app-tabs-principal
+      [seguimientos]="seguimientos"
+      [selectedLote]="null"
+      [loading]="loading"
+      (create)="openDailyTrackingModal()"
+      (edit)="editDailyTracking($event)"
+      (delete)="deleteDailyTracking($event)">
+    </app-tabs-principal>
   </div>
 </div>
 
-<!-- Modal -->
-<div
-  *ngIf="modalOpen"
-  class="ux-modal"
-  role="dialog"
-  aria-modal="true"
-  aria-labelledby="produccion-modal-title">
-  <div class="ux-modal__dialog">
-    <header class="ux-modal__header">
-      <h2 id="produccion-modal-title">
-        {{ editing ? 'Editar Registro' : 'Nuevo Registro' }}
-      </h2>
-      <button type="button" class="icon-btn" (click)="cancel()" aria-label="Cerrar">✕</button>
-    </header>
+<!-- Modal de registro inicial -->
+<app-modal-registro-inicial
+  [isOpen]="modalRegistroInicialOpen"
+  [loteId]="selectedLoteId"
+  [loading]="loading"
+  (close)="cancelRegistroInicial()"
+  (save)="onSaveRegistroInicial($event)">
+</app-modal-registro-inicial>
 
-    <form [formGroup]="form" (ngSubmit)="save()" class="ux-form" novalidate>
-      <div class="grid grid-2">
-        <div class="form-field">
-          <label for="f-fecha">Fecha</label>
-          <input id="f-fecha" type="date" formControlName="fecha" />
-        </div>
+<!-- Modal de seguimiento diario -->
+<app-modal-seguimiento-diario
+  [isOpen]="modalSeguimientoDiarioOpen"
+  [produccionLoteId]="currentProduccionLoteId"
+  [editingSeguimiento]="editingSeguimiento"
+  [loading]="loading"
+  (close)="cancelSeguimientoDiario()"
+  (save)="onSaveSeguimientoDiario($event)">
+</app-modal-seguimiento-diario>
 
-        <div class="form-field">
-          <label for="f-etapa">Etapa</label>
-          <select id="f-etapa" formControlName="etapa">
-            <option [value]="1">1 (Semana 25-33)</option>
-            <option [value]="2">2 (Semana 34-50)</option>
-            <option [value]="3">3 (&gt;50)</option>
-          </select>
-        </div>
-
-        <div class="form-field">
-          <label for="f-consH">Consumo Kg Hembras</label>
-          <input id="f-consH" type="number" step="0.01" min="0" formControlName="consKgH" />
-        </div>
-
-        <div class="form-field">
-          <label for="f-consM">Consumo Kg Machos</label>
-          <input id="f-consM" type="number" step="0.01" min="0" formControlName="consKgM" />
-        </div>
-
-        <div class="form-field">
-          <label for="f-mh">Mortalidad Hembras</label>
-          <input id="f-mh" type="number" min="0" step="1" formControlName="mortalidadH" />
-        </div>
-
-        <div class="form-field">
-          <label for="f-mm">Mortalidad Machos</label>
-          <input id="f-mm" type="number" min="0" step="1" formControlName="mortalidadM" />
-        </div>
-
-        <div class="form-field">
-          <label for="f-selh">Sel H (retiradas)</label>
-          <input id="f-selh" type="number" min="0" step="1" formControlName="selH" />
-        </div>
-
-        <div class="form-field">
-          <label for="f-ht">Huevo Total</label>
-          <input id="f-ht" type="number" min="0" step="1" formControlName="huevoTot" />
-        </div>
-
-        <div class="form-field">
-          <label for="f-hi">Huevo Incubable</label>
-          <input id="f-hi" type="number" min="0" step="1" formControlName="huevoInc" />
-        </div>
-
-        <div class="form-field">
-          <label for="f-ph">Peso Huevo (g)</label>
-          <input id="f-ph" type="number" min="0" step="0.1" formControlName="pesoHuevo" />
-        </div>
-
-        <div class="form-field form-field--full">
-          <label for="f-tipo">Tipo de Alimento</label>
-          <input id="f-tipo" type="text" formControlName="tipoAlimento" />
-        </div>
-
-        <div class="form-field form-field--full">
-          <label for="f-obs">Observaciones</label>
-          <textarea id="f-obs" rows="3" formControlName="observaciones"></textarea>
-        </div>
-
-        <!-- Datos iniciales si es primer registro -->
-        <ng-container *ngIf="esPrimerRegistroProduccion">
-          <div class="form-field form-field--full">
-            <label class="sr-only">Separador</label>
-            <div style="height:1px;background:var(--warm-gray-200);margin:.3rem 0;"></div>
-          </div>
-
-          <div class="form-field">
-            <label for="f-hiH">Hembras (inicio)</label>
-            <input id="f-hiH" type="number" min="0" step="1" formControlName="hembrasInicio" />
-          </div>
-
-          <div class="form-field">
-            <label for="f-miM">Machos (inicio)</label>
-            <input id="f-miM" type="number" min="0" step="1" formControlName="machosInicio" />
-          </div>
-
-          <div class="form-field">
-            <label for="f-hueI">Huevos (inicio)</label>
-            <input id="f-hueI" type="number" min="0" step="1" formControlName="huevosInicio" />
-          </div>
-
-          <div class="form-field">
-            <label for="f-nido">Tipo de Nido</label>
-            <select id="f-nido" formControlName="tipoNido">
-              <option value="">-- Seleccione --</option>
-              <option value="Jansen">Jansen</option>
-              <option value="Manual">Manual</option>
-              <option value="Vencomatic">Vencomatic</option>
-            </select>
-          </div>
-
-          <div class="form-field">
-            <label for="f-np">Núcleo Productivo</label>
-            <input id="f-np" type="text" formControlName="nucleoP" />
-          </div>
-
-          <div class="form-field">
-            <label for="f-ciclo">Ciclo</label>
-            <select id="f-ciclo" formControlName="ciclo">
-              <option value="">-- Seleccione --</option>
-              <option value="normal">Normal</option>
-              <option value="2">2 - Replume</option>
-              <option value="D">D - Depopulación</option>
-            </select>
-          </div>
-        </ng-container>
-      </div>
-
-      <footer class="ux-modal__footer">
-        <button type="button" class="btn btn--ghost" (click)="cancel()">Cancelar</button>
-        <button type="submit" class="btn btn--primary" [disabled]="loading || form.invalid">Guardar</button>
-      </footer>
-    </form>
-
-    <div *ngIf="loading" class="modal-loading" role="status" aria-live="polite">
-      <div class="spinner"></div> Guardando…
-    </div>
-  </div>
-</div>
+<!-- Modal de análisis -->
+<app-modal-analisis
+  [isOpen]="analisisOpen"
+  [seguimientos]="seguimientos"
+  (close)="closeAnalisis()"
+  (export)="exportarAnalisis()">
+</app-modal-analisis>

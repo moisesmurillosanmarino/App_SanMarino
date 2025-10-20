@@ -45,6 +45,11 @@ namespace ZooSanMarino.Application.Interfaces
         Task<SqlValidationResult> ValidateSqlAsync(string sql);
         Task<byte[]> ExportTableAsync(string schema, string table, string format = "sql");
         Task ImportTableAsync(string schema, string table, byte[] fileContent, string format = "csv");
+        
+        // ===================== ANÁLISIS Y DEPENDENCIAS =====================
+        Task<TableDependenciesDto> GetTableDependenciesAsync(string schema, string table);
+        Task<DatabaseAnalysisDto> AnalyzeDatabaseAsync();
+        Task<byte[]> ExportSchemaAsync(string schema);
     }
 }
 

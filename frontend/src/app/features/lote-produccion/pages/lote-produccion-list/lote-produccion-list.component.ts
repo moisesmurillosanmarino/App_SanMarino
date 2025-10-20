@@ -1,287 +1,99 @@
-// src/app/features/lote-produccion/pages/lote-produccion-list/lote-produccion-list.component.ts
-import { Component, OnInit, ViewEncapsulation } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { HttpClientModule } from '@angular/common/http';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { finalize } from 'rxjs/operators';
 
 import { SidebarComponent } from '../../../../shared/components/sidebar/sidebar.component';
-import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import { faPlus, faPen, faTrash } from '@fortawesome/free-solid-svg-icons';
 
-import { LoteProduccionDto } from '../../services/lote-produccion.service';
-import { LoteService, LoteDto, LoteMortalidadResumenDto } from '../../../lote/services/lote.service';
 import { GalponService } from '../../../galpon/services/galpon.service';
 import { GalponDetailDto } from '../../../galpon/models/galpon.models';
-import { FarmService, FarmDto } from '../../../farm/services/farm.service';
-import { NucleoService, NucleoDto } from '../../../lote-levante/services/nucleo.service';
 
-type LoteView = LoteDto & { edadDias: number };
+import { LoteService, LoteDto } from '../../../lote/services/lote.service';
+
+import {
+  ProduccionService,
+  SeguimientoItemDto,
+  CrearSeguimientoRequest,
+  ProduccionLoteDetalleDto,
+  ExisteProduccionLoteResponse
+} from '../../services/produccion.service';
+
+import { FarmService, FarmDto } from '../../../farm/services/farm.service';
+import { NucleoService, NucleoDto } from '../../services/nucleo.service';
+import { FiltroSelectComponent } from '../filtro-select/filtro-select.component';
+import { TabsPrincipalComponent } from '../tabs-principal/tabs-principal.component';
+import { ModalRegistroInicialComponent } from '../modal-registro-inicial/modal-registro-inicial.component';
+import { ModalSeguimientoDiarioComponent } from '../modal-seguimiento-diario/modal-seguimiento-diario.component';
+import { ModalAnalisisComponent } from '../modal-analisis/modal-analisis.component';
 
 @Component({
   selector: 'app-lote-produccion-list',
   standalone: true,
   imports: [
-    CommonModule,
-    FormsModule,
-    ReactiveFormsModule,
-    HttpClientModule,
-    SidebarComponent,
-    FontAwesomeModule
+    CommonModule, 
+    FormsModule, 
+    ReactiveFormsModule, 
+    SidebarComponent, 
+    FiltroSelectComponent, 
+    TabsPrincipalComponent,
+    ModalRegistroInicialComponent,
+    ModalSeguimientoDiarioComponent,
+    ModalAnalisisComponent
   ],
   templateUrl: './lote-produccion-list.component.html',
-  styleUrls: ['./lote-produccion-list.component.scss'],
-  encapsulation: ViewEncapsulation.Emulated
+  styleUrls: ['./lote-produccion-list.component.scss']
 })
 export class LoteProduccionListComponent implements OnInit {
-  private readonly SIN_GALPON = '__SIN_GALPON__';
+  // ================== constantes / sentinelas ==================
+  readonly SIN_GALPON = '__SIN_GALPON__';
 
-  // Icons
-  faPlus = faPlus;
-  faPen = faPen;
-  faTrash = faTrash;
-
-  // UI
-  loading = false;
-  modalOpen = false;
-
-  // Catálogos
+  // ================== catálogos (otros) ==================
   granjas: FarmDto[] = [];
   nucleos: NucleoDto[] = [];
   galpones: Array<{ id: string; label: string }> = [];
 
-  // Selección / filtro
+  // ================== selección / filtro ==================
   selectedGranjaId: number | null = null;
   selectedNucleoId: string | null = null;
   selectedGalponId: string | null = null;
+  selectedLoteId: number | null = null;
 
-  selectedLoteId: number | null = null;  // Changed from number | string | null to number | null
-  selectedLoteNombre = '';
-  selectedLoteDias = 0;
-  selectedLoteFechaEncaset: string | Date | null = null;
-
-  // Datos
+  // ================== datos ==================
   private allLotes: LoteDto[] = [];
-  lotes: LoteView[] = [];
-  registros: LoteProduccionDto[] = [];
+  lotes: LoteDto[] = [];
+  seguimientos: SeguimientoItemDto[] = [];
 
-  // NUEVO: ficha/estados
-  selectedLote?: LoteDto;
-  resumenSelected: LoteMortalidadResumenDto | null = null;
+  selectedLote: LoteDto | null = null;
+  produccionLote: ProduccionLoteDetalleDto | null = null;
+  currentProduccionLoteId: number | null = null;
 
-  // Modal / Form
-  form!: FormGroup;
-  editing: LoteProduccionDto | null = null;
-  esPrimerRegistroProduccion = false;
+  // ================== UI ==================
+  loading = false;
+  modalRegistroInicialOpen = false;
+  modalSeguimientoDiarioOpen = false;
+  analisisOpen = false;
+  editingSeguimiento: SeguimientoItemDto | null = null;
 
-  // Aux
   private galponNameById = new Map<string, string>();
 
-  // trackBy
-  trackByLoteId = (_: number, l: LoteView) => l.loteId as any;
-  trackByRegistroId = (_: number, r: LoteProduccionDto) => r.id as any;
-  trackByNucleo = (_: number, n: NucleoDto) => n.nucleoId as any;
-
   constructor(
-    private fb: FormBuilder,
-    private loteSvc: LoteService,
     private farmSvc: FarmService,
     private nucleoSvc: NucleoService,
-    private galponSvc: GalponService,
+    private loteSvc: LoteService,
+    private produccionSvc: ProduccionService,
+    private galponSvc: GalponService
   ) {}
 
-  ngOnInit() {
+  // ================== INIT ==================
+  ngOnInit(): void {
+    // cargar catálogos de granjas, etc.
     this.farmSvc.getAll().subscribe({
       next: fs => (this.granjas = fs || []),
       error: () => (this.granjas = [])
     });
-
-    this.form = this.fb.group({
-      fecha: [this.hoyISO(), Validators.required],
-      loteId: ['', Validators.required],
-      mortalidadH: [0, [Validators.required, Validators.min(0)]],
-      mortalidadM: [0, [Validators.required, Validators.min(0)]],
-      selH:        [0, [Validators.required, Validators.min(0)]],
-      consKgH:     [0, [Validators.required, Validators.min(0)]],
-      consKgM:     [0, [Validators.required, Validators.min(0)]],
-      huevoTot:    [0, [Validators.required, Validators.min(0)]],
-      huevoInc:    [0, [Validators.required, Validators.min(0)]],
-      tipoAlimento: ['', Validators.required],
-      observaciones: [''],
-      pesoHuevo:   [0, [Validators.required, Validators.min(0)]],
-      etapa:       [1, Validators.required],
-      hembrasInicio: [null],
-      machosInicio:  [null],
-      huevosInicio:  [null],
-      tipoNido:      [''],
-      nucleoP:       [''],
-      ciclo:         ['']
-    });
   }
 
-  // Getters chips
-  get selectedGranjaName(): string {
-    const g = this.granjas.find(x => x.id === (this.selectedGranjaId as any));
-    return g?.name ?? (this.selectedGranjaId != null ? String(this.selectedGranjaId) : '');
-  }
-  get selectedNucleoNombre(): string {
-    const n = this.nucleos.find(x => x.nucleoId === this.selectedNucleoId);
-    return n?.nucleoNombre ?? (this.selectedNucleoId ?? '');
-  }
-  get selectedGalponNombre(): string {
-    if (this.selectedGalponId === this.SIN_GALPON) return '— Sin galpón —';
-    const id = (this.selectedGalponId ?? '').trim();
-    return this.galponNameById.get(id) || id;
-  }
-
-  // Filtros en cascada
-  onGranjaChange(): void {
-    this.selectedNucleoId = null;
-    this.selectedGalponId = null;
-    this.selectedLoteId = null;
-
-    this.registros = [];
-    this.galpones = [];
-    this.nucleos = [];
-    this.lotes = [];
-    this.allLotes = [];
-
-    // limpiar ficha
-    this.selectedLote = undefined;
-    this.resumenSelected = null;
-    this.selectedLoteNombre = '';
-    this.selectedLoteDias = 0;
-    this.selectedLoteFechaEncaset = null;
-
-    if (!this.selectedGranjaId) return;
-
-    this.nucleoSvc.getByGranja(this.selectedGranjaId).subscribe({
-      next: rows => (this.nucleos = rows || []),
-      error: () => (this.nucleos = [])
-    });
-
-    this.reloadLotesThenApplyFilters();
-    this.loadGalponCatalog();
-  }
-
-  onNucleoChange(): void {
-    this.selectedGalponId = null;
-    this.selectedLoteId = null;
-
-    this.registros = [];
-    this.selectedLote = undefined;
-    this.resumenSelected = null;
-    this.selectedLoteNombre = '';
-    this.selectedLoteDias = 0;
-    this.selectedLoteFechaEncaset = null;
-
-    this.applyFiltersToLotes();
-    this.loadGalponCatalog();
-  }
-
-  onGalponChange(): void {
-    this.selectedLoteId = null;
-
-    this.registros = [];
-    this.selectedLote = undefined;
-    this.resumenSelected = null;
-    this.selectedLoteNombre = '';
-    this.selectedLoteDias = 0;
-    this.selectedLoteFechaEncaset = null;
-
-    this.applyFiltersToLotes();
-  }
-
-  onLoteChange(): void {
-    this.registros = [];
-    this.selectedLote = undefined;
-    this.resumenSelected = null;
-    this.selectedLoteNombre = '';
-    this.selectedLoteDias = 0;
-    this.selectedLoteFechaEncaset = null;
-
-    if (this.selectedLoteId == null) {
-      this.esPrimerRegistroProduccion = false;
-      return;
-    }
-
-    const lote = this.lotes.find(l => (l.loteId as any) === this.selectedLoteId);
-    this.selectedLoteNombre = lote?.loteNombre ?? '';
-    this.selectedLoteDias = lote?.edadDias ?? 0;
-    this.selectedLoteFechaEncaset = lote?.fechaEncaset ?? null;
-
-    // Registros (sessionStorage)
-    const stored = sessionStorage.getItem('registros-produccion');
-    const all: LoteProduccionDto[] = stored ? JSON.parse(stored) : [];
-    this.registros = all.filter(r => (r.loteId as any) === this.selectedLoteId);
-    this.esPrimerRegistroProduccion = this.registros.length === 0 && this.selectedLoteDias >= 182; // 26 semanas * 7 días = 182 días
-
-    // NUEVO: cargar ficha y resumen
-    this.loteSvc.getById(this.selectedLoteId).subscribe({  // Removed String() conversion
-      next: l => (this.selectedLote = l),
-      error: () => (this.selectedLote = undefined)
-    });
-
-    this.loteSvc.getResumenMortalidad(this.selectedLoteId).subscribe({  // Removed String() conversion
-      next: r => (this.resumenSelected = r),
-      error: () => (this.resumenSelected = null)
-    });
-  }
-
-  // Carga/filtrado lotes
-  private reloadLotesThenApplyFilters(): void {
-    if (!this.selectedGranjaId) {
-      this.allLotes = [];
-      this.lotes = [];
-      this.galpones = [];
-      return;
-    }
-
-    this.loading = true;
-    this.loteSvc.getAll().subscribe({
-      next: (all) => {
-        this.allLotes = all || [];
-        this.applyFiltersToLotes();
-        this.buildGalponesFromLotes();
-        this.loading = false;
-      },
-      error: () => {
-        this.allLotes = [];
-        this.lotes = [];
-        this.galpones = [];
-        this.loading = false;
-      }
-    });
-  }
-
-  private applyFiltersToLotes(): void {
-    if (!this.selectedGranjaId) { this.lotes = []; return; }
-    const gid = String(this.selectedGranjaId);
-
-    let filtered = this.allLotes.filter(l => String(l.granjaId) === gid);
-
-    if (this.selectedNucleoId) {
-      const nid = String(this.selectedNucleoId);
-      filtered = filtered.filter(l => String(l.nucleoId) === nid);
-    }
-
-    if (this.selectedGalponId) {
-      if (this.selectedGalponId === this.SIN_GALPON) {
-        filtered = filtered.filter(l => !this.hasValue(l.galponId));
-      } else {
-        const sel = this.normalizeId(this.selectedGalponId);
-        filtered = filtered.filter(l => this.normalizeId(l.galponId) === sel);
-      }
-    }
-
-    const withAge: LoteView[] = filtered.map(l => ({
-      ...l,
-      edadDias: this.calcularEdadDias(l.fechaEncaset)
-    }));
-
-    this.lotes = withAge.filter(l => l.edadDias >= 182); // 26 semanas * 7 días = 182 días
-  }
-
-  // Catálogo de Galpones
+  // ================== CARGA GALPONES ==================
   private loadGalponCatalog(): void {
     this.galponNameById.clear();
     if (!this.selectedGranjaId) return;
@@ -310,6 +122,146 @@ export class LoteProduccionListComponent implements OnInit {
     this.buildGalponesFromLotes();
   }
 
+  // ================== CASCADA DE FILTROS ==================
+  onGranjaChange(granjaId: number | null): void {
+    this.selectedGranjaId = granjaId;
+    this.selectedNucleoId = null;
+    this.selectedGalponId = null;
+    this.selectedLoteId = null;
+    this.seguimientos = [];
+    this.galpones = [];
+    this.lotes = [];
+    this.selectedLote = null;
+    this.currentProduccionLoteId = null;
+    this.nucleos = [];
+
+    if (!this.selectedGranjaId) return;
+
+    this.nucleoSvc.getByGranja(this.selectedGranjaId).subscribe({
+      next: rows => (this.nucleos = rows || []),
+      error: () => (this.nucleos = [])
+    });
+
+    this.reloadLotesThenApplyFilters();
+    this.loadGalponCatalog();
+  }
+
+  onNucleoChange(nucleoId: string | null): void {
+    this.selectedNucleoId = nucleoId;
+    this.selectedGalponId = null;
+    this.selectedLoteId = null;
+    this.seguimientos = [];
+    this.selectedLote = null;
+    this.currentProduccionLoteId = null;
+    this.applyFiltersToLotes();
+    this.loadGalponCatalog();
+  }
+
+  onGalponChange(galponId: string | null): void {
+    this.selectedGalponId = galponId;
+    this.selectedLoteId = null;
+    this.seguimientos = [];
+    this.selectedLote = null;
+    this.currentProduccionLoteId = null;
+    this.applyFiltersToLotes();
+  }
+
+  onLoteChange(loteId: number | null): void {
+    this.selectedLoteId = loteId;
+    this.seguimientos = [];
+    this.selectedLote = null;
+    this.currentProduccionLoteId = null;
+
+    if (!this.selectedLoteId) return;
+
+    this.loading = true;
+    
+    // Cargar datos del lote
+    this.loteSvc.getById(this.selectedLoteId).subscribe({
+      next: l => (this.selectedLote = l || null),
+      error: () => (this.selectedLote = null)
+    });
+
+    // Verificar si existe registro inicial de producción
+    this.produccionSvc.existsProduccionLote(this.selectedLoteId).subscribe({
+      next: (response: ExisteProduccionLoteResponse) => {
+        this.currentProduccionLoteId = response.produccionLoteId || null;
+        
+        if (response.exists && this.currentProduccionLoteId) {
+          // Cargar seguimientos diarios
+          this.loadSeguimientos();
+        } else {
+          this.loading = false;
+        }
+      },
+      error: () => {
+        this.loading = false;
+      }
+    });
+  }
+
+  private loadSeguimientos(): void {
+    if (!this.selectedLoteId) return;
+
+    this.produccionSvc.listarSeguimiento({
+      loteId: this.selectedLoteId,
+      page: 1,
+      size: 100
+    }).pipe(finalize(() => (this.loading = false)))
+    .subscribe({
+      next: response => (this.seguimientos = response.items || []),
+      error: () => (this.seguimientos = [])
+    });
+  }
+
+  // ================== CARGA Y FILTRADO ==================
+  private reloadLotesThenApplyFilters(): void {
+    if (!this.selectedGranjaId) {
+      this.allLotes = [];
+      this.lotes = [];
+      this.galpones = [];
+      return;
+    }
+
+    this.loading = true;
+    this.loteSvc.getAll()
+      .pipe(finalize(() => (this.loading = false)))
+      .subscribe({
+        next: all => {
+          this.allLotes = all || [];
+          this.applyFiltersToLotes();
+          this.buildGalponesFromLotes();
+        },
+        error: () => {
+          this.allLotes = [];
+          this.lotes = [];
+          this.galpones = [];
+        }
+      });
+  }
+
+  private applyFiltersToLotes(): void {
+    if (!this.selectedGranjaId) { this.lotes = []; return; }
+    const gid = String(this.selectedGranjaId);
+
+    let filtered = this.allLotes.filter(l => String(l.granjaId) === gid);
+
+    if (this.selectedNucleoId) {
+      const nid = String(this.selectedNucleoId);
+      filtered = filtered.filter(l => String(l.nucleoId) === nid);
+    }
+
+    if (!this.selectedGalponId) { this.lotes = filtered; return; }
+
+    if (this.selectedGalponId === this.SIN_GALPON) {
+      this.lotes = filtered.filter(l => !this.hasValue(l.galponId));
+      return;
+    }
+
+    const sel = this.normalizeId(this.selectedGalponId);
+    this.lotes = filtered.filter(l => this.normalizeId(l.galponId) === sel);
+  }
+
   private buildGalponesFromLotes(): void {
     if (!this.selectedGranjaId) {
       this.galpones = [];
@@ -336,138 +288,129 @@ export class LoteProduccionListComponent implements OnInit {
       result.push({ id, label });
     }
 
-    const hasSinGalpon = base.some(l => !this.hasValue(l.galponId));
-    if (hasSinGalpon) {
-      result.unshift({ id: this.SIN_GALPON, label: '— Sin galpón —' });
-    }
-
     this.galpones = result.sort((a, b) =>
       a.label.localeCompare(b.label, 'es', { numeric: true, sensitivity: 'base' })
     );
   }
 
-  // CRUD Registros (sessionStorage)
-  create() { this.openNew(); }
-
-  openNew() {
+  // ================== CRUD modal ==================
+  create(): void {
     if (!this.selectedLoteId) return;
-    this.editing = null;
-    this.form.reset({
-      ...this.form.getRawValue(),
-      fecha: this.hoyISO(),
-      loteId: this.selectedLoteId,
-      mortalidadH: 0, mortalidadM: 0, selH: 0,
-      consKgH: 0, consKgM: 0,
-      huevoTot: 0, huevoInc: 0,
-      tipoAlimento: '', observaciones: '',
-      pesoHuevo: 0, etapa: 1,
-      hembrasInicio: null, machosInicio: null, huevosInicio: null,
-      tipoNido: '', nucleoP: '', ciclo: ''
+
+    // Verificar si existe registro inicial
+    this.produccionSvc.existsProduccionLote(this.selectedLoteId).subscribe({
+      next: (response: ExisteProduccionLoteResponse) => {
+        if (response.exists && response.produccionLoteId) {
+          // Abrir modal de seguimiento diario
+          this.currentProduccionLoteId = response.produccionLoteId;
+          this.editingSeguimiento = null;
+          this.modalSeguimientoDiarioOpen = true;
+        } else {
+          // Abrir modal de registro inicial
+          this.modalRegistroInicialOpen = true;
+        }
+      },
+      error: () => {
+        // En caso de error, abrir modal de registro inicial
+        this.modalRegistroInicialOpen = true;
+      }
     });
-    this.modalOpen = true;
   }
 
-  edit(r: LoteProduccionDto) {
-    this.editing = r;
-    this.form.patchValue({ ...r, fecha: (r.fecha || '').slice(0, 10) });
-    this.modalOpen = true;
+  edit(seg: SeguimientoItemDto): void {
+    this.editingSeguimiento = seg;
+    this.modalSeguimientoDiarioOpen = true;
   }
 
-  delete(id: string | number) {
+  delete(id: number): void {
     if (!confirm('¿Eliminar este registro?')) return;
-    const stored = sessionStorage.getItem('registros-produccion');
-    let all: LoteProduccionDto[] = stored ? JSON.parse(stored) : [];
-    all = all.filter(r => r.id !== id);
-    sessionStorage.setItem('registros-produccion', JSON.stringify(all));
-    this.onLoteChange();
+    // TODO: Implementar delete en el servicio
+    // this.produccionSvc.delete(id).subscribe(() => this.onLoteChange(this.selectedLoteId));
   }
 
-  save() {
-    if (this.form.invalid) return;
-
-    const raw = this.form.value;
-    const stored = sessionStorage.getItem('registros-produccion');
-    const all: LoteProduccionDto[] = stored ? JSON.parse(stored) : [];
-
-    if (this.editing) {
-      const index = all.findIndex(r => r.id === this.editing!.id);
-      if (index !== -1) all[index] = { ...all[index], ...raw, id: this.editing!.id };
-    } else {
-      const newId = `temp-${Date.now()}`;
-      all.push({ ...raw, id: newId } as any);
-    }
-
-    sessionStorage.setItem('registros-produccion', JSON.stringify(all));
-    this.modalOpen = false;
-    this.onLoteChange();
+  // ================== MODALES ==================
+  cancelRegistroInicial(): void {
+    this.modalRegistroInicialOpen = false;
   }
 
-  cancel() { this.modalOpen = false; }
-
-  // Helpers de fecha / edad
-  private hoyISO(): string {
-    const d = new Date();
-    return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())).toISOString().slice(0, 10);
+  onSaveRegistroInicial(event: any): void {
+    this.loading = true;
+    this.produccionSvc.crearProduccionLote(event.data)
+      .pipe(finalize(() => (this.loading = false)))
+      .subscribe({
+        next: (produccionLoteId: number) => {
+          this.modalRegistroInicialOpen = false;
+          this.currentProduccionLoteId = produccionLoteId;
+          
+          // Abrir modal de seguimiento diario automáticamente
+          this.editingSeguimiento = null;
+          this.modalSeguimientoDiarioOpen = true;
+        },
+        error: () => { /* TODO: toast de error */ }
+      });
   }
 
-  public calcularEdadDias(fechaEncaset?: string | Date | null): number {
-    if (!fechaEncaset) return 0;
-    const fecha = new Date(fechaEncaset);
-    if (isNaN(fecha.getTime())) return 0;
-    const hoy = new Date();
-    const msPorDia = 1000 * 60 * 60 * 24;
-    const dias = Math.floor((hoy.getTime() - fecha.getTime()) / msPorDia);
-    return Math.max(1, dias + 1);
+  cancelSeguimientoDiario(): void {
+    this.modalSeguimientoDiarioOpen = false;
+    this.editingSeguimiento = null;
   }
 
-  public calcularEdadDiasDesde(
-    fechaEncaset?: string | Date | null,
-    fechaReferencia?: string | Date | null
-  ): number {
-    if (!fechaEncaset || !fechaReferencia) return 0;
-    const enc = new Date(fechaEncaset);
-    const ref = new Date(fechaReferencia);
-    if (isNaN(enc.getTime()) || isNaN(ref.getTime())) return 0;
-    const diff = ref.getTime() - enc.getTime();
-    if (diff < 0) return 0;
+  onSaveSeguimientoDiario(request: CrearSeguimientoRequest): void {
+    this.loading = true;
+    this.produccionSvc.crearSeguimiento(request)
+      .pipe(finalize(() => (this.loading = false)))
+      .subscribe({
+        next: () => {
+          this.modalSeguimientoDiarioOpen = false;
+          this.editingSeguimiento = null;
+          this.loadSeguimientos();
+        },
+        error: () => { /* TODO: toast de error */ }
+      });
+  }
+
+  openAnalisis(): void {
+    if (!this.selectedLoteId) return;
+    this.analisisOpen = true;
+  }
+
+  closeAnalisis(): void {
+    this.analisisOpen = false;
+  }
+
+  // ================== helpers ==================
+  trackById = (_: number, r: SeguimientoItemDto) => r.id;
+  trackByNucleo = (_: number, n: NucleoDto) => n.nucleoId;
+
+  get selectedLoteNombre(): string {
+    const l = this.lotes.find(x => x.loteId === this.selectedLoteId);
+    return l?.loteNombre ?? (this.selectedLoteId?.toString() || '—');
+  }
+
+  get selectedGranjaName(): string {
+    const g = this.granjas.find(x => x.id === this.selectedGranjaId);
+    return g?.name ?? '';
+  }
+
+  get selectedNucleoNombre(): string {
+    const n = this.nucleos.find(x => x.nucleoId === this.selectedNucleoId);
+    return n?.nucleoNombre ?? '';
+  }
+
+  get selectedGalponNombre(): string {
+    if (this.selectedGalponId === this.SIN_GALPON) return '— Sin galpón —';
+    const id = (this.selectedGalponId ?? '').trim();
+    return this.galponNameById.get(id) || id;
+  }
+
+  /** Edad (en días) a HOY desde fecha de inicio (mínimo 1). */
+  calcularEdadDias(fechaInicio?: string | Date | null): number {
+    const inicioYmd = this.toYMD(fechaInicio);
+    const inicio = this.ymdToLocalNoonDate(inicioYmd);
+    if (!inicio) return 0;
     const MS_DAY = 24 * 60 * 60 * 1000;
-    return Math.max(1, Math.floor(diff / MS_DAY) + 1);
-  }
-
-  public edadDiasDe(r: LoteProduccionDto): number {
-    return this.calcularEdadDiasDesde(this.selectedLoteFechaEncaset, r?.fecha);
-  }
-
-  // ========== MÉTODOS LEGACY (SEMANAS) - MANTENER PARA COMPATIBILIDAD ==========
-  /** @deprecated Usar calcularEdadDias() en su lugar */
-  public calcularEdadSemanas(fechaEncaset?: string | Date | null): number {
-    if (!fechaEncaset) return 0;
-    const fecha = new Date(fechaEncaset);
-    if (isNaN(fecha.getTime())) return 0;
-    const hoy = new Date();
-    const msPorSemana = 1000 * 60 * 60 * 24 * 7;
-    const semanas = Math.floor((hoy.getTime() - fecha.getTime()) / msPorSemana);
-    return Math.max(1, semanas + 1);
-  }
-
-  /** @deprecated Usar calcularEdadDiasDesde() en su lugar */
-  public calcularEdadSemanasDesde(
-    fechaEncaset?: string | Date | null,
-    fechaReferencia?: string | Date | null
-  ): number {
-    if (!fechaEncaset || !fechaReferencia) return 0;
-    const enc = new Date(fechaEncaset);
-    const ref = new Date(fechaReferencia);
-    if (isNaN(enc.getTime()) || isNaN(ref.getTime())) return 0;
-    const diff = ref.getTime() - enc.getTime();
-    if (diff < 0) return 0;
-    const MS_WEEK = 7 * 24 * 60 * 60 * 1000;
-    return Math.max(1, Math.floor(diff / MS_WEEK) + 1);
-  }
-
-  /** @deprecated Usar edadDiasDe() en su lugar */
-  public edadSemanaDe(r: LoteProduccionDto): number {
-    return this.calcularEdadSemanasDesde(this.selectedLoteFechaEncaset, r?.fecha);
+    const now = this.ymdToLocalNoonDate(this.todayYMD())!;
+    return Math.max(1, Math.floor((now.getTime() - inicio.getTime()) / MS_DAY) + 1);
   }
 
   private hasValue(v: unknown): boolean {
@@ -479,5 +422,85 @@ export class LoteProduccionListComponent implements OnInit {
   private normalizeId(v: unknown): string {
     if (v === null || v === undefined) return '';
     return String(v).trim();
+  }
+
+  // ================== HELPERS DE FECHA ==================
+  private todayYMD(): string {
+    const d = new Date();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${mm}-${dd}`;
+  }
+
+  private toYMD(input: string | Date | null | undefined): string | null {
+    if (!input) return null;
+
+    if (input instanceof Date && !isNaN(input.getTime())) {
+      const y = input.getFullYear();
+      const m = String(input.getMonth() + 1).padStart(2, '0');
+      const d = String(input.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    const s = String(input).trim();
+
+    // YYYY-MM-DD
+    const ymd = /^(\d{4})-(\d{2})-(\d{2})$/;
+    const m1 = s.match(ymd);
+    if (m1) return `${m1[1]}-${m1[2]}-${m1[3]}`;
+
+    // mm/dd/aaaa o dd/mm/aaaa
+    const sl = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+    const m2 = s.match(sl);
+    if (m2) {
+      let a = parseInt(m2[1], 10);
+      let b = parseInt(m2[2], 10);
+      const yyyy = parseInt(m2[3], 10);
+      let mm = a, dd = b;
+      if (a > 12 && b <= 12) { mm = b; dd = a; }
+      const mmS = String(mm).padStart(2, '0');
+      const ddS = String(dd).padStart(2, '0');
+      return `${yyyy}-${mmS}-${ddS}`;
+    }
+
+    // ISO (con T)
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    return null;
+  }
+
+  private ymdToLocalNoonDate(ymd: string | null): Date | null {
+    if (!ymd) return null;
+    const d = new Date(`${ymd}T12:00:00`);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  // ================== MÉTODOS DE MODALES ==================
+  openDailyTrackingModal(): void {
+    if (!this.selectedLoteId || !this.produccionLote?.id) return;
+    this.editingSeguimiento = null;
+    this.modalSeguimientoDiarioOpen = true;
+  }
+
+  editDailyTracking(seguimiento: SeguimientoItemDto): void {
+    this.editingSeguimiento = seguimiento;
+    this.modalSeguimientoDiarioOpen = true;
+  }
+
+  deleteDailyTracking(id: number): void {
+    if (!confirm('¿Estás seguro de eliminar este registro de seguimiento diario?')) return;
+    // TODO: Implementar el servicio de eliminación
+    console.log('Eliminar seguimiento diario con ID:', id);
+  }
+
+  exportarAnalisis(): void {
+    // TODO: Implementar exportación de análisis
+    console.log('Exportar análisis');
   }
 }

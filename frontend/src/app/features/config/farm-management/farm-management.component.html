@@ -15,14 +15,42 @@
         </span>
       </div>
 
-      <button
-        (click)="openModal()"
-        class="btn-primary"
-        aria-label="Nueva granja"
-      >
-        <fa-icon [icon]="faPlus" aria-hidden="true"></fa-icon>
-        Nueva Granja
-      </button>
+      <div class="flex items-center gap-4">
+        <!-- Selector de empresa -->
+        <div class="flex items-center gap-2">
+          <app-company-selector 
+            [showLabel]="true"
+            size="sm"
+            variant="minimal"
+            (companyChanged)="onCompanyChanged($event)">
+          </app-company-selector>
+          
+          <!-- Indicador de carga de empresas -->
+          <div *ngIf="loadingCompanies" class="flex items-center gap-1 text-xs text-gray-500">
+            <div class="spinner spinner--sm"></div>
+            <span>Cargando empresas...</span>
+          </div>
+        </div>
+
+        <button
+          (click)="openModal()"
+          class="btn-primary"
+          aria-label="Nueva granja"
+        >
+          <fa-icon [icon]="faPlus" aria-hidden="true"></fa-icon>
+          Nueva Granja
+        </button>
+      </div>
+    </div>
+
+    <!-- Componente de prueba de integración -->
+    <div class="mb-6">
+      <app-company-test></app-company-test>
+    </div>
+
+    <!-- Componente de prueba de endpoints admin -->
+    <div class="mb-6">
+      <app-company-admin-test></app-company-admin-test>
     </div>
 
     <!-- Tabla -->

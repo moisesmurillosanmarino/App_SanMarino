@@ -72,3 +72,9 @@ WHERE table_name = 'seguimiento_lote_levante'
 AND column_name = 'lote_id';
 */
 
+
+
+
+
+
+

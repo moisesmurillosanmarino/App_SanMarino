@@ -122,12 +122,15 @@ builder.Services.AddDbContext<ZooSanMarinoContext>(opts =>
 builder.Services.AddScoped<IPasswordHasher<Login>, PasswordHasher<Login>>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
+builder.Services.AddScoped<ICompanyResolver, CompanyResolver>();
+builder.Services.AddScoped<IUserPermissionService, UserPermissionService>();
 
 // ─────────────────────────────────────
 // 8) Servicios de aplicación/infra
 // ─────────────────────────────────────
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IUserFarmService, UserFarmService>();
 builder.Services.AddScoped<ICompanyService, CompanyService>();
 builder.Services.AddScoped<IFarmService, FarmService>();
 builder.Services.AddScoped<INucleoService, NucleoService>();
@@ -143,8 +146,12 @@ builder.Services.AddScoped<ILoteSeguimientoService, LoteSeguimientoService>();
 builder.Services.AddScoped<IMasterListService, MasterListService>();
 builder.Services.AddScoped<ISeguimientoLoteLevanteService, SeguimientoLoteLevanteService>();
 builder.Services.AddScoped<IProduccionLoteService, ProduccionLoteService>();
+builder.Services.AddScoped<IProduccionDiariaService, ProduccionDiariaService>();
+builder.Services.AddScoped<IProduccionService, ProduccionService>();
+builder.Services.AddScoped<ISeguimientoProduccionService, SeguimientoProduccionService>();
 builder.Services.AddScoped<ICatalogItemService, CatalogItemService>();
 builder.Services.AddScoped<IFarmInventoryService, FarmInventoryService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IFarmInventoryMovementService, FarmInventoryMovementService>();
 builder.Services.AddScoped<IFarmInventoryReportService, FarmInventoryReportService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>(); 
@@ -212,7 +219,31 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             OnMessageReceived = ctx =>
             {
-                if (HttpMethods.IsOptions(ctx.Request.Method)) ctx.NoResult();
+                Console.WriteLine($"=== JWT OnMessageReceived ===");
+                Console.WriteLine($"Request Method: {ctx.Request.Method}");
+                Console.WriteLine($"Request Path: {ctx.Request.Path}");
+                Console.WriteLine($"Authorization Header: {ctx.Request.Headers.Authorization}");
+                Console.WriteLine($"Token: {ctx.Token}");
+                
+                if (HttpMethods.IsOptions(ctx.Request.Method)) 
+                {
+                    Console.WriteLine("OPTIONS request - NoResult()");
+                    ctx.NoResult();
+                }
+                else
+                {
+                    Console.WriteLine("Non-OPTIONS request - continuing");
+                }
+                
+                Console.WriteLine($"=== END JWT OnMessageReceived ===");
+                return Task.CompletedTask;
+            },
+            OnAuthenticationFailed = ctx =>
+            {
+                Console.WriteLine($"=== JWT OnAuthenticationFailed ===");
+                Console.WriteLine($"Exception: {ctx.Exception?.Message}");
+                Console.WriteLine($"Request Path: {ctx.Request.Path}");
+                Console.WriteLine($"=== END JWT OnAuthenticationFailed ===");
                 return Task.CompletedTask;
             }
         };
@@ -271,6 +302,16 @@ builder.Services.AddSwaggerGen(c =>
         return full;
     });
 
+    // ✅ Configuración para manejar archivos IFormFile
+    c.MapType<IFormFile>(() => new OpenApiSchema
+    {
+        Type = "string",
+        Format = "binary"
+    });
+
+    // ✅ Configuración para multipart/form-data
+    c.OperationFilter<FileUploadOperationFilter>();
+
     // (Opcional) XML comments
     // var xml = Path.Combine(AppContext.BaseDirectory, "ZooSanMarino.API.xml");
     // if (File.Exists(xml)) c.IncludeXmlComments(xml, includeControllerXmlComments: true);
@@ -279,7 +320,12 @@ builder.Services.AddSwaggerGen(c =>
 // ─────────────────────────────────────
 /* 13) Controllers */
 // ─────────────────────────────────────
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+    });
 
 var app = builder.Build();
 

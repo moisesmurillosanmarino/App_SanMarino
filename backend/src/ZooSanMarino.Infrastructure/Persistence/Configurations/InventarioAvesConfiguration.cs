@@ -102,9 +102,11 @@ public class InventarioAvesConfiguration : IEntityTypeConfiguration<InventarioAv
             .OnDelete(DeleteBehavior.Restrict)
             .HasConstraintName("fk_inventario_aves_farms_granja_id");
 
+        // Relación con Nucleo - clave compuesta
         builder.HasOne(x => x.Nucleo)
             .WithMany()
             .HasForeignKey(x => new { x.NucleoId, x.GranjaId })
+            .HasPrincipalKey(n => new { n.NucleoId, n.GranjaId })
             .OnDelete(DeleteBehavior.Restrict)
             .HasConstraintName("fk_inventario_aves_nucleos_nucleo_id_granja_id");
 

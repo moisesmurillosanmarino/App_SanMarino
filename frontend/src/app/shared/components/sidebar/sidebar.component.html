@@ -49,6 +49,14 @@
   <!-- Menú (desde base de datos vía observable menu$) -->
   <div class="flex-1 overflow-y-auto">
     <nav class="mt-4">
+      <!-- Acceso rápido: Mi Perfil -->
+      <div class="px-4 mb-2">
+        <a routerLink="/profile"
+           class="flex items-center px-4 py-2 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors border border-yellow-200 bg-yellow-50/40">
+          <span class="flex-1 text-sm font-medium">Mi Perfil</span>
+        </a>
+      </div>
+
       <ul class="space-y-1" *ngIf="(menu$ | async) as menu">
         <li *ngFor="let item of menu">
           <ng-container *ngTemplateOutlet="renderNode; context: {$implicit: item, level: 0}"></ng-container>

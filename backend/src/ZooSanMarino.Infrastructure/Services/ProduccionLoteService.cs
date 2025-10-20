@@ -42,28 +42,22 @@ public class ProduccionLoteService : AppInterfaces.IProduccionLoteService
 
         var ent = new ProduccionLote
         {
-            LoteId                = dto.LoteId,
-            FechaInicioProduccion = dto.FechaInicioProduccion,
-            HembrasIniciales      = dto.HembrasIniciales,
-            MachosIniciales       = dto.MachosIniciales,
-            HuevosIniciales       = dto.HuevosIniciales,
-            TipoNido              = dto.TipoNido,
-            // Mapeo DTO → Entidad
-            NucleoId              = dto.NucleoProduccionId,
-            GranjaId              = dto.GranjaId,
-            Ciclo                 = dto.Ciclo
+            LoteId = dto.LoteId,
+            FechaInicio = dto.FechaInicioProduccion,
+            AvesInicialesH = dto.HembrasIniciales,
+            AvesInicialesM = dto.MachosIniciales,
+            Observaciones = dto.TipoNido
         };
 
         _ctx.ProduccionLotes.Add(ent);
         await _ctx.SaveChangesAsync();
 
         return new ProduccionLoteDto(
-            ent.Id, ent.LoteId, ent.FechaInicioProduccion,
-            ent.HembrasIniciales, ent.MachosIniciales, ent.HuevosIniciales,
-            ent.TipoNido,
-            // Entidad → DTO (campo se llama NucleoProduccionId en el DTO)
-            ent.NucleoId,
-            ent.GranjaId, ent.Ciclo
+            ent.Id, ent.LoteId, ent.FechaInicio,
+            ent.AvesInicialesH, ent.AvesInicialesM, 0, // HuevosIniciales = 0 para compatibilidad
+            ent.Observaciones ?? "", // TipoNido
+            "", // NucleoId vacío para compatibilidad
+            dto.GranjaId, dto.Ciclo
         );
     }
 
@@ -76,25 +70,28 @@ public class ProduccionLoteService : AppInterfaces.IProduccionLoteService
 
         return await q
             .Select(x => new ProduccionLoteDto(
-                x.Id, x.LoteId, x.FechaInicioProduccion,
-                x.HembrasIniciales, x.MachosIniciales, x.HuevosIniciales,
-                x.TipoNido, x.NucleoId, x.GranjaId, x.Ciclo))
+                x.Id, x.LoteId, x.FechaInicio,
+                x.AvesInicialesH, x.AvesInicialesM, 0, // HuevosIniciales = 0
+                x.Observaciones ?? "", "", // NucleoId vacío
+                0, "" // GranjaId = 0, Ciclo vacío
+            ))
             .ToListAsync();
     }
 
-    public async Task<ProduccionLoteDto?> GetByLoteIdAsync(int loteId)  // Changed from string to int
+    public async Task<ProduccionLoteDto?> GetByLoteIdAsync(int loteId)
     {
         var q = from p in _ctx.ProduccionLotes.AsNoTracking()
                 join l in _ctx.Lotes.AsNoTracking() on p.LoteId equals l.LoteId
-                where l.CompanyId == _current.CompanyId && l.DeletedAt == null && p.LoteId == loteId  // Changed from loteId
+                where l.CompanyId == _current.CompanyId && l.DeletedAt == null && p.LoteId == loteId
                 select p;
 
-        var x = await q.OrderByDescending(p => p.FechaInicioProduccion).FirstOrDefaultAsync();
+        var x = await q.OrderByDescending(p => p.FechaInicio).FirstOrDefaultAsync();
         return x is null ? null
             : new ProduccionLoteDto(
-                x.Id, x.LoteId, x.FechaInicioProduccion,
-                x.HembrasIniciales, x.MachosIniciales, x.HuevosIniciales,
-                x.TipoNido, x.NucleoId, x.GranjaId, x.Ciclo);
+                x.Id, x.LoteId, x.FechaInicio,
+                x.AvesInicialesH, x.AvesInicialesM, 0,
+                x.Observaciones ?? "", "", 0, ""
+            );
     }
 
     public async Task<ProduccionLoteDto?> UpdateAsync(UpdateProduccionLoteDto dto)
@@ -120,22 +117,18 @@ public class ProduccionLoteService : AppInterfaces.IProduccionLoteService
         if (lote.GranjaId != dto.GranjaId)
             throw new InvalidOperationException("El Lote no pertenece a la granja indicada para producción.");
 
-        ent.LoteId                = dto.LoteId;
-        ent.FechaInicioProduccion = dto.FechaInicioProduccion;
-        ent.HembrasIniciales      = dto.HembrasIniciales;
-        ent.MachosIniciales       = dto.MachosIniciales;
-        ent.HuevosIniciales       = dto.HuevosIniciales;
-        ent.TipoNido              = dto.TipoNido;
-        ent.NucleoId              = dto.NucleoProduccionId; // ← map a entidad
-        ent.GranjaId              = dto.GranjaId;
-        ent.Ciclo                 = dto.Ciclo;
+        ent.LoteId = dto.LoteId;
+        ent.FechaInicio = dto.FechaInicioProduccion;
+        ent.AvesInicialesH = dto.HembrasIniciales;
+        ent.AvesInicialesM = dto.MachosIniciales;
+        ent.Observaciones = dto.TipoNido;
 
         await _ctx.SaveChangesAsync();
 
         return new ProduccionLoteDto(
-            ent.Id, ent.LoteId, ent.FechaInicioProduccion,
-            ent.HembrasIniciales, ent.MachosIniciales, ent.HuevosIniciales,
-            ent.TipoNido, ent.NucleoId, ent.GranjaId, ent.Ciclo
+            ent.Id, ent.LoteId, ent.FechaInicio,
+            ent.AvesInicialesH, ent.AvesInicialesM, 0,
+            ent.Observaciones ?? "", "", 0, ""
         );
     }
 
@@ -160,19 +153,20 @@ public class ProduccionLoteService : AppInterfaces.IProduccionLoteService
                 where l.CompanyId == _current.CompanyId && l.DeletedAt == null
                 select p;
 
-        if (filter.LoteId.HasValue)  // Changed from string.IsNullOrWhiteSpace check
-            q = q.Where(x => x.LoteId == filter.LoteId.Value);  // Changed from filter.LoteId
+        if (filter.LoteId.HasValue)
+            q = q.Where(x => x.LoteId == filter.LoteId.Value);
         if (filter.Desde.HasValue)
-            q = q.Where(x => x.FechaInicioProduccion >= filter.Desde.Value);
+            q = q.Where(x => x.FechaInicio >= filter.Desde.Value);
         if (filter.Hasta.HasValue)
-            q = q.Where(x => x.FechaInicioProduccion <= filter.Hasta.Value);
+            q = q.Where(x => x.FechaInicio <= filter.Hasta.Value);
 
         return await q
-            .OrderBy(x => x.LoteId).ThenBy(x => x.FechaInicioProduccion)
+            .OrderBy(x => x.LoteId).ThenBy(x => x.FechaInicio)
             .Select(x => new ProduccionLoteDto(
-                x.Id, x.LoteId, x.FechaInicioProduccion,
-                x.HembrasIniciales, x.MachosIniciales, x.HuevosIniciales,
-                x.TipoNido, x.NucleoId, x.GranjaId, x.Ciclo))
+                x.Id, x.LoteId, x.FechaInicio,
+                x.AvesInicialesH, x.AvesInicialesM, 0,
+                x.Observaciones ?? "", "", 0, ""
+            ))
             .ToListAsync();
     }
 }

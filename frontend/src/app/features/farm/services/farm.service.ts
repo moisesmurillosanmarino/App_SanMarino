@@ -1,8 +1,10 @@
 // src/app/features/farm/services/farm.service.ts
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
+import { TokenStorageService } from '../../../core/auth/token-storage.service';
+import { AuthSession } from '../../../core/auth/auth.models';
 
 export interface FarmDto {
   id: number;                  // ← número garantizado al leer
@@ -43,11 +45,26 @@ export interface UpdateFarmDto extends CreateFarmDto {
 @Injectable({ providedIn: 'root' })
 export class FarmService {
   private readonly baseUrl = `${environment.apiUrl}/Farm`;
+  private tokenStorage = inject(TokenStorageService);
 
   constructor(private http: HttpClient) {}
 
   getAll(): Observable<FarmDto[]> {
-    return this.http.get<FarmDto[]>(this.baseUrl);
+    // Obtener el ID del usuario de la sesión actual
+    const session: AuthSession | null = this.tokenStorage.get();
+    const userId = session?.user?.id;
+    
+    console.log('FarmService.getAll() - Usuario de sesión:', userId);
+    
+    // Crear parámetros de consulta
+    let params = new HttpParams();
+    if (userId) {
+      params = params.set('id_user_session', userId);
+    }
+    
+    console.log('FarmService.getAll() - Parámetros:', params.toString());
+    
+    return this.http.get<FarmDto[]>(this.baseUrl, { params });
   }
 
   getById(id: number): Observable<FarmDto> {

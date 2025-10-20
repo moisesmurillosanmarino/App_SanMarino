@@ -31,6 +31,8 @@ export class AuthService {
           user: {
             id: res.userId,
             username: res.username,
+            firstName: res.firstName,
+            surName: res.surName,
             fullName: res.fullName,
             roles: res.roles ?? [],
             permisos: res.permisos ?? [],
@@ -56,6 +58,42 @@ export class AuthService {
 
   isAuthenticated() {
     return !!this.storage.getToken();
+  }
+
+  // Actualiza los datos del usuario en la sesión actual
+  updateUserData(userData: { firstName?: string; surName?: string; fullName?: string }) {
+    const currentSession = this.storage.get();
+    if (!currentSession) return;
+
+    const updatedSession = {
+      ...currentSession,
+      user: {
+        ...currentSession.user,
+        fullName: userData.fullName || `${userData.firstName || ''} ${userData.surName || ''}`.trim() || currentSession.user.fullName
+      }
+    };
+
+    const persistedInLocal = !!localStorage.getItem('auth_session');
+    this.storage.save(updatedSession, persistedInLocal);
+  }
+
+  // Recarga el menú dinámico desde el backend
+  reloadMenu() {
+    return this.http.get<{ menu: MenuItem[]; menusByRole: RoleMenusLite[] }>(`${this.baseUrl}/bootstrap`).pipe(
+      tap(response => {
+        const currentSession = this.storage.get();
+        if (!currentSession) return;
+
+        const updatedSession = {
+          ...currentSession,
+          menu: response.menu,
+          menusByRole: response.menusByRole
+        };
+
+        const persistedInLocal = !!localStorage.getItem('auth_session');
+        this.storage.save(updatedSession, persistedInLocal);
+      })
+    );
   }
 
   // (Opcional) refrescar menú desde API por cambio de empresa

@@ -150,6 +150,26 @@ export class ExplorerPage implements OnInit {
     this.router.navigate(['./query-console']);
   }
 
+  goDataManagement() {
+    const sc = this.selectedSchema();
+    const tb = this.selectedTable();
+    if (!tb) return;
+    
+    this.router.navigate(['./data-management'], {
+      queryParams: { schema: sc, table: tb }
+    });
+  }
+
+  goIndexManagement() {
+    const sc = this.selectedSchema();
+    const tb = this.selectedTable();
+    if (!tb) return;
+    
+    this.router.navigate(['./index-management'], {
+      queryParams: { schema: sc, table: tb }
+    });
+  }
+
   goBack() {
     this.router.navigate(['/db-studio']);
   }

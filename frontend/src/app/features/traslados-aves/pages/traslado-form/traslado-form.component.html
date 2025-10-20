@@ -1,373 +1,224 @@
-<div class="ux-page" [attr.aria-busy]="isProcessing() ? 'true' : null">
-  <app-sidebar class="ux-sidebar"></app-sidebar>
+<!-- src/app/features/traslados-aves/pages/traslado-form/traslado-form.component.html -->
+<div class="traslado-form-container">
+  <app-sidebar class="sidebar"></app-sidebar>
 
-  <div class="ux-main">
+  <div class="main-content">
     <!-- Header -->
-    <header class="ux-header">
-      <div class="ux-header__title">
+    <header class="main-header">
+      <div class="header-title">
         <h1>🚚 Traslado de Aves</h1>
-        <p class="ux-header__subtitle">Realizar traslado rápido entre lotes</p>
+        <p>Realizar traslado entre lotes</p>
       </div>
-      <div class="field-hint" *ngIf="inventarioOrigen()">
-        Regla: si trasladas un género, debe ser exactamente su disponible.
-      </div>
-      <div class="ux-header__actions">
-        <button type="button" class="btn btn--ghost" (click)="navegarADashboard()">
-          ← Volver al Dashboard
+      <div class="header-actions">
+        <button class="btn btn-secondary" (click)="navegarADashboard()">
+          📊 Dashboard
         </button>
-        <button type="button" class="btn btn--outline" (click)="navegarAMovimientos()">
-          📋 Ver Movimientos
+        <button class="btn btn-outline" (click)="navegarAMovimientos()">
+          📋 Movimientos
         </button>
       </div>
     </header>
 
-    <!-- Filtros de Lotes -->
-    <section class="ux-card">
-      <header class="ux-card__header">
-        <h2>🔍 Selección de Lotes</h2>
-      </header>
-      
-      <div class="ux-card__content">
-        <div class="lote-selection-grid">
-          <!-- Filtro Lote Origen -->
-          <div class="lote-filter-section">
-            <h3 class="section-title">📤 Lote Origen</h3>
-            <app-hierarchical-filter
-              [showLoteSelection]="true"
-              [showChips]="true"
-              [filterLabel]="'Filtros Lote Origen'"
-              [placeholder]="'Buscar lote origen...'"
-              (filterChange)="onFiltrosOrigenChange($event)"
-              (loteSelected)="onLoteOrigenSelected($event)"
-              (stateChange)="onEstadoOrigenChange($event)">
-            </app-hierarchical-filter>
-          </div>
+    <!-- Error Banner -->
+    <div class="error-banner" *ngIf="hasError()">
+      <div class="error-content">
+        <span class="error-icon">⚠️</span>
+        <span class="error-message">{{ error() }}</span>
+        <button class="btn btn-sm" (click)="limpiarMensajes()">✕</button>
+      </div>
+    </div>
 
-          <!-- Filtro Lote Destino -->
-          <div class="lote-filter-section">
-            <h3 class="section-title">📥 Lote Destino</h3>
-            <app-hierarchical-filter
-              [showLoteSelection]="true"
-              [showChips]="true"
-              [filterLabel]="'Filtros Lote Destino'"
-              [placeholder]="'Buscar lote destino...'"
-              (filterChange)="onFiltrosDestinoChange($event)"
-              (loteSelected)="onLoteDestinoSelected($event)"
-              (stateChange)="onEstadoDestinoChange($event)">
-            </app-hierarchical-filter>
+    <!-- Success Banner -->
+    <div class="success-banner" *ngIf="hasSuccess()">
+      <div class="success-content">
+        <span class="success-icon">✅</span>
+        <span class="success-message">{{ success()?.message }}</span>
+        <button class="btn btn-sm" (click)="limpiarMensajes()">✕</button>
+      </div>
+    </div>
+
+    <!-- Formulario -->
+    <div class="form-container">
+      <form class="ux-form" [formGroup]="form" (ngSubmit)="procesarTraslado()">
+        
+        <!-- Selección de Lotes -->
+        <div class="form-section">
+          <h3>📍 Selección de Lotes</h3>
+          
+          <div class="lotes-grid">
+            <!-- Lote Origen -->
+            <div class="lote-selection">
+              <label class="ux-label">Lote Origen *</label>
+              <app-hierarchical-filter
+                [showLoteSelection]="true"
+                (loteSelected)="onLoteOrigenSelected($event)"
+                placeholder="Seleccionar lote origen...">
+              </app-hierarchical-filter>
+              
+              <!-- Inventario Origen -->
+              <div class="inventario-info" *ngIf="inventarioOrigen()">
+                <div class="inventario-card">
+                  <h4>📦 Inventario Disponible</h4>
+                  <div class="inventario-stats">
+                    <div class="stat">
+                      <span class="stat-label">Hembras:</span>
+                      <span class="stat-value">{{ formatearNumero(inventarioOrigen()!.cantidadHembras) }}</span>
+                    </div>
+                    <div class="stat">
+                      <span class="stat-label">Machos:</span>
+                      <span class="stat-value">{{ formatearNumero(inventarioOrigen()!.cantidadMachos) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Lote Destino -->
+            <div class="lote-selection">
+              <label class="ux-label">Lote Destino *</label>
+              <app-hierarchical-filter
+                [showLoteSelection]="true"
+                (loteSelected)="onLoteDestinoSelected($event)"
+                placeholder="Seleccionar lote destino...">
+              </app-hierarchical-filter>
+              
+              <!-- Inventario Destino -->
+              <div class="inventario-info" *ngIf="inventarioDestino()">
+                <div class="inventario-card">
+                  <h4>📦 Inventario Actual</h4>
+                  <div class="inventario-stats">
+                    <div class="stat">
+                      <span class="stat-label">Hembras:</span>
+                      <span class="stat-value">{{ formatearNumero(inventarioDestino()!.cantidadHembras) }}</span>
+                    </div>
+                    <div class="stat">
+                      <span class="stat-label">Machos:</span>
+                      <span class="stat-value">{{ formatearNumero(inventarioDestino()!.cantidadMachos) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
 
-    <!-- Formulario de Traslado -->
-    <section class="ux-card" *ngIf="loteOrigenSeleccionado() && loteDestinoSeleccionado()">
-      <header class="ux-card__header">
-        <h2>🔄 Formulario de Traslado</h2>
-        <button 
-          type="button" 
-          class="btn btn--ghost btn--sm" 
-          (click)="limpiarFormulario()"
-          [disabled]="isProcessing()">
-          🗑️ Limpiar
-        </button>
-      </header>
-      
-      <div class="ux-card__content">
-        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="traslado-form">
-          <!-- Selección de Lotes -->
-          <div class="lotes-section">
-            <div class="lotes-grid">
-              <!-- Lote Origen -->
-              <div class="lote-field">
-                <label for="loteOrigenId" class="ux-label">
-                  📦 Lote Origen <span class="required">*</span>
-                </label>
-                <select 
-                  id="loteOrigenId" 
-                  class="ux-select" 
-                  formControlName="loteOrigenId"
-                  [class.is-invalid]="isFieldInvalid('loteOrigenId')">
-                  <option value="">Seleccione lote origen</option>
-                  <option *ngFor="let lote of lotesDisponibles()" [value]="lote">
-                    {{ lote }}
-                  </option>
-                </select>
-                <div class="field-error" *ngIf="isFieldInvalid('loteOrigenId')">
-                  {{ getFieldError('loteOrigenId') }}
-                </div>
+        <!-- Cantidades a Trasladar -->
+        <div class="form-section">
+          <h3>📊 Cantidades a Trasladar</h3>
+          
+          <div class="cantidades-grid">
+            <!-- Hembras -->
+            <div class="cantidad-field">
+              <label class="ux-label" for="cantidad-hembras">Cantidad de Hembras *</label>
+              <div class="input-group">
+                <input
+                  id="cantidad-hembras"
+                  type="number"
+                  class="ux-input quantity-input"
+                  formControlName="cantidadHembras"
+                  min="0"
+                  [attr.max]="inventarioOrigen()?.cantidadHembras ?? null"
+                  placeholder="0"
+                />
+                <span class="max-indicator">
+                  / {{ inventarioOrigen()?.cantidadHembras ?? '—' }} disp.
+                </span>
               </div>
-              
-              <!-- Lote Destino -->
-              <div class="lote-field">
-                <label for="loteDestinoId" class="ux-label">
-                  📥 Lote Destino <span class="required">*</span>
-                </label>
-                <select 
-                  id="loteDestinoId" 
-                  class="ux-select" 
-                  formControlName="loteDestinoId"
-                  [class.is-invalid]="isFieldInvalid('loteDestinoId')">
-                  <option value="">Seleccione lote destino</option>
-                  <option *ngFor="let lote of lotesDisponibles()" [value]="lote">
-                    {{ lote }}
-                  </option>
-                </select>
-                <div class="field-error" *ngIf="isFieldInvalid('loteDestinoId')">
-                  {{ getFieldError('loteDestinoId') }}
-                </div>
+              <div class="field-error" *ngIf="isFieldInvalid('cantidadHembras')">
+                {{ getFieldError('cantidadHembras') }}
               </div>
-            </div>
-
-            <!-- Información de Inventarios -->
-            <div class="inventarios-info" *ngIf="inventarioOrigen() || inventarioDestino()">
-              <!-- Inventario Origen -->
-              <div class="inventario-card inventario-card--origen" *ngIf="inventarioOrigen()">
-                <h4>📦 Inventario Origen</h4>
-                <div class="inventario-details">
-                  <div class="detail-item">
-                    <span class="detail-label">Lote:</span>
-                    <span class="detail-value">{{ inventarioOrigen()!.loteId }}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Granja:</span>
-                    <span class="detail-value">{{ inventarioOrigen()!.granjaId }}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Núcleo:</span>
-                    <span class="detail-value">{{ inventarioOrigen()!.nucleoId }}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Hembras:</span>
-                    <span class="detail-value detail-value--success">
-                      {{ formatearNumero(inventarioOrigen()!.cantidadHembras) }}
-                    </span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Machos:</span>
-                    <span class="detail-value detail-value--info">
-                      {{ formatearNumero(inventarioOrigen()!.cantidadMachos) }}
-                    </span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Total:</span>
-                    <span class="detail-value detail-value--primary">
-                      {{ formatearNumero(inventarioOrigen()!.cantidadHembras + inventarioOrigen()!.cantidadMachos) }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Inventario Destino -->
-              <div class="inventario-card inventario-card--destino" *ngIf="inventarioDestino()">
-                <h4>📥 Inventario Destino</h4>
-                <div class="inventario-details">
-                  <div class="detail-item">
-                    <span class="detail-label">Lote:</span>
-                    <span class="detail-value">{{ inventarioDestino()!.loteId }}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Granja:</span>
-                    <span class="detail-value">{{ inventarioDestino()!.granjaId }}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Núcleo:</span>
-                    <span class="detail-value">{{ inventarioDestino()!.nucleoId }}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Hembras:</span>
-                    <span class="detail-value detail-value--success">
-                      {{ formatearNumero(inventarioDestino()!.cantidadHembras) }}
-                    </span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Machos:</span>
-                    <span class="detail-value detail-value--info">
-                      {{ formatearNumero(inventarioDestino()!.cantidadMachos) }}
-                    </span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Total:</span>
-                    <span class="detail-value detail-value--primary">
-                      {{ formatearNumero(inventarioDestino()!.cantidadHembras + inventarioDestino()!.cantidadMachos) }}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Cantidades a Trasladar -->
-          <div class="cantidades-section">
-            <h3>🔢 Cantidades a Trasladar</h3>
-            
-            <div class="cantidades-grid">
-              <!-- Cantidad Hembras -->
-              <div class="cantidad-field">
-                <label for="cantidadHembras" class="ux-label">
-                  🐔 Cantidad Hembras <span class="required">*</span>
-                </label>
-                <div class="input-with-actions">
-                  <input 
-                    type="number" 
-                    id="cantidadHembras" 
-                    class="ux-input" 
-                    formControlName="cantidadHembras" 
-                    min="0"
-                    [max]="inventarioOrigen()?.cantidadHembras || 999999"
-                    [class.is-invalid]="isFieldInvalid('cantidadHembras')">
-                  <button 
-                    type="button" 
-                    class="btn btn--ghost btn--sm"
-                    (click)="trasladarTodasLasHembras()"
-                    [disabled]="!inventarioOrigen()"
-                    title="Trasladar todas las hembras">
-                    Todas
-                  </button>
-                </div>
-                <div class="field-error" *ngIf="isFieldInvalid('cantidadHembras')">
-                  {{ getFieldError('cantidadHembras') }}
-                </div>
-                <div class="field-hint" *ngIf="inventarioOrigen()">
-                  Disponibles: {{ formatearNumero(inventarioOrigen()!.cantidadHembras) }}
-                </div>
-              </div>
-              
-              <!-- Cantidad Machos -->
-              <div class="cantidad-field">
-                <label for="cantidadMachos" class="ux-label">
-                  🐓 Cantidad Machos <span class="required">*</span>
-                </label>
-                <div class="input-with-actions">
-                  <input 
-                    type="number" 
-                    id="cantidadMachos" 
-                    class="ux-input" 
-                    formControlName="cantidadMachos" 
-                    min="0"
-                    [max]="inventarioOrigen()?.cantidadMachos || 999999"
-                    [class.is-invalid]="isFieldInvalid('cantidadMachos')">
-                  <button 
-                    type="button" 
-                    class="btn btn--ghost btn--sm"
-                    (click)="trasladarTodosLosMachos()"
-                    [disabled]="!inventarioOrigen()"
-                    title="Trasladar todos los machos">
-                    Todos
-                  </button>
-                </div>
-                <div class="field-error" *ngIf="isFieldInvalid('cantidadMachos')">
-                  {{ getFieldError('cantidadMachos') }}
-                </div>
-                <div class="field-hint" *ngIf="inventarioOrigen()">
-                  Disponibles: {{ formatearNumero(inventarioOrigen()!.cantidadMachos) }}
-                </div>
-              </div>
-            </div>
-
-            <!-- Acciones Rápidas -->
-            <div class="quick-actions" *ngIf="inventarioOrigen()">
               <button 
                 type="button" 
-                class="btn btn--outline btn--sm"
-                (click)="trasladarTodo()">
-                🔄 Trasladar Todo
+                class="btn btn-sm btn-outline"
+                (click)="trasladarTodasLasHembras()"
+                [disabled]="!inventarioOrigen()">
+                Trasladar todas
+              </button>
+            </div>
+
+            <!-- Machos -->
+            <div class="cantidad-field">
+              <label class="ux-label" for="cantidad-machos">Cantidad de Machos *</label>
+              <div class="input-group">
+                <input
+                  id="cantidad-machos"
+                  type="number"
+                  class="ux-input quantity-input"
+                  formControlName="cantidadMachos"
+                  min="0"
+                  [attr.max]="inventarioOrigen()?.cantidadMachos ?? null"
+                  placeholder="0"
+                />
+                <span class="max-indicator">
+                  / {{ inventarioOrigen()?.cantidadMachos ?? '—' }} disp.
+                </span>
+              </div>
+              <div class="field-error" *ngIf="isFieldInvalid('cantidadMachos')">
+                {{ getFieldError('cantidadMachos') }}
+              </div>
+              <button 
+                type="button" 
+                class="btn btn-sm btn-outline"
+                (click)="trasladarTodosLosMachos()"
+                [disabled]="!inventarioOrigen()">
+                Trasladar todos
               </button>
             </div>
           </div>
 
-          <!-- Observaciones -->
-          <div class="observaciones-section">
-            <label for="observaciones" class="ux-label">📝 Observaciones</label>
-            <textarea 
-              id="observaciones" 
-              class="ux-textarea" 
-              formControlName="observaciones" 
-              rows="3" 
-              placeholder="Motivo del traslado, observaciones adicionales...">
-            </textarea>
-          </div>
-
-          <!-- Resumen del Traslado -->
-          <div class="resumen-traslado" *ngIf="totalATrasladas() > 0">
-            <h4>📊 Resumen del Traslado</h4>
-            <div class="resumen-content">
-              <div class="resumen-item">
-                <span class="resumen-label">Total a trasladar:</span>
-                <span class="resumen-value resumen-value--primary">
-                  {{ formatearNumero(totalATrasladas()) }} aves
-                </span>
-              </div>
-              <div class="resumen-item">
-                <span class="resumen-label">Detalle:</span>
-                <span class="resumen-value">
-                  {{ formatearNumero(form.get('cantidadHembras')?.value || 0) }} hembras + 
-                  {{ formatearNumero(form.get('cantidadMachos')?.value || 0) }} machos
-                </span>
-              </div>
-              <div class="resumen-item" *ngIf="form.get('loteOrigenId')?.value && form.get('loteDestinoId')?.value">
-                <span class="resumen-label">Movimiento:</span>
-                <span class="resumen-value">
-                  {{ form.get('loteOrigenId')?.value }} → {{ form.get('loteDestinoId')?.value }}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Mensajes de Estado -->
-          <div class="status-messages">
-            <!-- Error -->
-            <div class="alert alert--danger" *ngIf="hasError()">
-              <div class="alert__icon">⚠️</div>
-              <div class="alert__content">
-                <strong>Error:</strong> {{ error() }}
-              </div>
-            </div>
-
-            <!-- Éxito -->
-            <div class="alert alert--success" *ngIf="hasSuccess()">
-              <div class="alert__icon">✅</div>
-              <div class="alert__content">
-                <strong>¡Éxito!</strong> {{ success()!.message }}
-                <div class="success-details" *ngIf="success()!.inventarioOrigenActualizado">
-                  <p><strong>Inventario actualizado:</strong></p>
-                  <ul>
-                    <li>
-                      <strong>{{ success()!.inventarioOrigenActualizado!.loteId }}:</strong>
-                      {{ formatearNumero(success()!.inventarioOrigenActualizado!.cantidadHembras) }} hembras, 
-                      {{ formatearNumero(success()!.inventarioOrigenActualizado!.cantidadMachos) }} machos
-                    </li>
-                    <li>
-                      <strong>{{ success()!.inventarioDestinoActualizado!.loteId }}:</strong>
-                      {{ formatearNumero(success()!.inventarioDestinoActualizado!.cantidadHembras) }} hembras, 
-                      {{ formatearNumero(success()!.inventarioDestinoActualizado!.cantidadMachos) }} machos
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Botones de Acción -->
-          <div class="form-actions">
+          <!-- Botón para trasladar todo -->
+          <div class="trasladar-todo">
             <button 
               type="button" 
-              class="btn btn--ghost" 
-              (click)="limpiarFormulario()"
-              [disabled]="isProcessing()">
-              🗑️ Limpiar
-            </button>
-            <button 
-              type="submit" 
-              class="btn btn--primary" 
-              [disabled]="!isFormValid() || isProcessing() || totalATrasladas() === 0">
-              <span class="btn-spinner" *ngIf="isProcessing()"></span>
-              <span *ngIf="!isProcessing()">🚚</span>
-              {{ isProcessing() ? 'Procesando...' : 'Realizar Traslado' }}
+              class="btn btn-outline"
+              (click)="trasladarTodo()"
+              [disabled]="!inventarioOrigen()">
+              📦 Trasladar todo el inventario
             </button>
           </div>
-        </form>
-      </div>
-    </section>
+
+          <!-- Total a trasladar -->
+          <div class="total-traslado" *ngIf="totalATrasladas() > 0">
+            <div class="total-card">
+              <h4>📊 Total a Trasladar</h4>
+              <div class="total-value">{{ formatearNumero(totalATrasladas()) }} aves</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Observaciones -->
+        <div class="form-section">
+          <h3>📝 Observaciones</h3>
+          <div class="observaciones-field">
+            <label class="ux-label" for="observaciones">Observaciones (opcional)</label>
+            <textarea
+              id="observaciones"
+              class="ux-textarea"
+              formControlName="observaciones"
+              placeholder="Agregar observaciones sobre el traslado..."
+              rows="3">
+            </textarea>
+          </div>
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="form-actions">
+          <button 
+            type="button" 
+            class="btn btn-outline"
+            (click)="limpiarFormulario()">
+            🗑️ Limpiar
+          </button>
+          
+          <button 
+            type="submit" 
+            class="btn btn-primary"
+            [disabled]="!isFormValid() || isProcessing() || totalATrasladas() === 0">
+            <span *ngIf="isProcessing()">⏳ Procesando...</span>
+            <span *ngIf="!isProcessing()">🚚 Realizar Traslado</span>
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>

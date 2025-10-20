@@ -1,5 +1,5 @@
 // src/app/features/galpon/services/galpon.service.ts
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
@@ -8,8 +8,9 @@ import { GalponDetailDto, CreateGalponDto, UpdateGalponDto } from '../models/gal
 @Injectable({ providedIn: 'root' })
 export class GalponService {
   private readonly baseUrl = `${environment.apiUrl}/Galpon`;
+  private readonly http = inject(HttpClient);
 
-  constructor(private http: HttpClient) {}
+  constructor() {}
 
   /** Listado (detalle) */
   getAll(): Observable<GalponDetailDto[]> {

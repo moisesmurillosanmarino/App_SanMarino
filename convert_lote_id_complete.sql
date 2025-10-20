@@ -200,3 +200,9 @@ FROM public.lotes
 ORDER BY lote_id DESC 
 LIMIT 5;
 
+
+
+
+
+
+

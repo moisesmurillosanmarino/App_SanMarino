@@ -180,6 +180,29 @@ public class AuthController : ControllerBase
         });
     }
 
+    /// <summary>Recuperación de contraseña por email.</summary>
+    [AllowAnonymous]
+    [HttpPost("recover-password")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(PasswordRecoveryResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> RecoverPassword([FromBody] PasswordRecoveryRequestDto dto, CancellationToken ct = default)
+    {
+        if (!ModelState.IsValid) return ValidationProblem(ModelState);
+
+        try
+        {
+            var result = await _auth.RecoverPasswordAsync(dto);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error inesperado en /api/Auth/recover-password");
+            return StatusCode(StatusCodes.Status500InternalServerError, new { message = "Error interno" });
+        }
+    }
+
     /// <summary>Ping autenticado (para probar token desde el front).</summary>
     [Authorize]
     [HttpGet("ping")]

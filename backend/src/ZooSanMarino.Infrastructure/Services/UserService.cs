@@ -12,11 +12,15 @@ public class UserService : IUserService
 {
     private readonly ZooSanMarinoContext _ctx;
     private readonly IPasswordHasher<Login> _hasher;
+    private readonly ICurrentUser _currentUser;
+    private readonly IUserPermissionService _userPermissionService;
 
-    public UserService(ZooSanMarinoContext ctx, IPasswordHasher<Login> hasher)
+    public UserService(ZooSanMarinoContext ctx, IPasswordHasher<Login> hasher, ICurrentUser currentUser, IUserPermissionService userPermissionService)
     {
         _ctx = ctx;
         _hasher = hasher;
+        _currentUser = currentUser;
+        _userPermissionService = userPermissionService;
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -32,6 +36,7 @@ public class UserService : IUserService
 
         var companyIds = (dto.CompanyIds ?? Array.Empty<int>()).Distinct().ToArray();
         var roleIds    = (dto.RoleIds    ?? Array.Empty<int>()).Distinct().ToArray();
+        var farmIds    = (dto.FarmIds    ?? Array.Empty<int>()).Distinct().ToArray();
 
         // (Opcional) exigir al menos una empresa y un rol para alta
         if (companyIds.Length == 0)
@@ -46,17 +51,18 @@ public class UserService : IUserService
         // Validaciones de FK
         await ValidateCompaniesAsync(companyIds);
         await ValidateRolesAsync(roleIds);
+        await ValidateFarmsAsync(farmIds);
 
         using var tx = await _ctx.Database.BeginTransactionAsync();
 
         var user = new User
         {
             Id        = Guid.NewGuid(),
-            surName   = dto.SurName?.Trim(),
-            firstName = dto.FirstName?.Trim(),
-            cedula    = dto.Cedula?.Trim(),
-            telefono  = dto.Telefono?.Trim(),
-            ubicacion = dto.Ubicacion?.Trim(),
+            surName   = dto.SurName?.Trim() ?? string.Empty,
+            firstName = dto.FirstName?.Trim() ?? string.Empty,
+            cedula    = dto.Cedula?.Trim() ?? string.Empty,
+            telefono  = dto.Telefono?.Trim() ?? string.Empty,
+            ubicacion = dto.Ubicacion?.Trim() ?? string.Empty,
             IsActive  = true,
             CreatedAt = DateTime.UtcNow
         };
@@ -86,6 +92,22 @@ public class UserService : IUserService
         _ctx.UserRoles.AddRange(pairs);
         await _ctx.SaveChangesAsync();
 
+        // Crear asociaciones con granjas
+        if (farmIds.Length > 0)
+        {
+            var userFarms = farmIds.Select((farmId, index) => new UserFarm
+            {
+                UserId = user.Id,
+                FarmId = farmId,
+                IsAdmin = false,
+                IsDefault = index == 0, // Primera granja como default
+                CreatedAt = DateTime.UtcNow,
+                CreatedByUserId = user.Id // El usuario se crea a sí mismo
+            });
+            _ctx.UserFarms.AddRange(userFarms);
+            await _ctx.SaveChangesAsync();
+        }
+
         await tx.CommitAsync();
 
         // Proyección
@@ -93,6 +115,17 @@ public class UserService : IUserService
             .Where(ur => ur.UserId == user.Id)
             .Select(ur => ur.Role.Name)
             .Where(n => n != null && n != "")
+            .ToArrayAsync();
+
+        var farms = await _ctx.UserFarms
+            .Where(uf => uf.UserId == user.Id)
+            .Include(uf => uf.Farm)
+            .Select(uf => new UserFarmLiteDto(
+                uf.FarmId,
+                uf.Farm.Name,
+                uf.IsAdmin,
+                uf.IsDefault
+            ))
             .ToArrayAsync();
 
         return new UserDto(
@@ -104,6 +137,7 @@ public class UserService : IUserService
             user.ubicacion ?? string.Empty,
             rolesNames,
             companyIds,
+            farms,
             user.IsActive,
             user.IsLocked,
             user.CreatedAt,
@@ -116,10 +150,18 @@ public class UserService : IUserService
     // ─────────────────────────────────────────────────────────────────────
     public async Task<IEnumerable<UserDto>> GetAllAsync()
     {
+        // Obtener usuarios que pertenecen a las empresas asignadas al usuario actual
+        var usersFromAssignedCompanies = await _userPermissionService.GetUsersFromAssignedCompaniesAsync(_currentUser.UserId);
+        
+        // Convertir a lista de IDs para la consulta
+        var userIds = usersFromAssignedCompanies.Select(u => u.Id).ToList();
+
         return await _ctx.Users
             .AsNoTracking()
+            .Where(u => userIds.Contains(u.Id)) // Filtrar solo usuarios de empresas asignadas
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
             .Include(u => u.UserCompanies)
+            .Include(u => u.UserFarms).ThenInclude(uf => uf.Farm)
             .Select(u => new UserDto(
                 u.Id,
                 u.surName ?? string.Empty,
@@ -129,6 +171,12 @@ public class UserService : IUserService
                 u.ubicacion ?? string.Empty,
                 u.UserRoles.Select(ur => ur.Role.Name).Where(n => n != null && n != "").ToArray()!,
                 u.UserCompanies.Select(uc => uc.CompanyId).ToArray(),
+                u.UserFarms.Select(uf => new UserFarmLiteDto(
+                    uf.FarmId,
+                    uf.Farm.Name,
+                    uf.IsAdmin,
+                    uf.IsDefault
+                )).ToArray(),
                 u.IsActive,
                 u.IsLocked,
                 u.CreatedAt,
@@ -176,6 +224,7 @@ public class UserService : IUserService
             .AsNoTracking()
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
             .Include(u => u.UserCompanies)
+            .Include(u => u.UserFarms).ThenInclude(uf => uf.Farm)
             .FirstOrDefaultAsync(u => u.Id == id);
 
         if (user == null) return null;
@@ -189,6 +238,12 @@ public class UserService : IUserService
             user.ubicacion ?? string.Empty,
             user.UserRoles.Select(ur => ur.Role.Name).Where(n => n != null && n != "").ToArray()!,
             user.UserCompanies.Select(uc => uc.CompanyId).ToArray(),
+            user.UserFarms.Select(uf => new UserFarmLiteDto(
+                uf.FarmId,
+                uf.Farm.Name,
+                uf.IsAdmin,
+                uf.IsDefault
+            )).ToArray(),
             user.IsActive,
             user.IsLocked,
             user.CreatedAt,
@@ -300,6 +355,17 @@ public class UserService : IUserService
             .Select(uc => uc.CompanyId)
             .ToArrayAsync();
 
+        var farms = await _ctx.UserFarms
+            .Where(uf => uf.UserId == user.Id)
+            .Include(uf => uf.Farm)
+            .Select(uf => new UserFarmLiteDto(
+                uf.FarmId,
+                uf.Farm.Name,
+                uf.IsAdmin,
+                uf.IsDefault
+            ))
+            .ToArrayAsync();
+
         return new UserDto(
             user.Id,
             user.surName ?? string.Empty,
@@ -309,6 +375,7 @@ public class UserService : IUserService
             user.ubicacion ?? string.Empty,
             rolesNames,
             companyIds,
+            farms,
             user.IsActive,
             user.IsLocked,
             user.CreatedAt,
@@ -327,6 +394,7 @@ public class UserService : IUserService
             .Include(u => u.UserLogins).ThenInclude(ul => ul.Login)
             .Include(u => u.UserCompanies)
             .Include(u => u.UserRoles)
+            .Include(u => u.UserFarms)
             .FirstOrDefaultAsync(u => u.Id == id);
 
         if (user is null)
@@ -337,6 +405,7 @@ public class UserService : IUserService
         _ctx.UserLogins.RemoveRange(user.UserLogins);
         _ctx.UserRoles.RemoveRange(user.UserRoles);
         _ctx.UserCompanies.RemoveRange(user.UserCompanies);
+        _ctx.UserFarms.RemoveRange(user.UserFarms);
         _ctx.Logins.RemoveRange(logins);
         _ctx.Users.Remove(user);
 
@@ -373,5 +442,19 @@ public class UserService : IUserService
         var missing = roleIds.Except(existing).ToArray();
         if (missing.Length > 0)
             throw new InvalidOperationException($"Roles inexistentes: {string.Join(", ", missing)}");
+    }
+
+    private async Task ValidateFarmsAsync(int[] farmIds)
+    {
+        if (farmIds.Length == 0) return;
+        var existing = await _ctx.Farms
+            .AsNoTracking()
+            .Where(f => farmIds.Contains(f.Id))
+            .Select(f => f.Id)
+            .ToListAsync();
+
+        var missing = farmIds.Except(existing).ToArray();
+        if (missing.Length > 0)
+            throw new InvalidOperationException($"Granjas inexistentes: {string.Join(", ", missing)}");
     }
 }

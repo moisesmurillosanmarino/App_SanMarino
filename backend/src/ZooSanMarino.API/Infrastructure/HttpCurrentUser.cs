@@ -1,4 +1,4 @@
-// file: src/ZooSanMarino.API/Infrastructure/HttpCurrentUser.cs
+// src/ZooSanMarino.API/Infrastructure/HttpCurrentUser.cs
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using ZooSanMarino.Application.Interfaces;
@@ -9,10 +9,14 @@ public sealed class HttpCurrentUser : ICurrentUser
 {
     public int CompanyId { get; }
     public int UserId { get; }
+    public string? ActiveCompanyName { get; }
 
     public HttpCurrentUser(IHttpContextAccessor accessor)
     {
         var http = accessor.HttpContext;
+
+        // SIEMPRE leer el header X-Active-Company, independientemente de la autenticación
+        ActiveCompanyName = http?.Request.Headers["X-Active-Company"].FirstOrDefault();
 
         if (http?.User?.Identity?.IsAuthenticated == true)
         {

@@ -150,6 +150,40 @@ export interface TableStatsDto {
   lastAnalyzed?: string;
 }
 
+export interface TableDependenciesDto {
+  dependencies: Array<{ table: string; schema: string; type: string }>;
+  dependents: Array<{ table: string; schema: string; type: string }>;
+}
+
+export interface DatabaseAnalysisDto {
+  totalSchemas: number;
+  totalTables: number;
+  totalRows: number;
+  totalSize: string;
+  schemaAnalysis: Array<{
+    schemaName: string;
+    tableCount: number;
+    totalRows: number;
+    totalSize: string;
+  }>;
+  largestTables: Array<{
+    schemaName: string;
+    tableName: string;
+    rowCount: number;
+    size: string;
+    indexCount: number;
+    foreignKeyCount: number;
+  }>;
+  mostIndexedTables: Array<{
+    schemaName: string;
+    tableName: string;
+    rowCount: number;
+    size: string;
+    indexCount: number;
+    foreignKeyCount: number;
+  }>;
+}
+
 // =====================================================
 // SERVICIO PRINCIPAL
 // =====================================================
@@ -314,13 +348,6 @@ export class DbStudioService {
     return this.http.post<{ valid: boolean; error?: string }>(`${API}/validate-sql`, { sql });
   }
 
-  getTableDependencies(schema: string, table: string): Observable<{
-    dependencies: Array<{ table: string; schema: string; type: string }>;
-    dependents: Array<{ table: string; schema: string; type: string }>;
-  }> {
-    return this.http.get<any>(`${API}/tables/${encodeURIComponent(schema)}/${encodeURIComponent(table)}/dependencies`);
-  }
-
   exportTable(schema: string, table: string, format: 'csv' | 'json' | 'sql' = 'sql'): Observable<Blob> {
     return this.http.get(`${API}/tables/${encodeURIComponent(schema)}/${encodeURIComponent(table)}/export`, {
       params: { format },
@@ -334,5 +361,21 @@ export class DbStudioService {
     formData.append('format', format);
     
     return this.http.post<void>(`${API}/tables/${encodeURIComponent(schema)}/${encodeURIComponent(table)}/import`, formData);
+  }
+
+  // ===================== ANÁLISIS Y DEPENDENCIAS =====================
+
+  getTableDependencies(schema: string, table: string): Observable<TableDependenciesDto> {
+    return this.http.get<TableDependenciesDto>(`${API}/tables/${encodeURIComponent(schema)}/${encodeURIComponent(table)}/dependencies`);
+  }
+
+  analyzeDatabase(): Observable<DatabaseAnalysisDto> {
+    return this.http.get<DatabaseAnalysisDto>(`${API}/database/analyze`);
+  }
+
+  exportSchema(schema: string): Observable<Blob> {
+    return this.http.get(`${API}/schemas/${encodeURIComponent(schema)}/export`, {
+      responseType: 'blob'
+    });
   }
 }

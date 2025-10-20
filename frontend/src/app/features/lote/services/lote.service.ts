@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
@@ -19,13 +19,15 @@ export interface LoteMortalidadResumenDto {
 }
 
 export interface LoteDto {
-  loteId: number;  // Cambiado a number para secuencia numérica
+  loteId: number;
   loteNombre: string;
 
+  // Claves base
   granjaId: number;
-  nucleoId?: string | null;   // ← string
-  galponId?: string | null;   // ← string
+  nucleoId?: string | null;
+  galponId?: string | null;
 
+  // Datos principales
   regional?: string;
   fechaEncaset?: string;
 
@@ -39,20 +41,53 @@ export interface LoteDto {
   mortCajaM?: number;
 
   raza?: string;
-  anoTablaGenetica?: number;
+  anoTablaGenetica?: number | null;
   linea?: string;
   tipoLinea?: string;
   codigoGuiaGenetica?: string;
-  lineaGeneticaId?: number;
+  lineaGeneticaId?: number | null;
   tecnico?: string;
 
-  mixtas?: number;
-  pesoMixto?: number;
-  avesEncasetadas?: number;
+  mixtas?: number | null;
+  pesoMixto?: number | null;
+  avesEncasetadas?: number | null;
 
   loteErp?: string;
   lineaGenetica?: string;
+
+  // 🔹 NUEVO: objetos anidados que puede traer getById
+  farm?: {
+    id: number;
+    name: string;
+    regionalId?: number | null;
+    departamentoId?: number | null;
+    ciudadId?: number | null;
+  } | null;
+
+  nucleo?: {
+    nucleoId: string;
+    nucleoNombre?: string | null;
+    granjaId?: number | null;
+  } | null;
+
+  galpon?: {
+    galponId: string;
+    galponNombre?: string | null;
+    nucleoId?: string | null;
+    granjaId?: number | null;
+  } | null;
+
+  // 🔹 NUEVO: metadatos (el backend los envía en tu ejemplo)
+  companyId?: number | null;
+  createdByUserId?: number | null;
+  createdAt?: string | null;
+  updatedByUserId?: number | null;
+  updatedAt?: string | null;
+
+  // (por compatibilidad si tu backend a veces devuelve edad)
+  edadInicial?: number | null;
 }
+
 
 export interface CreateLoteDto extends Omit<LoteDto, 'loteId'> {
   loteId?: number; // Opcional - auto-incremento numérico
@@ -64,8 +99,9 @@ export interface UpdateLoteDto extends LoteDto {}
 export class LoteService {
   private readonly baseUrl = `${environment.apiUrl}/Lote`;
   private readonly base = environment.apiUrl;
+  private readonly http = inject(HttpClient);
 
-  constructor(private readonly http: HttpClient) {}
+  constructor() {}
 
   getAll(): Observable<LoteDto[]> {
     return this.http.get<LoteDto[]>(this.baseUrl);

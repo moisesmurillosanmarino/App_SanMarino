@@ -344,11 +344,49 @@
   /* ==========================================================================
      🧭 Toolbar filtros (12 col responsive)
      ========================================================================== */
-  :host .ux-toolbar {
-    display: grid; gap: .9rem 1rem; align-items: end;
-    grid-template-columns: repeat(12, minmax(0, 1fr));
-  }
-  :host .ux-toolbar > div { grid-column: span 4; } /* 3 por fila (desktop) */
+  /* ===== Filtros en UNA sola fila ===== */
+:host .ux-toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: .6rem;
+
+  /* Fuerza una sola línea; si no cabe, permite scroll horizontal */
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: .25rem;
+}
+/* Cada campo con ancho fijo para mantener la fila */
+:host .ux-toolbar > .ux-field {
+  flex: 0 0 220px;       /* ancho base para Granja / Núcleo / Galpón */
+  min-width: 200px;
+}
+/* Lote un poco más ancho para el nombre + edad */
+:host .ux-toolbar > .ux-field:nth-child(4) {
+  flex-basis: 320px;
+  min-width: 260px;
+}
+/* Compactar selects y labels solo en la toolbar */
+:host .ux-toolbar .ux-label {
+  font-size: .78rem;
+  margin-bottom: .2rem;
+}
+
+:host .ux-toolbar .ux-select select {
+  min-height: 2.05rem;         /* antes 2.6rem */
+  padding: .35rem 1.8rem .35rem .55rem;
+  font-size: .82rem;
+  border-radius: .5rem;
+}
+
+/* Flecha del select un poco más chica y pegada */
+:host .ux-toolbar .ux-select::after {
+  font-size: .75rem;
+  right: .55rem;
+}
+
+/* Opcional: microgap entre cards y toolbar cuando hay scroll horizontal */
+:host section.ux-card[role="group"] { padding: .8rem 1rem; }
+:host .ux-toolbar > div { grid-column: span 4; } /* 3 por fila (desktop) */
   @media (max-width: 960px) { :host .ux-toolbar > div { grid-column: span 6; } }  /* 2 por fila */
   @media (max-width: 680px) { :host .ux-toolbar > div { grid-column: span 12; } } /* 1 por fila */
 
@@ -591,38 +629,6 @@
 .ux-tab-btn[aria-selected="true"] { font-weight:600; border-bottom:2px solid currentColor; }
 .ux-tab-btn:disabled { opacity:.5; cursor:not-allowed; }
 
-/* ==========================================================================
-   💰 Modal de Liquidación Técnica
-   ========================================================================== */
-.liquidacion-modal-content {
-  padding: 0;
-  max-height: 70vh;
-  overflow-y: auto;
-}
-
-.comparacion-guia-section {
-  margin-top: 2rem;
-  padding-top: 2rem;
-  border-top: 2px solid var(--warm-200);
-}
-
-/* Ajustar el tamaño del modal para liquidación */
-:host .ux-modal__dialog--xxl {
-  width: min(1200px, 95vw);
-  max-height: 90vh;
-}
-
-/* Responsive para el modal de liquidación */
-@media (max-width: 768px) {
-  :host .ux-modal__dialog--xxl {
-    width: 95vw;
-    max-height: 95vh;
-  }
-  
-  .liquidacion-modal-content {
-    max-height: 75vh;
-  }
-}
 
 
 

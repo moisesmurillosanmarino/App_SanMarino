@@ -41,4 +41,10 @@ public interface IMovimientoAvesService
     Task<IEnumerable<MovimientoAvesDto>> GetMovimientosRecientesAsync(int dias = 7);
     Task<int> GetTotalMovimientosPendientesAsync();
     Task<int> GetTotalMovimientosCompletadosAsync(DateTime? fechaDesde = null, DateTime? fechaHasta = null);
+    
+    // Navegación completa
+    Task<ZooSanMarino.Application.DTOs.Common.PagedResult<MovimientoAvesCompletoDto>> SearchCompletoAsync(MovimientoAvesCompletoSearchRequest request);
+    Task<MovimientoAvesCompletoDto?> GetCompletoByIdAsync(int id);
+    Task<IEnumerable<ResumenTrasladoDto>> GetResumenesRecientesAsync(int dias = 7, int limite = 10);
+    Task<EstadisticasTrasladoDto> GetEstadisticasCompletasAsync(DateTime? fechaDesde = null, DateTime? fechaHasta = null);
 }

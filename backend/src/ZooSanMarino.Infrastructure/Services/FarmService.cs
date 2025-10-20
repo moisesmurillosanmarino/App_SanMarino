@@ -18,11 +18,38 @@ namespace ZooSanMarino.Infrastructure.Services
     {
         private readonly ZooSanMarinoContext _ctx;
         private readonly ICurrentUser _current;
+        private readonly ICompanyResolver _companyResolver;
+        private readonly IUserPermissionService _userPermissionService;
 
-        public FarmService(ZooSanMarinoContext ctx, ICurrentUser current)
+        public FarmService(ZooSanMarinoContext ctx, ICurrentUser current, ICompanyResolver companyResolver, IUserPermissionService userPermissionService)
         {
             _ctx = ctx;
             _current = current;
+            _companyResolver = companyResolver;
+            _userPermissionService = userPermissionService;
+        }
+
+        // ======================================================
+        // HELPER METHODS
+        // ======================================================
+        
+        /// <summary>
+        /// Obtiene el CompanyId correcto basado en la empresa activa del usuario
+        /// </summary>
+        private async Task<int> GetEffectiveCompanyIdAsync()
+        {
+            // Si hay una empresa activa especificada en el header, usarla
+            if (!string.IsNullOrWhiteSpace(_current.ActiveCompanyName))
+            {
+                var companyId = await _companyResolver.GetCompanyIdByNameAsync(_current.ActiveCompanyName);
+                if (companyId.HasValue)
+                {
+                    return companyId.Value;
+                }
+            }
+
+            // Fallback al CompanyId del token JWT
+            return _current.CompanyId;
         }
 
         // ======================================================
@@ -30,9 +57,11 @@ namespace ZooSanMarino.Infrastructure.Services
         // ======================================================
         public async Task<CommonDtos.PagedResult<FarmDetailDto>> SearchAsync(FarmSearchRequest req)
         {
+            var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
+            
             var q = _ctx.Farms
                 .AsNoTracking()
-                .Where(f => f.CompanyId == _current.CompanyId);
+                .Where(f => f.CompanyId == effectiveCompanyId);
 
             if (req.SoloActivos) q = q.Where(f => f.DeletedAt == null);
 
@@ -147,10 +176,37 @@ namespace ZooSanMarino.Infrastructure.Services
         // ======================================================
         // CRUD BÁSICO (compat)
         // ======================================================
-        public async Task<IEnumerable<FarmDto>> GetAllAsync() =>
-            await _ctx.Farms
+        public async Task<IEnumerable<FarmDto>> GetAllAsync(Guid? userId = null)
+        {
+            var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
+            
+            var query = _ctx.Farms
                 .AsNoTracking()
-                .Where(f => f.CompanyId == _current.CompanyId && f.DeletedAt == null)
+                .Where(f => f.CompanyId == effectiveCompanyId && f.DeletedAt == null);
+
+            // Si se proporciona un userId, filtrar por las granjas que tiene acceso
+            if (userId.HasValue)
+            {
+                Console.WriteLine($"=== FarmService.GetAllAsync - Filtrando por userId: {userId} ===");
+                
+                // Obtener las granjas a las que el usuario tiene acceso
+                var userFarmIds = await _ctx.UserFarms
+                    .AsNoTracking()
+                    .Where(uf => uf.UserId == userId.Value)
+                    .Select(uf => uf.FarmId)
+                    .ToListAsync();
+
+                Console.WriteLine($"=== Granjas encontradas para el usuario: {string.Join(", ", userFarmIds)} ===");
+                
+                // Filtrar las granjas por las que tiene acceso
+                query = query.Where(f => userFarmIds.Contains(f.Id));
+            }
+            else
+            {
+                Console.WriteLine("=== FarmService.GetAllAsync - Sin filtro de usuario, devolviendo todas las granjas ===");
+            }
+
+            var result = await query
                 .Select(f => new FarmDto(
                     f.Id,
                     f.CompanyId,
@@ -161,6 +217,10 @@ namespace ZooSanMarino.Infrastructure.Services
                     f.MunicipioId        // → CiudadId
                 ))
                 .ToListAsync();
+
+            Console.WriteLine($"=== FarmService.GetAllAsync - Devolviendo {result.Count} granjas ===");
+            return result;
+        }
 
         public async Task<FarmDto?> GetByIdAsync(int id) =>
             await _ctx.Farms
@@ -189,18 +249,31 @@ namespace ZooSanMarino.Infrastructure.Services
             if (!dto.CiudadId.HasValue)
                 throw new ArgumentException("CiudadId es obligatorio.", nameof(dto.CiudadId));
 
+            // NUEVA VALIDACIÓN: Verificar que el usuario puede crear granjas en este país
+            var departamento = await _ctx.Set<Departamento>()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(d => d.DepartamentoId == dto.DepartamentoId.Value);
+            
+            if (departamento == null)
+                throw new ArgumentException("El departamento especificado no existe.", nameof(dto.DepartamentoId));
+
+            var canCreateInCountry = await _userPermissionService.CanCreateFarmInCountryAsync(_current.UserId, departamento.PaisId);
+            if (!canCreateInCountry)
+                throw new UnauthorizedAccessException("No tienes permisos para crear granjas en este país.");
+
             var normalizedStatus = NormalizeStatus(dto.Status);
+            var effectiveCompanyId = await GetEffectiveCompanyIdAsync();
 
             var dup = await _ctx.Farms
                 .AsNoTracking()
-                .AnyAsync(f => f.CompanyId == _current.CompanyId &&
+                .AnyAsync(f => f.CompanyId == effectiveCompanyId &&
                                f.Name.ToLower() == name.ToLower() &&
                                f.DeletedAt == null);
             if (dup) throw new InvalidOperationException("Ya existe una granja con ese nombre en la compañía.");
 
             var entity = new Farm
             {
-                CompanyId       = _current.CompanyId, // o usa dto.CompanyId si aplica
+                CompanyId       = effectiveCompanyId,
                 Name            = name,
                 RegionalId      = dto.RegionalId,            // null OK
                 Status          = normalizedStatus,          // 'A'/'I'

@@ -8,6 +8,8 @@ import { ReactiveFormsModule } from '@angular/forms';
 // 👇 Mantén solo los componentes que realmente se usan por referencia directa en rutas.
 // Login se usa de forma no-lazy (ok), Dashboard se cargará en lazy (NO lo importes aquí).
 import { LoginComponent } from './features/auth/login/login.component';
+import { PasswordRecoveryComponent } from './features/auth/password-recovery/password-recovery.component';
+import { ProfileComponent } from './features/profile/profile.component';
 
 // Rutas “config” que usas con component (no-lazy)
 import { ConfigComponent }            from './features/config/config.component';
@@ -47,6 +49,8 @@ export const appConfig: ApplicationConfig = {
 
       // Público
       { path: 'login', component: LoginComponent },
+      { path: 'password-recovery', component: PasswordRecoveryComponent },
+      { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
 
       // Protegido
       {

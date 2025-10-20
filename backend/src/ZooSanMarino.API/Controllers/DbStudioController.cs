@@ -301,5 +301,192 @@ namespace ZooSanMarino.API.Controllers
                 return StatusCode(500, new { message = "Error interno del servidor" });
             }
         }
+
+        // ===================== ÍNDICES =====================
+        [HttpPost("tables/{schema}/{table}/indexes")]
+        public async Task<ActionResult> CreateIndex(string schema, string table, [FromBody] CreateIndexRequest request)
+        {
+            try
+            {
+                await _dbStudioService.CreateIndexAsync(schema, table, request);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al crear índice en tabla {Schema}.{Table}", schema, table);
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
+
+        [HttpDelete("tables/{schema}/{table}/indexes/{indexName}")]
+        public async Task<ActionResult> DropIndex(string schema, string table, string indexName)
+        {
+            try
+            {
+                await _dbStudioService.DropIndexAsync(schema, table, indexName);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al eliminar índice {IndexName} de tabla {Schema}.{Table}", indexName, schema, table);
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
+
+        // ===================== CLAVES FORÁNEAS =====================
+        [HttpPost("tables/{schema}/{table}/foreign-keys")]
+        public async Task<ActionResult> CreateForeignKey(string schema, string table, [FromBody] CreateForeignKeyRequest request)
+        {
+            try
+            {
+                await _dbStudioService.CreateForeignKeyAsync(schema, table, request);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al crear clave foránea en tabla {Schema}.{Table}", schema, table);
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
+
+        [HttpDelete("tables/{schema}/{table}/foreign-keys/{fkName}")]
+        public async Task<ActionResult> DropForeignKey(string schema, string table, string fkName)
+        {
+            try
+            {
+                await _dbStudioService.DropForeignKeyAsync(schema, table, fkName);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al eliminar clave foránea {FkName} de tabla {Schema}.{Table}", fkName, schema, table);
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
+
+        // ===================== GESTIÓN DE DATOS =====================
+        [HttpPost("tables/{schema}/{table}/data")]
+        public async Task<ActionResult> InsertData(string schema, string table, [FromBody] InsertDataRequest request)
+        {
+            try
+            {
+                await _dbStudioService.InsertDataAsync(schema, table, request.Rows);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al insertar datos en tabla {Schema}.{Table}", schema, table);
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
+
+        [HttpPatch("tables/{schema}/{table}/data")]
+        public async Task<ActionResult> UpdateData(string schema, string table, [FromBody] UpdateDataRequest request)
+        {
+            try
+            {
+                await _dbStudioService.UpdateDataAsync(schema, table, request.Data, request.Where);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al actualizar datos en tabla {Schema}.{Table}", schema, table);
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
+
+        [HttpDelete("tables/{schema}/{table}/data")]
+        public async Task<ActionResult> DeleteData(string schema, string table, [FromBody] DeleteDataRequest request)
+        {
+            try
+            {
+                await _dbStudioService.DeleteDataAsync(schema, table, request.Where);
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al eliminar datos de tabla {Schema}.{Table}", schema, table);
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
+
+        // ===================== IMPORTACIÓN =====================
+        [HttpPost("tables/{schema}/{table}/import")]
+        [Consumes("multipart/form-data")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult> ImportTable(
+            string schema, 
+            string table, 
+            IFormFile file, 
+            [FromForm] string format = "csv")
+        {
+            try
+            {
+                if (file == null || file.Length == 0)
+                {
+                    return BadRequest(new { message = "Archivo no proporcionado" });
+                }
+
+                using var memoryStream = new MemoryStream();
+                await file.CopyToAsync(memoryStream);
+                var fileContent = memoryStream.ToArray();
+
+                await _dbStudioService.ImportTableAsync(schema, table, fileContent, format);
+                return Ok(new { message = "Datos importados exitosamente" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al importar datos a tabla {Schema}.{Table}", schema, table);
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
+
+        // ===================== ANÁLISIS Y DEPENDENCIAS =====================
+        [HttpGet("tables/{schema}/{table}/dependencies")]
+        public async Task<ActionResult<TableDependenciesDto>> GetTableDependencies(string schema, string table)
+        {
+            try
+            {
+                var dependencies = await _dbStudioService.GetTableDependenciesAsync(schema, table);
+                return Ok(dependencies);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener dependencias de tabla {Schema}.{Table}", schema, table);
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
+
+        [HttpGet("database/analyze")]
+        public async Task<ActionResult<DatabaseAnalysisDto>> AnalyzeDatabase()
+        {
+            try
+            {
+                var analysis = await _dbStudioService.AnalyzeDatabaseAsync();
+                return Ok(analysis);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al analizar base de datos");
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
+
+        [HttpGet("schemas/{schema}/export")]
+        public async Task<IActionResult> ExportSchema(string schema)
+        {
+            try
+            {
+                var content = await _dbStudioService.ExportSchemaAsync(schema);
+                return File(content, "application/sql", $"{schema}_schema.sql");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al exportar esquema {Schema}", schema);
+                return StatusCode(500, new { message = "Error interno del servidor" });
+            }
+        }
     }
 }

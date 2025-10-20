@@ -61,50 +61,55 @@ namespace ZooSanMarino.Infrastructure.Services
         // ===================== TABLAS =====================
         public async Task<IEnumerable<TableDto>> GetTablesAsync(string? schema = null)
         {
-            var schemaFilter = schema == null ? "" : "AND t.table_schema = @schema";
-            var sql = $@"
-                SELECT 
-                    t.table_schema as schema,
-                    t.table_name as name,
-                    t.table_type as kind,
-                    COALESCE(s.n_tup_ins + s.n_tup_upd + s.n_tup_del, 0) as rows,
-                    pg_size_pretty(pg_total_relation_size(c.oid)) as size
-                FROM information_schema.tables t
-                LEFT JOIN pg_class c ON c.relname = t.table_name
-                LEFT JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = t.table_schema
-                LEFT JOIN pg_stat_user_tables s ON s.relname = t.table_name AND s.schemaname = t.table_schema
-                WHERE t.table_type = 'BASE TABLE'
-                {schemaFilter}
-                ORDER BY t.table_schema, t.table_name";
-
-            var tables = new List<TableDto>();
-            using var command = _context.Database.GetDbConnection().CreateCommand();
-            command.CommandText = sql;
-            
-            if (schema != null)
+            try
             {
+                // Consulta mejorada que incluye información real de filas y tamaño
+                var sql = @"
+                    SELECT 
+                        t.table_schema as schema,
+                        t.table_name as name,
+                        t.table_type as kind,
+                        COALESCE(s.n_tup_ins - s.n_tup_del, 0) as rows,
+                        pg_size_pretty(pg_total_relation_size(c.oid)) as size
+                    FROM information_schema.tables t
+                    LEFT JOIN pg_class c ON c.relname = t.table_name
+                    LEFT JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = t.table_schema
+                    LEFT JOIN pg_stat_user_tables s ON s.schemaname = t.table_schema AND s.relname = t.table_name
+                    WHERE t.table_type IN ('BASE TABLE', 'VIEW')
+                    AND t.table_schema = @schema
+                    ORDER BY t.table_schema, t.table_name";
+
+                var tables = new List<TableDto>();
+                using var command = _context.Database.GetDbConnection().CreateCommand();
+                command.CommandText = sql;
+                
                 var param = command.CreateParameter();
                 param.ParameterName = "@schema";
-                param.Value = schema;
+                param.Value = schema ?? "public";
                 command.Parameters.Add(param);
-            }
 
-            await _context.Database.OpenConnectionAsync();
-            using var reader = await command.ExecuteReaderAsync();
-            
-            while (await reader.ReadAsync())
-            {
-                tables.Add(new TableDto
+                await _context.Database.OpenConnectionAsync();
+                using var reader = await command.ExecuteReaderAsync();
+                
+                while (await reader.ReadAsync())
                 {
-                    Schema = reader.GetString("schema"),
-                    Name = reader.GetString("name"),
-                    Kind = reader.GetString("kind"),
-                    Rows = reader.GetInt64("rows"),
-                    Size = reader.IsDBNull("size") ? null : reader.GetString("size")
-                });
-            }
+                    tables.Add(new TableDto
+                    {
+                        Schema = reader.GetString("schema"),
+                        Name = reader.GetString("name"),
+                        Kind = reader.GetString("kind"),
+                        Rows = reader.IsDBNull("rows") ? 0 : reader.GetInt64("rows"),
+                        Size = reader.IsDBNull("size") ? "N/A" : reader.GetString("size")
+                    });
+                }
 
-            return tables;
+                return tables;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error en GetTablesAsync para schema: {Schema}", schema);
+                throw;
+            }
         }
 
         public async Task<TableDetailsDto> GetTableDetailsAsync(string schema, string table)
@@ -382,7 +387,7 @@ namespace ZooSanMarino.Infrastructure.Services
                     foreach (var param in request.Params)
                     {
                         var dbParam = command.CreateParameter();
-                        dbParam.ParameterName = $"@{param.Key}";
+                        dbParam.ParameterName = param.Key.StartsWith("@") ? param.Key : $"@{param.Key}";
                         dbParam.Value = param.Value ?? DBNull.Value;
                         command.Parameters.Add(dbParam);
                     }
@@ -442,7 +447,7 @@ namespace ZooSanMarino.Infrastructure.Services
                     foreach (var param in request.Params)
                     {
                         var dbParam = command.CreateParameter();
-                        dbParam.ParameterName = $"@{param.Key}";
+                        dbParam.ParameterName = param.Key.StartsWith("@") ? param.Key : $"@{param.Key}";
                         dbParam.Value = param.Value ?? DBNull.Value;
                         command.Parameters.Add(dbParam);
                     }
@@ -653,5 +658,46 @@ namespace ZooSanMarino.Infrastructure.Services
         public Task<SqlValidationResult> ValidateSqlAsync(string sql) => throw new NotImplementedException();
         public Task<byte[]> ExportTableAsync(string schema, string table, string format = "sql") => throw new NotImplementedException();
         public Task ImportTableAsync(string schema, string table, byte[] fileContent, string format = "csv") => throw new NotImplementedException();
+        
+        // ===================== MÉTODOS ADICIONALES =====================
+        public Task<TableDependenciesDto> GetTableDependenciesAsync(string schema, string table) => throw new NotImplementedException();
+        public async Task<DatabaseAnalysisDto> AnalyzeDatabaseAsync()
+        {
+            var sql = @"
+                SELECT 
+                    COUNT(DISTINCT table_schema) as total_schemas,
+                    COUNT(*) as total_tables,
+                    SUM(COALESCE(s.n_tup_ins - s.n_tup_del, 0)) as total_rows,
+                    pg_size_pretty(SUM(pg_total_relation_size(c.oid))) as total_size
+                FROM information_schema.tables t
+                LEFT JOIN pg_class c ON c.relname = t.table_name
+                LEFT JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = t.table_schema
+                LEFT JOIN pg_stat_user_tables s ON s.schemaname = t.table_schema AND s.relname = t.table_name
+                WHERE t.table_type = 'BASE TABLE'
+                AND t.table_schema NOT IN ('information_schema', 'pg_catalog', 'pg_toast')";
+
+            using var command = _context.Database.GetDbConnection().CreateCommand();
+            command.CommandText = sql;
+
+            await _context.Database.OpenConnectionAsync();
+            using var reader = await command.ExecuteReaderAsync();
+
+            if (await reader.ReadAsync())
+            {
+                return new DatabaseAnalysisDto
+                {
+                    TotalSchemas = reader.GetInt32("total_schemas"),
+                    TotalTables = reader.GetInt32("total_tables"),
+                    TotalRows = reader.GetInt64("total_rows"),
+                    TotalSize = reader.GetString("total_size"),
+                    SchemaAnalysis = new List<SchemaAnalysisDto>(), // Implementar más tarde
+                    LargestTables = new List<TableAnalysisDto>(), // Implementar más tarde
+                    MostIndexedTables = new List<TableAnalysisDto>() // Implementar más tarde
+                };
+            }
+
+            return new DatabaseAnalysisDto();
+        }
+        public Task<byte[]> ExportSchemaAsync(string schema) => throw new NotImplementedException();
     }
 }

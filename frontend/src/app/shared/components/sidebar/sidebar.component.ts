@@ -11,6 +11,7 @@ import { map } from 'rxjs/operators';
 import { Observable } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
 import { MenuService, UiMenuItem } from '../../services/menu.service';
+import { take } from 'rxjs/operators';
 
 @Component({
   selector: 'app-sidebar',
@@ -56,7 +57,7 @@ export class SidebarComponent implements OnInit {
 
   ngOnInit(): void {
     // Asegura que haya menú cargado (lee storage y, si no hay, va a la API)
-    this.menuSvc.ensureLoaded().subscribe();
+     this.menuSvc.ensureLoaded().pipe(take(1)).subscribe(); // dispara carga y completa
   }
 
   toggle(item: UiMenuItem) {

@@ -187,5 +187,67 @@ namespace ZooSanMarino.Application.DTOs
         public bool Valid { get; set; }
         public string? Error { get; set; }
     }
+
+    // =====================================================
+    // DTOs ADICIONALES PARA FUNCIONALIDADES COMPLETAS
+    // =====================================================
+
+    public class InsertDataRequest
+    {
+        public List<Dictionary<string, object?>> Rows { get; set; } = new();
+    }
+
+    public class UpdateDataRequest
+    {
+        public Dictionary<string, object?> Data { get; set; } = new();
+        public Dictionary<string, object?> Where { get; set; } = new();
+    }
+
+    public class DeleteDataRequest
+    {
+        public Dictionary<string, object?> Where { get; set; } = new();
+    }
+
+    public class TableDependenciesDto
+    {
+        public List<TableReferenceDto> Dependencies { get; set; } = new();
+        public List<TableReferenceDto> Dependents { get; set; } = new();
+    }
+
+    public class TableReferenceDto
+    {
+        public string Table { get; set; } = string.Empty;
+        public string Schema { get; set; } = string.Empty;
+        public string Type { get; set; } = string.Empty;
+    }
+
+    public class DatabaseAnalysisDto
+    {
+        public int TotalSchemas { get; set; }
+        public int TotalTables { get; set; }
+        public long TotalRows { get; set; }
+        public string TotalSize { get; set; } = string.Empty;
+        public List<SchemaAnalysisDto> SchemaAnalysis { get; set; } = new();
+        public List<TableAnalysisDto> LargestTables { get; set; } = new();
+        public List<TableAnalysisDto> MostIndexedTables { get; set; } = new();
+    }
+
+    public class SchemaAnalysisDto
+    {
+        public string SchemaName { get; set; } = string.Empty;
+        public int TableCount { get; set; }
+        public long TotalRows { get; set; }
+        public string TotalSize { get; set; } = string.Empty;
+    }
+
+    public class TableAnalysisDto
+    {
+        public string SchemaName { get; set; } = string.Empty;
+        public string TableName { get; set; } = string.Empty;
+        public long RowCount { get; set; }
+        public string Size { get; set; } = string.Empty;
+        public int IndexCount { get; set; }
+        public int ForeignKeyCount { get; set; }
+    }
 }
 

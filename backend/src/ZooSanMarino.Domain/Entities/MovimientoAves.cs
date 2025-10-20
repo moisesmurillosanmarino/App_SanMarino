@@ -9,7 +9,7 @@ public class MovimientoAves : AuditableEntity
     public int Id { get; set; }
     
     // Información del movimiento
-    public string NumeroMovimiento { get; set; } = null!; // Número único del movimiento
+    public string NumeroMovimiento { get; set; } = string.Empty; // Número único del movimiento
     public DateTime FechaMovimiento { get; set; }
     public string TipoMovimiento { get; set; } = null!; // Traslado, Ajuste, Liquidacion
     
@@ -55,10 +55,7 @@ public class MovimientoAves : AuditableEntity
     public Lote? LoteDestino { get; set; }
     public Farm? GranjaOrigen { get; set; }
     public Farm? GranjaDestino { get; set; }
-    public Nucleo? NucleoOrigen { get; set; }
-    public Nucleo? NucleoDestino { get; set; }
-    public Galpon? GalponOrigen { get; set; }
-    public Galpon? GalponDestino { get; set; }
+    // Removed Nucleo and Galpon navigation properties to avoid EF auto-generated columns
     
     // Métodos de dominio
     public bool EsMovimientoValido()

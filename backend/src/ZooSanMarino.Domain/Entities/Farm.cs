@@ -13,4 +13,5 @@ public class Farm : AuditableEntity
     public ICollection<Nucleo> Nucleos { get; set; } = new List<Nucleo>();
     public ICollection<Lote> Lotes { get; set; } = new List<Lote>();
     public ICollection<Galpon> Galpones { get; set; } = new List<Galpon>();
+    public ICollection<UserFarm> UserFarms { get; set; } = new List<UserFarm>();
 }

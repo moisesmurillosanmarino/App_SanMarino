@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { expand, finalize, map, reduce } from 'rxjs/operators';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { finalize } from 'rxjs/operators';
 
 import { SidebarComponent } from '../../../../shared/components/sidebar/sidebar.component';
 
@@ -19,9 +19,13 @@ import {
 
 import { FarmService, FarmDto } from '../../../farm/services/farm.service';
 import { NucleoService, NucleoDto } from '../../services/nucleo.service';
-import { SeguimientoCalculosComponent } from "../../seguimiento-calculos/seguimiento-calculos.component";
-import { LiquidacionTecnicaComponent } from '../../components/liquidacion-tecnica/liquidacion-tecnica.component';
-import { LiquidacionComparacionComponent } from '../../components/liquidacion-comparacion/liquidacion-comparacion.component';
+import { ModalLiquidacionComponent } from '../modal-liquidacion/modal-liquidacion.component';
+import { ModalCalculosComponent } from '../modal-calculos/modal-calculos.component';
+import { TablaListaRegistroComponent } from '../tabla-lista-registro/tabla-lista-registro.component';
+import { ModalCreateEditComponent } from '../modal-create-edit/modal-create-edit.component';
+import { FichaLoteSelectComponent } from '../ficha-lote-select/ficha-lote-select.component';
+import { FiltroSelectComponent } from '../filtro-select/filtro-select.component';
+import { TabsPrincipalComponent } from '../tabs-principal/tabs-principal.component';
 
 // ===== Importa el servicio del catálogo =====
 import {
@@ -30,13 +34,15 @@ import {
   PagedResult
 } from '../../../catalogo-alimentos/services/catalogo-alimentos.service';
 import { EMPTY } from 'rxjs';
+import { expand, map, reduce } from 'rxjs/operators';
+
 
   
 
 @Component({
   selector: 'app-seguimiento-lote-levante-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, SidebarComponent, SeguimientoCalculosComponent, LiquidacionTecnicaComponent, LiquidacionComparacionComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, SidebarComponent, ModalLiquidacionComponent, ModalCalculosComponent, TablaListaRegistroComponent, ModalCreateEditComponent, FichaLoteSelectComponent, FiltroSelectComponent, TabsPrincipalComponent],
   templateUrl: './seguimiento-lote-levante-list.component.html',
   styleUrls: ['./seguimiento-lote-levante-list.component.scss']
 })
@@ -48,8 +54,8 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
   alimentosCatalog: CatalogItemDto[] = [];
   private alimentosByCode = new Map<string, CatalogItemDto>();
   private alimentosById = new Map<number, CatalogItemDto>();
-
   private alimentosByName = new Map<string, CatalogItemDto>(); // nombre en minúsculas
+
 
 
   // ================== catálogos (otros) ==================
@@ -69,7 +75,7 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
   lotes: LoteDto[] = [];
   seguimientos: SeguimientoLoteLevanteDto[] = [];
 
-  selectedLote?: LoteDto;
+  selectedLote: LoteDto | null = null;
   resumenSelected: LoteMortalidadResumenDto | null = null;
 
   // ================== UI ==================
@@ -80,13 +86,9 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
 
   activeTab: 'principal' | 'calculos' | 'liquidacion' = 'principal';
 
-  // ================== formulario modal ==================
-  form!: FormGroup;
-
   private galponNameById = new Map<string, string>();
 
   constructor(
-    private fb: FormBuilder,
     private farmSvc: FarmService,
     private nucleoSvc: NucleoService,
     private loteSvc: LoteService,
@@ -102,36 +104,6 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     this.farmSvc.getAll().subscribe({
       next: fs => (this.granjas = fs || []),
       error: () => (this.granjas = [])
-    });
-
-    // form
-    this.form = this.fb.group({
-      // YYYY-MM-DD estable para <input type="date">
-      fechaRegistro:      [this.todayYMD(), Validators.required],
-      loteId:             ['', Validators.required],
-      mortalidadHembras:  [0, [Validators.required, Validators.min(0)]],
-      mortalidadMachos:   [0, [Validators.required, Validators.min(0)]],
-      selH:               [0, [Validators.required, Validators.min(0)]],
-      selM:               [0, [Validators.required, Validators.min(0)]],
-      errorSexajeHembras: [0, [Validators.required, Validators.min(0)]],
-      errorSexajeMachos:  [0, [Validators.required, Validators.min(0)]],
-      // LEGACY: tipoAlimento (se mantiene por compatibilidad, pero preferir H/M)
-      tipoAlimento:       [''],
-      consumoKgHembras:   [0, [Validators.required, Validators.min(0)]],
-      observaciones:      [''],
-      consumoKgMachos: [null, [Validators.min(0)]],
-      pesoPromH:       [null, [Validators.min(0)]],
-      pesoPromM:       [null, [Validators.min(0)]],
-      uniformidadH:    [null, [Validators.min(0), Validators.max(100)]],
-      uniformidadM:    [null, [Validators.min(0), Validators.max(100)]],
-      cvH:             [null, [Validators.min(0)]],
-      cvM:             [null, [Validators.min(0)]],
-      // NUEVO: selects ligados al catálogo
-      tipoAlimentoHembras: [''],
-      tipoAlimentoMachos:  [''],
-      consumoAlimentoHembras: [null],
-      consumoAlimentoMachos:  [null],
-      ciclo: ['Normal'],
     });
 
     // CARGA CATÁLOGO DE ALIMENTOS (para selects y mapeos en tabla)
@@ -200,6 +172,7 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     return k;
   };
 
+
   // ================== CARGA GALPONES ==================
   private loadGalponCatalog(): void {
     this.galponNameById.clear();
@@ -230,7 +203,8 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
   }
 
   // ================== CASCADA DE FILTROS ==================
-  onGranjaChange(): void {
+  onGranjaChange(granjaId: number | null): void {
+    this.selectedGranjaId = granjaId;
     this.selectedNucleoId = null;
     this.selectedGalponId = null;
     this.selectedLoteId = null;
@@ -238,7 +212,7 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     this.galpones = [];
     this.hasSinGalpon = false;
     this.lotes = [];
-    this.selectedLote = undefined;
+    this.selectedLote = null;
     this.resumenSelected = null;
     this.nucleos = [];
 
@@ -253,27 +227,30 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     this.loadGalponCatalog();
   }
 
-  onNucleoChange(): void {
+  onNucleoChange(nucleoId: string | null): void {
+    this.selectedNucleoId = nucleoId;
     this.selectedGalponId = null;
     this.selectedLoteId = null;
     this.seguimientos = [];
-    this.selectedLote = undefined;
+    this.selectedLote = null;
     this.resumenSelected = null;
     this.applyFiltersToLotes();
     this.loadGalponCatalog();
   }
 
-  onGalponChange(): void {
+  onGalponChange(galponId: string | null): void {
+    this.selectedGalponId = galponId;
     this.selectedLoteId = null;
     this.seguimientos = [];
-    this.selectedLote = undefined;
+    this.selectedLote = null;
     this.resumenSelected = null;
     this.applyFiltersToLotes();
   }
 
-  onLoteChange(): void {
+  onLoteChange(loteId: number | null): void {
+    this.selectedLoteId = loteId;
     this.seguimientos = [];
-    this.selectedLote = undefined;
+    this.selectedLote = null;
     this.resumenSelected = null;
 
     if (!this.selectedLoteId) return;
@@ -287,8 +264,8 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
       });
 
     this.loteSvc.getById(this.selectedLoteId).subscribe({
-      next: l => (this.selectedLote = l),
-      error: () => (this.selectedLote = undefined)
+      next: l => (this.selectedLote = l || null),
+      error: () => (this.selectedLote = null)
     });
 
     this.loteSvc.getResumenMortalidad(this.selectedLoteId).subscribe({
@@ -390,66 +367,17 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
   create(): void {
     if (!this.selectedLoteId) return;
     this.editing = null;
-    this.form.reset({
-      fechaRegistro: this.todayYMD(),   // YYYY-MM-DD local
-      loteId: this.selectedLoteId,
-      mortalidadHembras: 0,
-      mortalidadMachos: 0,
-      selH: 0,
-      selM: 0,
-      errorSexajeHembras: 0,
-      errorSexajeMachos: 0,
-      tipoAlimento: '',
-      consumoKgHembras: 0,
-      observaciones: '',
-      ciclo: 'Normal',
-      consumoKgMachos: null,
-      pesoPromH: null,
-      pesoPromM: null,
-      uniformidadH: null,
-      uniformidadM: null,
-      cvH: null,
-      cvM: null,
-      tipoAlimentoHembras: '',
-      tipoAlimentoMachos:  '',
-      consumoAlimentoHembras: null,
-      consumoAlimentoMachos:  null,
-    });
     this.modalOpen = true;
   }
 
   edit(seg: SeguimientoLoteLevanteDto): void {
     this.editing = seg;
-    this.form.patchValue({
-      // normaliza a YYYY-MM-DD para el input date
-      fechaRegistro: this.toYMD(seg.fechaRegistro),
-      loteId: seg.loteId,
-      mortalidadHembras: seg.mortalidadHembras,
-      mortalidadMachos: seg.mortalidadMachos,
-      selH: seg.selH,
-      selM: seg.selM,
-      errorSexajeHembras: seg.errorSexajeHembras,
-      errorSexajeMachos: seg.errorSexajeMachos,
-      tipoAlimento: seg.tipoAlimento ?? '',
-      consumoKgHembras: seg.consumoKgHembras,
-      observaciones: seg.observaciones || '',
-      ciclo: seg.ciclo || 'Normal',
-      consumoKgMachos: seg.consumoKgMachos ?? null,
-      pesoPromH: seg.pesoPromH ?? null,
-      pesoPromM: seg.pesoPromM ?? null,
-      uniformidadH: seg.uniformidadH ?? null,
-      uniformidadM: seg.uniformidadM ?? null,
-      cvH: seg.cvH ?? null,
-      cvM: seg.cvM ?? null,
-      tipoAlimentoHembras: seg.tipoAlimentoHembras ?? '',
-      tipoAlimentoMachos:  seg.tipoAlimentoMachos ?? '',
-    });
     this.modalOpen = true;
   }
 
   delete(id: number): void {
     if (!confirm('¿Eliminar este registro?')) return;
-    this.segSvc.delete(id).subscribe(() => this.onLoteChange());
+    this.segSvc.delete(id).subscribe(() => this.onLoteChange(this.selectedLoteId));
   }
 
   cancel(): void {
@@ -457,62 +385,17 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     this.editing = null;
   }
 
-  private toNumOrNull(v: any): number | null {
-    if (v === null || v === undefined || v === '') return null;
-    const n = typeof v === 'number' ? v : Number(v);
-    return isNaN(n) ? null : n;
-  }
-
-  save(): void {
-    if (this.form.invalid) { this.form.markAllAsTouched(); return; }
-    const raw = this.form.value;
-
-    // OJO: guardamos los "códigos" de catálogo (string) en tipoAlimentoHembras/Machos
-    const tipoAlH = (raw.tipoAlimentoHembras || '').toString().trim();
-    const tipoAlM = (raw.tipoAlimentoMachos  || '').toString().trim();
-
-    // Serializa la fecha al MEDIODÍA local → evita corrimiento de día al pasar a UTC
-    const ymd = this.toYMD(raw.fechaRegistro)!;
-
-    const baseDto = {
-      fechaRegistro: this.ymdToIsoAtNoon(ymd),
-      loteId: raw.loteId,
-      mortalidadHembras: Number(raw.mortalidadHembras) || 0,
-      mortalidadMachos: Number(raw.mortalidadMachos) || 0,
-      selH: Number(raw.selH) || 0,
-      selM: Number(raw.selM) || 0,
-      errorSexajeHembras: Number(raw.errorSexajeHembras) || 0,
-      errorSexajeMachos: Number(raw.errorSexajeMachos) || 0,
-      // LEGACY: si no se eligió H/M, usar tipoAlimento tradicional
-      tipoAlimento: raw.tipoAlimento || tipoAlH || tipoAlM || '',
-      consumoKgHembras: Number(raw.consumoKgHembras) || 0,
-      consumoKgMachos: this.toNumOrNull(raw.consumoKgMachos),
-      pesoPromH:       this.toNumOrNull(raw.pesoPromH),
-      pesoPromM:       this.toNumOrNull(raw.pesoPromM),
-      uniformidadH:    this.toNumOrNull(raw.uniformidadH),
-      uniformidadM:    this.toNumOrNull(raw.uniformidadM),
-      cvH:             this.toNumOrNull(raw.cvH),
-      cvM:             this.toNumOrNull(raw.cvM),
-      observaciones: raw.observaciones,
-      kcalAlH: null,
-      protAlH: null,
-      kcalAveH: null,
-      protAveH: null,
-      ciclo: raw.ciclo,
-      tipoAlimentoHembras: tipoAlH || null,
-      tipoAlimentoMachos:  tipoAlM || null,
-    };
-
-    const op$ = this.editing
-      ? this.segSvc.update({ ...(baseDto as any), id: this.editing.id } as UpdateSeguimientoLoteLevanteDto)
-      : this.segSvc.create(baseDto as CreateSeguimientoLoteLevanteDto);
+  onSave(event: { data: CreateSeguimientoLoteLevanteDto | UpdateSeguimientoLoteLevanteDto; isEdit: boolean }): void {
+    const op$ = event.isEdit
+      ? this.segSvc.update(event.data as UpdateSeguimientoLoteLevanteDto)
+      : this.segSvc.create(event.data as CreateSeguimientoLoteLevanteDto);
 
     this.loading = true;
     op$.pipe(finalize(() => (this.loading = false))).subscribe({
       next: () => {
         this.modalOpen = false;
         this.editing = null;
-        this.onLoteChange();
+        this.onLoteChange(this.selectedLoteId);
       },
       error: () => { /* TODO: toast de error */ }
     });
@@ -554,24 +437,6 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     return Math.max(1, Math.floor((now.getTime() - enc.getTime()) / MS_DAY) + 1);
   }
 
-  /**
-   * Edad (en días) del pollito AL MOMENTO DEL REGISTRO.
-   * Calcula días desde fechaEncaset hasta fechaRegistro (mínimo 1), sin corrimientos.
-   */
-  calcularEdadDiasDesde(fechaEncaset?: string | Date | null, fechaReferencia?: string | Date | null): number {
-    const enc = this.ymdToLocalNoonDate(this.toYMD(fechaEncaset));
-    const ref = this.ymdToLocalNoonDate(this.toYMD(fechaReferencia));
-    if (!enc || !ref) return 0;
-    const MS_DAY = 24 * 60 * 60 * 1000;
-    const diff = ref.getTime() - enc.getTime();
-    if (diff < 0) return 0;
-    return Math.max(1, Math.floor(diff / MS_DAY) + 1);
-  }
-
-  /** Atajo para la tabla: edad en días del registro s usando el encaset del lote seleccionado. */
-  edadDiasDe(s: SeguimientoLoteLevanteDto): number {
-    return this.calcularEdadDiasDesde(this.selectedLote?.fechaEncaset ?? null, s?.fechaRegistro ?? null);
-  }
 
   // ========== MÉTODOS LEGACY (SEMANAS) - MANTENER PARA COMPATIBILIDAD ==========
   /** @deprecated Usar calcularEdadDias() en su lugar */
@@ -615,42 +480,13 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
     return String(v).trim();
   }
 
-  // ========= CÁLCULOS =========
+  // ========= MODALES =========
   calcsOpen = false;
   liquidacionOpen = false;
-  calcsLoading = false;
-  calcsDesde: string | null = null;
-  calcsHasta: string | null = null;
-
-  calcsResp: {
-    loteId: string;
-    total: number;
-    desde?: string | null;
-    hasta?: string | null;
-    items: Array<{
-      fecha: string;
-      edadDias?: number | null;  // Cambiado de edadSemana a edadDias
-      edadSemana?: number | null; // @deprecated - mantener para compatibilidad
-      hembraViva?: number | null;
-      mortH: number; selH: number; errH: number;
-      consKgH?: number | null; pesoH?: number | null; unifH?: number | null;
-      mortHPct?: number | null; selHPct?: number | null; errHPct?: number | null;
-      machoVivo?: number | null;
-      mortM: number; selM: number; errM: number;
-      consKgM?: number | null; pesoM?: number | null; unifM?: number | null;
-      mortMPct?: number | null; selMPct?: number | null; errMPct?: number | null;
-      retiroHPct?: number | null; retiroHAcPct?: number | null;
-      retiroMPct?: number | null; retiroMAcPct?: number | null;
-      relMHPct?: number | null;
-    }>;
-  } | null = null;
 
   openCalculos(): void {
     if (!this.selectedLoteId) return;
     this.calcsOpen = true;
-    this.calcsDesde = null;
-    this.calcsHasta = null;
-    this.reloadCalculos();
   }
 
   closeCalculos(): void {
@@ -665,27 +501,6 @@ export class SeguimientoLoteLevanteListComponent implements OnInit {
 
   closeLiquidacion(): void {
     this.liquidacionOpen = false;
-  }
-
-  reloadCalculos(): void {
-    if (!this.selectedLoteId) return;
-    this.calcsLoading = true;
-
-    this.segSvc.getResultado({
-      loteId: this.selectedLoteId,
-      desde: this.calcsDesde || undefined,
-      hasta: this.calcsHasta || undefined,
-      recalcular: true
-    }).subscribe({
-      next: (res) => {
-        this.calcsResp = res ?? null;
-        this.calcsLoading = false;
-      },
-      error: () => {
-        this.calcsResp = null;
-        this.calcsLoading = false;
-      }
-    });
   }
 
   // ******************************* Helpers de fecha *******************************

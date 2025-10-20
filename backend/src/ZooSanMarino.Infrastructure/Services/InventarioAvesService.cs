@@ -162,52 +162,72 @@ public class InventarioAvesService : IInventarioAvesService
 
     public async Task<ZooSanMarino.Application.DTOs.Common.PagedResult<InventarioAvesDto>> SearchAsync(InventarioAvesSearchRequest request)
     {
-        var query = _context.InventarioAves
-            .AsNoTracking()
-            .Where(i => i.CompanyId == _currentUser.CompanyId && i.DeletedAt == null);
-
-        // Aplicar filtros
-        if (request.LoteId.HasValue)
-            query = query.Where(i => i.LoteId == request.LoteId.Value);
-
-        if (request.GranjaId.HasValue)
-            query = query.Where(i => i.GranjaId == request.GranjaId.Value);
-
-        if (!string.IsNullOrEmpty(request.NucleoId))
-            query = query.Where(i => i.NucleoId == request.NucleoId);
-
-        if (!string.IsNullOrEmpty(request.GalponId))
-            query = query.Where(i => i.GalponId == request.GalponId);
-
-        if (!string.IsNullOrEmpty(request.Estado))
-            query = query.Where(i => i.Estado == request.Estado);
-
-        if (request.FechaDesde.HasValue)
-            query = query.Where(i => i.FechaActualizacion >= request.FechaDesde.Value);
-
-        if (request.FechaHasta.HasValue)
-            query = query.Where(i => i.FechaActualizacion <= request.FechaHasta.Value);
-
-        if (request.SoloActivos == true)
-            query = query.Where(i => i.Estado == "Activo");
-
-        var totalCount = await query.CountAsync();
-
-        var items = await query
-            .OrderBy(i => i.LoteId)
-            .ThenBy(i => i.GranjaId)
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
-            .Select(ToDto)
-            .ToListAsync();
-
-        return new ZooSanMarino.Application.DTOs.Common.PagedResult<InventarioAvesDto>
+        try
         {
-            Items = items,
-            Total = totalCount,
-            Page = request.Page,
-            PageSize = request.PageSize
-        };
+            // Consultar movimiento_aves en lugar de inventario_aves
+            var query = _context.MovimientoAves
+                .AsNoTracking()
+                .Where(m => m.DeletedAt == null);
+
+            // Filtro de compañía
+            if (_currentUser.CompanyId > 0)
+            {
+                query = query.Where(m => m.CompanyId == _currentUser.CompanyId);
+            }
+
+            // Aplicar filtros básicos solo si se proporcionan
+            if (request.LoteId.HasValue)
+                query = query.Where(m => m.LoteOrigenId == request.LoteId.Value || m.LoteDestinoId == request.LoteId.Value);
+
+            if (request.GranjaId.HasValue)
+                query = query.Where(m => m.GranjaOrigenId == request.GranjaId.Value || m.GranjaDestinoId == request.GranjaId.Value);
+
+            if (!string.IsNullOrEmpty(request.NucleoId))
+                query = query.Where(m => m.NucleoOrigenId == request.NucleoId || m.NucleoDestinoId == request.NucleoId);
+
+            if (!string.IsNullOrEmpty(request.GalponId))
+                query = query.Where(m => m.GalponOrigenId == request.GalponId || m.GalponDestinoId == request.GalponId);
+
+            if (!string.IsNullOrEmpty(request.Estado))
+                query = query.Where(m => m.Estado == request.Estado);
+
+            if (request.FechaDesde.HasValue)
+                query = query.Where(m => m.FechaMovimiento >= request.FechaDesde.Value);
+
+            if (request.FechaHasta.HasValue)
+                query = query.Where(m => m.FechaMovimiento <= request.FechaHasta.Value);
+
+            // Filtro de activos simplificado
+            if (request.SoloActivos == true)
+            {
+                query = query.Where(m => m.Estado == "Pendiente" || m.Estado == "Completado");
+            }
+
+            var totalCount = await query.CountAsync();
+
+            var items = await query
+                .OrderBy(m => m.FechaMovimiento)
+                .ThenBy(m => m.LoteOrigenId)
+                .Skip((request.Page - 1) * request.PageSize)
+                .Take(request.PageSize)
+                .Select(ToMovimientoDto)
+                .ToListAsync();
+
+            return new ZooSanMarino.Application.DTOs.Common.PagedResult<InventarioAvesDto>
+            {
+                Items = items,
+                Total = totalCount,
+                Page = request.Page,
+                PageSize = request.PageSize
+            };
+        }
+        catch (Exception ex)
+        {
+            // Log del error para debug
+            Console.WriteLine($"Error en SearchAsync: {ex.Message}");
+            Console.WriteLine($"StackTrace: {ex.StackTrace}");
+            throw;
+        }
     }
 
     public async Task<IEnumerable<InventarioAvesDto>> GetByLoteIdAsync(int loteId)
@@ -470,25 +490,68 @@ public class InventarioAvesService : IInventarioAvesService
         return inventariosCreados;
     }
 
-    private static System.Linq.Expressions.Expression<Func<InventarioAves, InventarioAvesDto>> ToDto =>
-        i => new InventarioAvesDto(
-            i.Id,
-            i.LoteId,
-            i.Lote.LoteNombre,
-            i.GranjaId,
-            i.Granja.Name,
-            i.NucleoId,
-            i.Nucleo != null ? i.Nucleo.NucleoNombre : null,
-            i.GalponId,
-            i.Galpon != null ? i.Galpon.GalponNombre : null,
-            i.CantidadHembras,
-            i.CantidadMachos,
-            i.CantidadMixtas,
-            i.CantidadHembras + i.CantidadMachos + i.CantidadMixtas,
-            i.FechaActualizacion,
-            i.Estado,
-            i.Observaciones,
-            i.CreatedAt,
-            i.UpdatedAt
-        );
+    /// <summary>
+    /// Método de debug para obtener el total de registros sin filtros
+    /// </summary>
+    public async Task<int> GetTotalCountAsync()
+    {
+        try
+        {
+            var count = await _context.MovimientoAves
+                .Where(m => m.DeletedAt == null)
+                .CountAsync();
+            
+            Console.WriteLine($"Debug: Total registros en movimiento_aves = {count}");
+            return count;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error en GetTotalCountAsync: {ex.Message}");
+            throw;
+        }
+    }
+
+        private static System.Linq.Expressions.Expression<Func<InventarioAves, InventarioAvesDto>> ToDto =>
+            i => new InventarioAvesDto(
+                i.Id,
+                i.LoteId,
+                string.Empty, // LoteNombre - no navigation to avoid JOIN issues
+                i.GranjaId,
+                string.Empty, // GranjaName - no navigation to avoid JOIN issues
+                i.NucleoId,
+                null, // NucleoNombre - no navigation to avoid EF issues
+                i.GalponId,
+                null, // GalponNombre - no navigation to avoid EF issues
+                i.CantidadHembras,
+                i.CantidadMachos,
+                i.CantidadMixtas,
+                i.CantidadHembras + i.CantidadMachos + i.CantidadMixtas,
+                i.FechaActualizacion,
+                i.Estado,
+                i.Observaciones,
+                i.CreatedAt,
+                i.UpdatedAt
+            );
+
+        private static System.Linq.Expressions.Expression<Func<MovimientoAves, InventarioAvesDto>> ToMovimientoDto =>
+            m => new InventarioAvesDto(
+                m.Id,
+                m.LoteOrigenId ?? m.LoteDestinoId ?? 0, // Usar lote origen o destino
+                string.Empty, // LoteNombre - no navigation to avoid JOIN issues
+                m.GranjaOrigenId ?? m.GranjaDestinoId ?? 0, // Usar granja origen o destino
+                string.Empty, // GranjaName - no navigation to avoid JOIN issues
+                m.NucleoOrigenId ?? m.NucleoDestinoId, // Usar nucleo origen o destino
+                null, // NucleoNombre - no navigation to avoid EF issues
+                m.GalponOrigenId ?? m.GalponDestinoId, // Usar galpon origen o destino
+                null, // GalponNombre - no navigation to avoid EF issues
+                m.CantidadHembras,
+                m.CantidadMachos,
+                m.CantidadMixtas,
+                m.CantidadHembras + m.CantidadMachos + m.CantidadMixtas,
+                m.FechaMovimiento, // Usar fecha de movimiento
+                m.Estado,
+                m.Observaciones,
+                m.CreatedAt,
+                m.UpdatedAt
+            );
 }
