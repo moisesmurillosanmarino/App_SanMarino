@@ -28,42 +28,17 @@ namespace ZooSanMarino.Infrastructure.Services
         }
 
         // ======================================================
-        // LISTADO SIMPLE (compat con front existente)
+        // LISTADO SIMPLE CON INFORMACIÓN COMPLETA DE RELACIONES
         // ======================================================
-        public async Task<IEnumerable<LoteDto>> GetAllAsync() =>
-            await _ctx.Lotes
+        public async Task<IEnumerable<LoteDetailDto>> GetAllAsync()
+        {
+            var q = _ctx.Lotes
                 .AsNoTracking()
                 .Where(l => l.CompanyId == _current.CompanyId && l.DeletedAt == null)
-                .OrderBy(l => l.LoteId)
-                .Select(l => new LoteDto(
-                    l.LoteId ?? 0,
-                    l.LoteNombre,
-                    l.GranjaId,
-                    l.NucleoId,
-                    l.GalponId,
-                    l.Regional,
-                    l.FechaEncaset,
-                    l.HembrasL,
-                    l.MachosL,
-                    l.PesoInicialH,  // ← tipos decimales alineados en entidad/config
-                    l.PesoInicialM,
-                    l.UnifH,
-                    l.UnifM,
-                    l.MortCajaH,
-                    l.MortCajaM,
-                    l.Raza,
-                    l.AnoTablaGenetica,
-                    l.Linea,
-                    l.TipoLinea,
-                    l.CodigoGuiaGenetica,
-                    l.LineaGeneticaId,  // ← NUEVO: ID de la línea genética
-                    l.Mixtas,
-                    l.PesoMixto,
-                    l.AvesEncasetadas,
-                    l.EdadInicial,
-                    l.Tecnico
-                ))
-                .ToListAsync();
+                .OrderBy(l => l.LoteId);
+
+            return await ProjectToDetail(q).ToListAsync();
+        }
 
         // ======================================================
         // BÚSQUEDA / LISTADO AVANZADO (paginado)

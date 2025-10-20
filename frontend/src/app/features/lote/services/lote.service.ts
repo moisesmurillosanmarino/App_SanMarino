@@ -55,7 +55,7 @@ export interface LoteDto {
   loteErp?: string;
   lineaGenetica?: string;
 
-  // 🔹 NUEVO: objetos anidados que puede traer getById
+  // 🔹 Relaciones completas que trae el backend
   farm?: {
     id: number;
     name: string;

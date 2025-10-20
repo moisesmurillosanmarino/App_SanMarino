@@ -12,9 +12,9 @@
 
     <!-- Filtros en cascada + búsqueda + orden -->
     <div class="ux-card p-4 mb-4">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-3 items-end">
-        <!-- Compañía -->
-        <div class="lg:col-span-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-3 items-end">
+        <!-- Compañía (solo si hay múltiples compañías) -->
+        <div class="sm:col-span-2 lg:col-span-1" *ngIf="showCompanyFilter">
           <label for="l-company" class="ux-label">Compañía</label>
           <select id="l-company" class="ux-select"
                   [(ngModel)]="selectedCompanyId"
@@ -25,7 +25,7 @@
         </div>
 
         <!-- Granja -->
-        <div class="lg:col-span-3">
+        <div class="sm:col-span-2 lg:col-span-1" [class.xl:col-span-1]="showCompanyFilter" [class.xl:col-span-2]="!showCompanyFilter">
           <label for="l-farm" class="ux-label">Granja</label>
           <select id="l-farm" class="ux-select"
                   [(ngModel)]="selectedFarmId"
@@ -36,7 +36,7 @@
         </div>
 
         <!-- Núcleo -->
-        <div class="lg:col-span-3">
+        <div class="sm:col-span-2 lg:col-span-1" [class.xl:col-span-1]="showCompanyFilter" [class.xl:col-span-2]="!showCompanyFilter">
           <label for="l-nucleo" class="ux-label">Núcleo</label>
           <select id="l-nucleo" class="ux-select"
                   [(ngModel)]="selectedNucleoId"
@@ -47,7 +47,7 @@
         </div>
 
         <!-- Galpón -->
-        <div class="lg:col-span-3">
+        <div class="sm:col-span-2 lg:col-span-1" [class.xl:col-span-1]="showCompanyFilter" [class.xl:col-span-2]="!showCompanyFilter">
           <label for="l-galpon" class="ux-label">Galpón</label>
           <select id="l-galpon" class="ux-select"
                   [(ngModel)]="selectedGalponId"
@@ -58,7 +58,7 @@
         </div>
 
         <!-- Búsqueda -->
-        <div class="lg:col-span-3">
+        <div class="sm:col-span-2 lg:col-span-2 xl:col-span-2">
           <label for="lote-filter" class="ux-label">Buscar</label>
           <div class="ux-search">
             <fa-icon [icon]="['fas','magnifying-glass']" class="ux-search__icon" aria-hidden="true"></fa-icon>
@@ -67,7 +67,7 @@
               type="text"
               [(ngModel)]="filtro"
               (ngModelChange)="recomputeList()"
-              placeholder="Buscar por lote, núcleo, granja o empresa…"
+              placeholder="Buscar por lote, núcleo, granja…"
               class="ux-input"
               aria-label="Buscar lote"
             />
@@ -75,30 +75,33 @@
         </div>
 
         <!-- Ordenar por -->
-        <div class="lg:col-span-2">
-          <label for="l-sort-key" class="ux-label">Ordenar por</label>
+        <div class="sm:col-span-1 lg:col-span-1 xl:col-span-1">
+          <label for="l-sort-key" class="ux-label">Ordenar</label>
           <select id="l-sort-key" class="ux-select"
                   [ngModel]="sortKey"
                   (ngModelChange)="onSortKeyChange($event)">
-            <option [ngValue]="'edad'">Edad (días)</option>
-            <option [ngValue]="'fecha'">Fecha de encaset</option>
+            <option [ngValue]="'edad'">Edad</option>
+            <option [ngValue]="'fecha'">Fecha</option>
           </select>
         </div>
 
         <!-- Dirección -->
-        <div class="lg:col-span-2">
+        <div class="sm:col-span-1 lg:col-span-1 xl:col-span-1">
           <label for="l-sort-dir" class="ux-label">Dirección</label>
           <select id="l-sort-dir" class="ux-select"
                   [ngModel]="sortDir"
                   (ngModelChange)="onSortDirChange($event)">
-            <option [ngValue]="'desc'">Descendente</option>
-            <option [ngValue]="'asc'">Ascendente</option>
+            <option [ngValue]="'desc'">↓</option>
+            <option [ngValue]="'asc'">↑</option>
           </select>
         </div>
 
         <!-- Limpiar -->
-        <div class="lg:col-span-2">
-          <button class="btn-ghost w-full" (click)="resetListFilters()">Limpiar</button>
+        <div class="sm:col-span-2 lg:col-span-2 xl:col-span-1">
+          <button class="btn-ghost w-full" (click)="resetListFilters()">
+            <fa-icon [icon]="faTimes" class="mr-1"></fa-icon>
+            Limpiar
+          </button>
         </div>
       </div>
     </div>
@@ -137,6 +140,8 @@
             <tr>
               <th scope="col">ID</th>
               <th scope="col">Nombre</th>
+              <th scope="col">Granja</th>
+              <th scope="col">Núcleo</th>
               <th scope="col">Fase</th>
               <th scope="col">Edad (sem)</th>
               <th scope="col">Vivas H</th>
@@ -152,6 +157,8 @@
             <tr *ngFor="let l of viewLotes; trackBy: trackByLote" class="ux-row">
               <td>{{ l.loteId }}</td>
               <td>{{ l.loteNombre }}</td>
+              <td>{{ l.farm?.name || '—' }}</td>
+              <td>{{ l.nucleo?.nucleoNombre || '—' }}</td>
               <td><span class="ux-badge">{{ calcularFase(l.fechaEncaset) }}</span></td>
               <td>{{ l.fechaEncaset ? calcularEdadDias(l.fechaEncaset) : '—' }}</td>
 
@@ -177,7 +184,7 @@
             </tr>
 
             <tr *ngIf="!loading && viewLotes.length === 0">
-              <td colspan="10" class="empty-state">
+              <td colspan="12" class="empty-state">
                 <div class="empty-illustration">📦</div>
                 <p>No hay lotes registrados en esta granja.</p>
                 <button (click)="openModal()" class="btn-secondary mt-2">

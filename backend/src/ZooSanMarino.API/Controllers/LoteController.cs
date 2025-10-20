@@ -17,11 +17,11 @@ public class LoteController : ControllerBase
     public LoteController(ILoteService svc) => _svc = svc;
 
     // ===========================
-    // LISTADO SIMPLE (compat)
+    // LISTADO SIMPLE CON INFORMACIÓN COMPLETA DE RELACIONES
     // ===========================
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<LoteDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<LoteDto>>> GetAll()
+    [ProducesResponseType(typeof(IEnumerable<LoteDtos.LoteDetailDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<LoteDtos.LoteDetailDto>>> GetAll()
     {
         var items = await _svc.GetAllAsync();
         return Ok(items);

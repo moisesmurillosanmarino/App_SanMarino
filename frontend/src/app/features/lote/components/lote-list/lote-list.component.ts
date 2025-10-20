@@ -149,6 +149,9 @@ export class LoteListComponent implements OnInit {
   selectedNucleoId: string | null = null;
   selectedGalponId: string | null = null;
 
+  // Control de visibilidad del filtro de compañía
+  showCompanyFilter: boolean = false;
+
   // Filtros (modal)
   nucleosFiltrados:   NucleoDto[] = [];
   galponesFiltrados:  GalponDetailDto[] = [];
@@ -203,6 +206,14 @@ export class LoteListComponent implements OnInit {
       });
 
       this.companies = companies;
+      
+      // Determinar si mostrar el filtro de compañía
+      this.showCompanyFilter = companies.length > 1;
+      
+      // Si solo hay una compañía, seleccionarla automáticamente
+      if (companies.length === 1 && companies[0].id) {
+        this.selectedCompanyId = companies[0].id;
+      }
 
       // Razas disponibles
       this.razasDisponibles = razas;

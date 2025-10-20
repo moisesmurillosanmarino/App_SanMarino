@@ -6,8 +6,8 @@ namespace ZooSanMarino.Application.Interfaces;
 
 public interface ILoteService
 {
-    // Compat existentes
-    Task<IEnumerable<LoteDto>> GetAllAsync();
+    // Compat existentes - ACTUALIZADO para devolver información completa de relaciones
+    Task<IEnumerable<LoteDetailDto>> GetAllAsync();
     Task<bool> DeleteAsync(int loteId);
 
     // Nuevos / detallados
