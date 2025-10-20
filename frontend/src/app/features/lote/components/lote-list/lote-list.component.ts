@@ -256,7 +256,6 @@ export class LoteListComponent implements OnInit {
     // Totales (encasetadas)
     this.form.get('hembrasL')!.valueChanges.subscribe(() => this.actualizarEncasetadas());
     this.form.get('machosL')!.valueChanges.subscribe(() => this.actualizarEncasetadas());
-    this.form.get('mixtas')!.valueChanges.subscribe(() => this.actualizarEncasetadas());
 
     // Chain para raza -> línea genética
     this.form.get('raza')!.valueChanges.subscribe(raza => {
@@ -285,7 +284,6 @@ export class LoteListComponent implements OnInit {
       machosL:            [null],
       pesoInicialH:       [null], // gramos
       pesoInicialM:       [null], // gramos
-      pesoMixto:          [null], // gramos
       unifH:              [null],
       unifM:              [null],
       mortCajaH:          [null],
@@ -297,7 +295,6 @@ export class LoteListComponent implements OnInit {
       codigoGuiaGenetica: [''],
       lineaGeneticaId:    [null, Validators.required],
       tecnico:            [''],
-      mixtas:             [null],
       avesEncasetadas:    [null],
       loteErp:            [''],
       lineaGenetica:      ['']
@@ -604,8 +601,7 @@ export class LoteListComponent implements OnInit {
   actualizarEncasetadas(): void {
     const h = +this.form.get('hembrasL')?.value || 0;
     const m = +this.form.get('machosL')?.value || 0;
-    const x = +this.form.get('mixtas')?.value  || 0;
-    this.form.get('avesEncasetadas')?.setValue(h + m + x);
+    this.form.get('avesEncasetadas')?.setValue(h + m);
   }
 
   onGranjaChange(granjaId: number): void {
