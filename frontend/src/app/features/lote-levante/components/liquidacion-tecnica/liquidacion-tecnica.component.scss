@@ -455,3 +455,355 @@
     padding: var(--space-2);
   }
 }
+
+/* ==========================================================================
+   Estilos para Tabla Comparativa con Guía Genética
+   ========================================================================== */
+
+.comparacion-guia {
+  margin-top: var(--space-6);
+  
+  h4 {
+    color: var(--warm-700);
+    font-size: var(--fs-lg);
+    font-weight: 600;
+    margin-bottom: var(--space-4);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+}
+
+/* Alerta para datos faltantes */
+.missing-data-alert {
+  background: #fef3cd;
+  border: 1px solid #fde68a;
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-bottom: var(--space-4);
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.alert-icon {
+  font-size: var(--fs-xl);
+  color: #f59e0b;
+  flex-shrink: 0;
+}
+
+.alert-content {
+  flex: 1;
+  
+  h5 {
+    color: #92400e;
+    font-size: var(--fs-md);
+    font-weight: 600;
+    margin: 0 0 var(--space-2) 0;
+  }
+  
+  p {
+    color: #92400e;
+    font-size: var(--fs-sm);
+    margin: 0 0 var(--space-2) 0;
+    line-height: 1.5;
+  }
+  
+  ul {
+    color: #92400e;
+    font-size: var(--fs-sm);
+    margin: var(--space-2) 0;
+    padding-left: var(--space-4);
+    
+    li {
+      margin-bottom: var(--space-1);
+      
+      strong {
+        font-weight: 600;
+      }
+    }
+  }
+}
+
+/* Tabla de Indicadores Técnicos */
+.indicadores-tecnicos-container {
+  margin-top: var(--space-4);
+  
+  h5 {
+    color: var(--warm-700);
+    font-size: var(--fs-md);
+    font-weight: 600;
+    margin-bottom: var(--space-3);
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+}
+
+.indicadores-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--warm-200);
+  background: var(--white);
+  overflow: hidden;
+  
+  thead {
+    background: var(--warm-50);
+    
+    th {
+      padding: var(--space-3) var(--space-4);
+      text-align: left;
+      font-weight: 600;
+      color: var(--warm-700);
+      border-bottom: 1px solid var(--warm-200);
+      white-space: nowrap;
+      
+      &:first-child {
+        border-top-left-radius: var(--radius-md);
+      }
+      
+      &:last-child {
+        border-top-right-radius: var(--radius-md);
+      }
+    }
+  }
+  
+  tbody {
+    tr {
+      border-bottom: 1px solid var(--warm-100);
+      transition: background-color 0.2s ease;
+      
+      &:hover {
+        background: var(--warm-50);
+      }
+      
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+    
+    td {
+      padding: var(--space-3) var(--space-4);
+      vertical-align: middle;
+      
+      &:first-child {
+        font-weight: 600;
+        color: var(--warm-700);
+      }
+      
+      &:nth-child(2),
+      &:nth-child(3) {
+        text-align: right;
+        font-family: 'Courier New', monospace;
+        font-weight: 500;
+      }
+      
+      &:nth-child(4) {
+        text-align: right;
+        font-family: 'Courier New', monospace;
+        font-weight: 600;
+      }
+      
+      &:last-child {
+        text-align: center;
+      }
+    }
+  }
+}
+
+.comparacion-table-container {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--warm-200);
+  background: var(--white);
+}
+
+.comparacion-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  
+  thead {
+    background: var(--warm-50);
+    
+    th {
+      padding: var(--space-3) var(--space-4);
+      text-align: left;
+      font-weight: 600;
+      color: var(--warm-700);
+      border-bottom: 1px solid var(--warm-200);
+      white-space: nowrap;
+      
+      &:first-child {
+        border-top-left-radius: var(--radius-md);
+      }
+      
+      &:last-child {
+        border-top-right-radius: var(--radius-md);
+      }
+    }
+  }
+  
+  tbody {
+    tr {
+      border-bottom: 1px solid var(--warm-100);
+      transition: background-color 0.2s ease;
+      
+      &:hover {
+        background: var(--warm-50);
+      }
+      
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+    
+    td {
+      padding: var(--space-3) var(--space-4);
+      vertical-align: middle;
+      
+      &:first-child {
+        font-weight: 600;
+        color: var(--warm-700);
+      }
+      
+      &:nth-child(2),
+      &:nth-child(3) {
+        text-align: right;
+        font-family: 'Courier New', monospace;
+        font-weight: 500;
+      }
+      
+      &:nth-child(4) {
+        text-align: right;
+        font-family: 'Courier New', monospace;
+        font-weight: 600;
+      }
+      
+      &:last-child {
+        text-align: center;
+      }
+    }
+  }
+}
+
+/* Clases para diferencias */
+.diferencia-optima {
+  color: var(--brand-green);
+}
+
+.diferencia-aceptable {
+  color: var(--brand-orange);
+}
+
+.diferencia-problema {
+  color: var(--liquidacion-danger);
+}
+
+/* Clases para estados */
+.estado-optimo {
+  background: var(--brand-green);
+  color: var(--white);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  display: inline-block;
+}
+
+.estado-aceptable {
+  background: var(--brand-orange);
+  color: var(--white);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  display: inline-block;
+}
+
+.estado-problema {
+  background: var(--liquidacion-danger);
+  color: var(--white);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  display: inline-block;
+}
+
+/* Resumen de cumplimiento */
+.cumplimiento-resumen {
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  background: var(--warm-50);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--warm-200);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.cumplimiento-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.cumplimiento-label {
+  font-weight: 500;
+  color: var(--warm-600);
+  font-size: var(--fs-sm);
+}
+
+.cumplimiento-valor {
+  font-weight: 700;
+  font-size: var(--fs-lg);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  
+  &.cumplimiento-excelente {
+    background: var(--brand-green);
+    color: var(--white);
+  }
+  
+  &.cumplimiento-bueno {
+    background: #22c55e;
+    color: var(--white);
+  }
+  
+  &.cumplimiento-aceptable {
+    background: var(--brand-orange);
+    color: var(--white);
+  }
+  
+  &.cumplimiento-problema {
+    background: var(--liquidacion-danger);
+    color: var(--white);
+  }
+}
+
+/* Responsive para tabla comparativa */
+@media (max-width: 768px) {
+  .comparacion-table {
+    font-size: var(--fs-xs);
+    
+    thead th,
+    tbody td {
+      padding: var(--space-2) var(--space-3);
+    }
+  }
+  
+  .cumplimiento-resumen {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+  
+  .cumplimiento-item {
+    justify-content: center;
+  }
+}

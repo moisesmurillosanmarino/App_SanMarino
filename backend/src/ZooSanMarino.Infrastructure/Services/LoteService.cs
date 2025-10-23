@@ -192,6 +192,7 @@ namespace ZooSanMarino.Infrastructure.Services
                 PesoMixto = dto.PesoMixto,
                 AvesEncasetadas = dto.AvesEncasetadas,
                 EdadInicial = dto.EdadInicial,
+                LoteErp = dto.LoteErp,  // ← NUEVO: Código ERP del lote
 
                 CompanyId = _current.CompanyId,
                 CreatedByUserId = _current.UserId,
@@ -287,6 +288,7 @@ namespace ZooSanMarino.Infrastructure.Services
             ent.PesoMixto = dto.PesoMixto;
             ent.AvesEncasetadas = dto.AvesEncasetadas;
             ent.EdadInicial = dto.EdadInicial;
+            ent.LoteErp = dto.LoteErp;  // ← NUEVO: Código ERP del lote
 
             ent.UpdatedByUserId = _current.UserId;
             ent.UpdatedAt = DateTime.UtcNow;
@@ -368,6 +370,7 @@ namespace ZooSanMarino.Infrastructure.Services
                     l.PesoMixto,
                     l.AvesEncasetadas,
                     l.EdadInicial,
+                    l.LoteErp,  // ← NUEVO: Código ERP del lote
                     l.CompanyId,
                     l.CreatedByUserId,
                     l.CreatedAt,

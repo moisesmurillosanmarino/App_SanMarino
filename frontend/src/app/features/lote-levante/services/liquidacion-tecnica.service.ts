@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../../environments/environment';
+import { LoteDto } from '../../lote/services/lote.service';
 
 // ==================== INTERFACES ====================
 
@@ -133,5 +134,12 @@ export class LiquidacionTecnicaService {
    */
   validarMultiplesLotes(loteIds: string[]): Observable<{[key: string]: boolean}> {
     return this.http.post<{[key: string]: boolean}>(`${this.baseUrl}/validar-multiples`, loteIds);
+  }
+
+  /**
+   * Obtener datos completos del lote para liquidación técnica
+   */
+  obtenerDatosCompletosLote(loteId: string): Observable<LoteDto> {
+    return this.http.get<LoteDto>(`${environment.apiUrl}/api/lotes/${loteId}`);
   }
 }

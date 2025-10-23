@@ -35,6 +35,7 @@ public class Lote : AuditableEntity
     public double?   PesoMixto          { get; set; } // ← double?
     public int?      AvesEncasetadas    { get; set; }
     public int?      EdadInicial        { get; set; }
+    public string?   LoteErp            { get; set; } // ← NUEVO: Código ERP del lote
 
     public Farm    Farm   { get; set; } = null!;
     public Nucleo? Nucleo { get; set; }

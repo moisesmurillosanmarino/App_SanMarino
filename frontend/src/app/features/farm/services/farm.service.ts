@@ -1,7 +1,8 @@
 // src/app/features/farm/services/farm.service.ts
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, throwError } from 'rxjs';
+import { tap, catchError } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import { TokenStorageService } from '../../../core/auth/token-storage.service';
 import { AuthSession } from '../../../core/auth/auth.models';
@@ -54,21 +55,87 @@ export class FarmService {
     const session: AuthSession | null = this.tokenStorage.get();
     const userId = session?.user?.id;
     
-    console.log('FarmService.getAll() - Usuario de sesión:', userId);
+    console.log('=== FarmService.getAll() Debug ===');
+    console.log('Session completa:', session);
+    console.log('User ID:', userId);
+    console.log('User ID type:', typeof userId);
     
-    // Crear parámetros de consulta
-    let params = new HttpParams();
-    if (userId) {
-      params = params.set('id_user_session', userId);
+    // Si no hay sesión o user ID, esperar un poco y reintentar
+    if (!session || !userId) {
+      console.warn('⚠️ No hay sesión o user ID, esperando...');
+      return new Observable(observer => {
+        setTimeout(() => {
+          const retrySession: AuthSession | null = this.tokenStorage.get();
+          const retryUserId = retrySession?.user?.id;
+          
+          if (retrySession && retryUserId) {
+            console.log('✅ Sesión encontrada en reintento:', retryUserId);
+            this.getAllWithUserId(retryUserId).subscribe(observer);
+          } else {
+            console.error('❌ Aún no hay sesión después del reintento');
+            observer.error('No hay sesión de usuario disponible');
+          }
+        }, 1000); // Esperar 1 segundo
+      });
     }
     
-    console.log('FarmService.getAll() - Parámetros:', params.toString());
+    return this.getAllWithUserId(userId);
+  }
+
+  private getAllWithUserId(userId: string): Observable<FarmDto[]> {
+    // Crear parámetros de consulta
+    let params = new HttpParams();
+    params = params.set('id_user_session', userId);
+    console.log('Parámetros enviados:', params.toString());
     
-    return this.http.get<FarmDto[]>(this.baseUrl, { params });
+    const url = `${this.baseUrl}${params.toString() ? '?' + params.toString() : ''}`;
+    console.log('URL completa:', url);
+    
+    return this.http.get<FarmDto[]>(this.baseUrl, { params }).pipe(
+      tap(response => {
+        console.log('✅ Respuesta del backend:', response);
+        console.log('Cantidad de granjas recibidas:', response.length);
+      }),
+      catchError(error => {
+        console.error('❌ Error en FarmService.getAll():', error);
+        console.error('Error details:', error.error);
+        console.error('Error status:', error.status);
+        return throwError(() => error);
+      })
+    );
   }
 
   getById(id: number): Observable<FarmDto> {
     return this.http.get<FarmDto>(`${this.baseUrl}/${id}`);
+  }
+
+  // Método de prueba para diagnosticar problemas
+  testConnection(): Observable<any> {
+    console.log('=== Test Connection ===');
+    console.log('Base URL:', this.baseUrl);
+    console.log('Environment API URL:', environment.apiUrl);
+    
+    const session: AuthSession | null = this.tokenStorage.get();
+    console.log('Session:', session);
+    
+    if (!session) {
+      console.error('❌ No hay sesión de usuario');
+      return throwError(() => new Error('No hay sesión de usuario'));
+    }
+    
+    const userId = session.user?.id;
+    console.log('User ID:', userId);
+    
+    if (!userId) {
+      console.error('❌ No hay user ID en la sesión');
+      return throwError(() => new Error('No hay user ID en la sesión'));
+    }
+    
+    const params = new HttpParams().set('id_user_session', userId);
+    const url = `${this.baseUrl}?${params.toString()}`;
+    console.log('URL de prueba:', url);
+    
+    return this.http.get<any>(this.baseUrl, { params });
   }
 
   create(dto: CreateFarmDto): Observable<FarmDto> {

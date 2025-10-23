@@ -86,9 +86,45 @@
   padding: var(--space-4);
 }
 
+.indicadores-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-4);
+}
+
 .indicadores-container h3 {
-  margin: 0 0 var(--space-4) 0; font-size: var(--fs-lg);
-  font-weight: 700; color: var(--text);
+  margin: 0; 
+  font-size: var(--fs-lg);
+  font-weight: 700; 
+  color: var(--text);
+}
+
+.btn-validation {
+  background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+  color: white;
+  border: none;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--t-fast);
+  box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
+}
+
+.btn-validation:hover:not(:disabled) {
+  background: linear-gradient(135deg, #45a049 0%, #3d8b40 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.4);
+}
+
+.btn-validation:disabled {
+  background: var(--warm-300);
+  color: var(--warm-500);
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
 }
 
 /* ==========================================================================
@@ -206,6 +242,66 @@
 .acumulado-card p {
   margin: 0; font-size: var(--fs-lg); font-weight: 700;
   color: var(--brand-red);
+}
+
+/* ==========================================================================
+   🚨 Alertas y Validaciones
+   ========================================================================== */
+.alert-icon {
+  margin-left: var(--space-1);
+  font-size: 0.8rem;
+  cursor: help;
+}
+
+.consumo-success {
+  color: #4caf50;
+  font-weight: 600;
+}
+
+.consumo-warning {
+  color: #ff9800;
+  font-weight: 600;
+  background: rgba(255, 152, 0, 0.1);
+}
+
+.consumo-error {
+  color: #f44336;
+  font-weight: 700;
+  background: rgba(244, 67, 54, 0.1);
+}
+
+.ganancia-success {
+  color: #4caf50;
+  font-weight: 600;
+}
+
+.ganancia-warning {
+  color: #ff9800;
+  font-weight: 600;
+  background: rgba(255, 152, 0, 0.1);
+}
+
+.ganancia-error {
+  color: #f44336;
+  font-weight: 700;
+  background: rgba(244, 67, 54, 0.1);
+}
+
+.mortalidad-success {
+  color: #4caf50;
+  font-weight: 600;
+}
+
+.mortalidad-warning {
+  color: #ff9800;
+  font-weight: 600;
+  background: rgba(255, 152, 0, 0.1);
+}
+
+.mortalidad-error {
+  color: #f44336;
+  font-weight: 700;
+  background: rgba(244, 67, 54, 0.1);
 }
 
 /* ==========================================================================

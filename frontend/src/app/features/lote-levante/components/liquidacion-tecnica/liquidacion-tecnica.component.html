@@ -1,5 +1,5 @@
 <section class="liquidacion-container" [attr.aria-busy]="loading() ? 'true' : null">
-  <!-- Header con controles -->
+  <!-- Header simplificado -->
   <header class="liquidacion-header">
     <div class="liquidacion-title">
       <h3>Liquidación Técnica</h3>
@@ -12,27 +12,6 @@
     </div>
 
     <div class="liquidacion-controls">
-      <form [formGroup]="form" class="controls-form">
-        <div class="ux-field">
-          <label for="fecha-hasta">Fecha hasta</label>
-          <input 
-            id="fecha-hasta" 
-            type="date" 
-            formControlName="fechaHasta"
-            class="ux-input">
-        </div>
-
-        <div class="ux-field">
-          <label for="tipo-vista">Vista</label>
-          <div class="ux-select">
-            <select id="tipo-vista" formControlName="tipoVista">
-              <option value="resumen">Resumen</option>
-              <option value="completa">Completa</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="ux-field">
           <button 
             type="button" 
             class="btn btn--outline"
@@ -41,8 +20,6 @@
             <span *ngIf="loading()">Calculando...</span>
             <span *ngIf="!loading()">Actualizar</span>
           </button>
-        </div>
-      </form>
     </div>
   </header>
 
@@ -69,40 +46,283 @@
 
   <!-- Contenido principal -->
   <ng-container *ngIf="liquidacion() && !loading() && !error()">
-    <!-- Información general del lote -->
+    <!-- Información principal del lote -->
     <section class="ux-card liquidacion-info">
+      <h4>📋 Información del Lote</h4>
       <div class="info-grid">
         <div class="info-item">
-          <label>📋 Lote</label>
-          <div><strong>{{ liquidacion()!.loteNombre || liquidacion()!.loteId }}</strong></div>
-        </div>
-        <div class="info-item">
-          <label>📅 Fecha Encaset</label>
-          <div>{{ formatDate(liquidacion()!.fechaEncaset) }}</div>
+          <label>📋 Código/Nombre</label>
+          <div><strong>{{ obtenerNombreLote() }}</strong></div>
         </div>
         <div class="info-item">
           <label>🧬 Raza</label>
-          <div>{{ liquidacion()!.raza || '—' }}</div>
+          <div><strong>{{ obtenerRaza() }}</strong></div>
         </div>
         <div class="info-item">
-          <label>📊 Año Guía</label>
-          <div>{{ liquidacion()!.anoTablaGenetica || '—' }}</div>
+          <label>📅 Año Guía Genética</label>
+          <div><strong>{{ obtenerAnoTablaGenetica() }}</strong></div>
         </div>
         <div class="info-item">
-          <label>🐔 Hembras Encasetadas</label>
-          <div>{{ liquidacion()!.hembrasEncasetadas | number:'1.0-0' }}</div>
+          <label>🏠 Granja</label>
+          <div><strong>{{ obtenerGranja() }}</strong></div>
         </div>
         <div class="info-item">
-          <label>🐓 Machos Encasetados</label>
-          <div>{{ liquidacion()!.machosEncasetados | number:'1.0-0' }}</div>
+          <label>🧬 Núcleo</label>
+          <div><strong>{{ obtenerNucleo() }}</strong></div>
         </div>
         <div class="info-item">
-          <label>📦 Total Aves</label>
-          <div><strong>{{ liquidacion()!.totalAvesEncasetadas | number:'1.0-0' }}</strong></div>
+          <label>🏚️ Galpón</label>
+          <div><strong>{{ obtenerGalpon() }}</strong></div>
         </div>
         <div class="info-item">
-          <label>📈 Retiro General</label>
-          <div class="valor-destacado">{{ liquidacion()!.porcentajeRetiroTotalGeneral | number:'1.2-2' }}%</div>
+          <label>📅 Fecha Encaset</label>
+          <div><strong>{{ obtenerFechaEncaset() }}</strong></div>
+        </div>
+        <div class="info-item">
+          <label>⏳ Edad Actual</label>
+          <div><strong>{{ obtenerEdadActual() }} días</strong></div>
+        </div>
+        <div class="info-item">
+          <label>📦 Total Aves Iniciales</label>
+          <div><strong>{{ obtenerTotalAvesIniciales() | number:'1.0-0' }}</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tabla Comparativa con Guía Genética -->
+    <section class="ux-card comparacion-guia">
+      <h4>📊 Comparación con Guía Genética</h4>
+      
+      <!-- Mensaje cuando faltan datos de guía genética -->
+      <div *ngIf="obtenerRaza() === '—' || obtenerAnoTablaGenetica() === '—'" class="missing-data-alert">
+        <div class="alert-icon">⚠️</div>
+        <div class="alert-content">
+          <h5>Datos de Guía Genética Faltantes</h5>
+          <p>Para mostrar la comparación con la guía genética, es necesario que el lote tenga asignados:</p>
+          <ul>
+            <li *ngIf="obtenerRaza() === '—'"><strong>Raza:</strong> No asignada</li>
+            <li *ngIf="obtenerAnoTablaGenetica() === '—'"><strong>Año de Tabla Genética:</strong> No asignado</li>
+          </ul>
+          <p>Por favor, edite el lote para asignar estos datos y luego actualice la liquidación técnica.</p>
+        </div>
+      </div>
+      
+      <!-- Tabla de Indicadores Técnicos (siempre visible) -->
+      <div class="indicadores-tecnicos-container">
+        <h5>📊 Indicadores Técnicos</h5>
+        <table class="indicadores-table">
+          <thead>
+            <tr>
+              <th>Indicador</th>
+              <th>Real</th>
+              <th>Guía</th>
+              <th>Diferencia</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Mortalidad Hembras</strong></td>
+              <td>{{ liquidacion()!.porcentajeMortalidadHembras | number:'1.2-2' }}%</td>
+              <td>{{ mortalidadEsperadaGuia > 0 ? (mortalidadEsperadaGuia | number:'1.2-2') + '%' : '—' }}</td>
+              <td [class]="getDiferenciaClass(calcularMortalidadPromedio() - mortalidadEsperadaGuia)">
+                {{ mortalidadEsperadaGuia > 0 ? ((calcularMortalidadPromedio() - mortalidadEsperadaGuia) | number:'1.2-2') + '%' : '—' }}
+              </td>
+              <td>
+                <span [class]="getEstadoClass('mortalidad', mortalidadEsperadaGuia, calcularMortalidadPromedio())">
+                  {{ mortalidadEsperadaGuia > 0 ? getEstadoTexto('mortalidad', mortalidadEsperadaGuia, calcularMortalidadPromedio()) : 'No cumple' }}
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Mortalidad Machos</strong></td>
+              <td>{{ liquidacion()!.porcentajeMortalidadMachos | number:'1.2-2' }}%</td>
+              <td>{{ mortalidadEsperadaGuia > 0 ? (mortalidadEsperadaGuia | number:'1.2-2') + '%' : '—' }}</td>
+              <td [class]="getDiferenciaClass(calcularMortalidadPromedio() - mortalidadEsperadaGuia)">
+                {{ mortalidadEsperadaGuia > 0 ? ((calcularMortalidadPromedio() - mortalidadEsperadaGuia) | number:'1.2-2') + '%' : '—' }}
+              </td>
+              <td>
+                <span [class]="getEstadoClass('mortalidad', mortalidadEsperadaGuia, calcularMortalidadPromedio())">
+                  {{ mortalidadEsperadaGuia > 0 ? getEstadoTexto('mortalidad', mortalidadEsperadaGuia, calcularMortalidadPromedio()) : 'No cumple' }}
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Selección Hembras</strong></td>
+              <td>{{ liquidacion()!.porcentajeSeleccionHembras | number:'1.2-2' }}%</td>
+              <td>—</td>
+              <td>—</td>
+              <td>
+                <span class="estado-aceptable">Cumple</span>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Selección Machos</strong></td>
+              <td>{{ liquidacion()!.porcentajeSeleccionMachos | number:'1.2-2' }}%</td>
+              <td>—</td>
+              <td>—</td>
+              <td>
+                <span class="estado-aceptable">Cumple</span>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Retiro Total Hembras</strong></td>
+              <td>{{ liquidacion()!.porcentajeRetiroTotalHembras | number:'1.2-2' }}%</td>
+              <td>—</td>
+              <td>—</td>
+              <td>
+                <span class="estado-aceptable">Cumple</span>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Retiro Total Machos</strong></td>
+              <td>{{ liquidacion()!.porcentajeRetiroTotalMachos | number:'1.2-2' }}%</td>
+              <td>—</td>
+              <td>—</td>
+              <td>
+                <span class="estado-aceptable">Cumple</span>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Consumo Alimento</strong></td>
+              <td>{{ liquidacion()!.consumoAlimentoRealGramos | number:'1.0-0' }}gr</td>
+              <td>{{ consumoEsperadoGuia > 0 ? (consumoEsperadoGuia | number:'1.0-0') + 'gr' : '—' }}</td>
+              <td [class]="getDiferenciaClass(consumoEsperadoGuia - liquidacion()!.consumoAlimentoRealGramos)">
+                {{ consumoEsperadoGuia > 0 ? ((consumoEsperadoGuia - liquidacion()!.consumoAlimentoRealGramos) | number:'1.0-0') + 'gr' : '—' }}
+              </td>
+              <td>
+                <span [class]="getEstadoClass('consumo', consumoEsperadoGuia, liquidacion()!.consumoAlimentoRealGramos)">
+                  {{ consumoEsperadoGuia > 0 ? getEstadoTexto('consumo', consumoEsperadoGuia, liquidacion()!.consumoAlimentoRealGramos) : 'No cumple' }}
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Peso Semana 25 (Hembras)</strong></td>
+              <td>{{ liquidacion()!.pesoSemana25RealHembras | number:'1.2-2' }}gr</td>
+              <td>{{ pesoEsperadoGuia > 0 ? (pesoEsperadoGuia | number:'1.2-2') + 'gr' : '—' }}</td>
+              <td [class]="getDiferenciaClass(pesoEsperadoGuia - calcularPesoPromedio())">
+                {{ pesoEsperadoGuia > 0 ? ((pesoEsperadoGuia - calcularPesoPromedio()) | number:'1.2-2') + 'gr' : '—' }}
+              </td>
+              <td>
+                <span [class]="getEstadoClass('peso', pesoEsperadoGuia, calcularPesoPromedio())">
+                  {{ pesoEsperadoGuia > 0 ? getEstadoTexto('peso', pesoEsperadoGuia, calcularPesoPromedio()) : 'No cumple' }}
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Peso Semana 25 (Machos)</strong></td>
+              <td>{{ liquidacion()!.pesoSemana25RealMachos | number:'1.2-2' }}gr</td>
+              <td>{{ pesoEsperadoGuia > 0 ? (pesoEsperadoGuia | number:'1.2-2') + 'gr' : '—' }}</td>
+              <td [class]="getDiferenciaClass(pesoEsperadoGuia - calcularPesoPromedio())">
+                {{ pesoEsperadoGuia > 0 ? ((pesoEsperadoGuia - calcularPesoPromedio()) | number:'1.2-2') + 'gr' : '—' }}
+              </td>
+              <td>
+                <span [class]="getEstadoClass('peso', pesoEsperadoGuia, calcularPesoPromedio())">
+                  {{ pesoEsperadoGuia > 0 ? getEstadoTexto('peso', pesoEsperadoGuia, calcularPesoPromedio()) : 'No cumple' }}
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Uniformidad (Hembras)</strong></td>
+              <td>{{ liquidacion()!.uniformidadRealHembras | number:'1.1-1' }}%</td>
+              <td>—</td>
+              <td>—</td>
+              <td>
+                <span class="estado-problema">No cumple</span>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Uniformidad (Machos)</strong></td>
+              <td>{{ liquidacion()!.uniformidadRealMachos | number:'1.1-1' }}%</td>
+              <td>—</td>
+              <td>—</td>
+              <td>
+                <span class="estado-problema">No cumple</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="comparacion-table-container" *ngIf="obtenerRaza() !== '—' && obtenerAnoTablaGenetica() !== '—'">
+        <table class="comparacion-table">
+          <thead>
+            <tr>
+              <th>Parámetro</th>
+              <th>Real</th>
+              <th>Guía Genética</th>
+              <th>Diferencia</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Peso Promedio (g)</strong></td>
+              <td>{{ calcularPesoPromedio() | number:'1.0-0' }}</td>
+              <td>{{ pesoEsperadoGuia | number:'1.0-0' }}</td>
+              <td [class]="getDiferenciaClass(pesoEsperadoGuia - calcularPesoPromedio())">
+                {{ (pesoEsperadoGuia - calcularPesoPromedio()) | number:'1.0-0' }}
+              </td>
+              <td>
+                <span [class]="getEstadoClass('peso', pesoEsperadoGuia, calcularPesoPromedio())">
+                  {{ getEstadoTexto('peso', pesoEsperadoGuia, calcularPesoPromedio()) }}
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Consumo Alimento (g/ave)</strong></td>
+              <td>{{ liquidacion()!.consumoAlimentoRealGramos | number:'1.0-0' }}</td>
+              <td>{{ consumoEsperadoGuia | number:'1.0-0' }}</td>
+              <td [class]="getDiferenciaClass(consumoEsperadoGuia - liquidacion()!.consumoAlimentoRealGramos)">
+                {{ (consumoEsperadoGuia - liquidacion()!.consumoAlimentoRealGramos) | number:'1.0-0' }}
+              </td>
+              <td>
+                <span [class]="getEstadoClass('consumo', consumoEsperadoGuia, liquidacion()!.consumoAlimentoRealGramos)">
+                  {{ getEstadoTexto('consumo', consumoEsperadoGuia, liquidacion()!.consumoAlimentoRealGramos) }}
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>% Mortalidad</strong></td>
+              <td>{{ calcularMortalidadPromedio() | number:'1.2-2' }}</td>
+              <td>{{ mortalidadEsperadaGuia | number:'1.2-2' }}</td>
+              <td [class]="getDiferenciaClass(calcularMortalidadPromedio() - mortalidadEsperadaGuia)">
+                {{ (calcularMortalidadPromedio() - mortalidadEsperadaGuia) | number:'1.2-2' }}
+              </td>
+              <td>
+                <span [class]="getEstadoClass('mortalidad', mortalidadEsperadaGuia, calcularMortalidadPromedio())">
+                  {{ getEstadoTexto('mortalidad', mortalidadEsperadaGuia, calcularMortalidadPromedio()) }}
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Conversión Alimenticia</strong></td>
+              <td>{{ calcularConversionAlimenticia() | number:'1.2-2' }}</td>
+              <td>{{ conversionEsperadaGuia | number:'1.2-2' }}</td>
+              <td [class]="getDiferenciaClass(conversionEsperadaGuia - calcularConversionAlimenticia())">
+                {{ (conversionEsperadaGuia - calcularConversionAlimenticia()) | number:'1.2-2' }}
+              </td>
+              <td>
+                <span [class]="getEstadoClass('conversion', conversionEsperadaGuia, calcularConversionAlimenticia())">
+                  {{ getEstadoTexto('conversion', conversionEsperadaGuia, calcularConversionAlimenticia()) }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- Resumen de cumplimiento -->
+      <div class="cumplimiento-resumen">
+        <div class="cumplimiento-item">
+          <span class="cumplimiento-label">📊 Cumplimiento General:</span>
+          <span class="cumplimiento-valor" [class]="getCumplimientoClass()">
+            {{ porcentajeCumplimientoGeneral | number:'1.0-0' }}%
+          </span>
+        </div>
+        <div class="cumplimiento-item">
+          <span class="cumplimiento-label">✅ Parámetros Óptimos:</span>
+          <span class="cumplimiento-valor">{{ parametrosOptimos }}/4</span>
         </div>
       </div>
     </section>
@@ -198,7 +418,7 @@
               <td class="indicador-estado">
                 <span class="estado-badge" 
                       [class]="getEstadoClase(indicador.diferencia, indicador.tipo, indicador.cumple)">
-                  {{ getEstadoTexto(indicador.diferencia, indicador.tipo, indicador.cumple) }}
+                  {{ indicador.cumple ? 'Cumple' : 'No cumple' }}
                 </span>
               </td>
             </tr>

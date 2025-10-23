@@ -1,6 +1,14 @@
 <!-- ================= TABLA DE INDICADORES SEMANALES ================= -->
 <div class="indicadores-container">
-  <h3>Indicadores Semanales</h3>
+  <div class="indicadores-header">
+    <h3>Indicadores Semanales</h3>
+    <button 
+      (click)="validarUsoTablaGenetica()" 
+      class="btn-validation"
+      [disabled]="!selectedLote || indicadoresSemanales.length === 0">
+      🔍 Validar Tabla Genética
+    </button>
+  </div>
   
   <div class="ux-scroll">
     <table class="ux-table indicadores-table">
@@ -44,12 +52,36 @@
           </td>
           <td>{{ ind.avesInicioSemana | number:'1.0-0' }}</td>
           <td>{{ ind.avesFinSemana | number:'1.0-0' }}</td>
-          <td>{{ formatNumber(ind.consumoReal, 0) }}</td>
-          <td>{{ formatNumber(ind.consumoTabla, 0) }}</td>
+          <td class="consumo-real" 
+              [class]="'consumo-' + validarConsumo(ind.consumoReal, ind.consumoTabla).tipo">
+            {{ formatNumber(ind.consumoReal, 1) }}
+            <span class="alert-icon" 
+                  [title]="validarConsumo(ind.consumoReal, ind.consumoTabla).mensaje"
+                  *ngIf="!validarConsumo(ind.consumoReal, ind.consumoTabla).esValido">
+              ⚠️
+            </span>
+          </td>
+          <td>{{ formatNumber(ind.consumoTabla, 1) }}</td>
           <td>{{ formatNumber(ind.conversionAlimenticia, 2) }}</td>
-          <td>{{ formatNumber(ind.gananciaSemana, 2) }}</td>
+          <td class="ganancia-semana" 
+              [class]="'ganancia-' + validarGanancia(ind.gananciaSemana, ind.semana).tipo">
+            {{ formatNumber(ind.gananciaSemana, 2) }}
+            <span class="alert-icon" 
+                  [title]="validarGanancia(ind.gananciaSemana, ind.semana).mensaje"
+                  *ngIf="!validarGanancia(ind.gananciaSemana, ind.semana).esValido">
+              ⚠️
+            </span>
+          </td>
           <td>{{ formatNumber(ind.gananciaDiariaAcumulada, 2) }}</td>
-          <td>{{ formatPercentage(ind.mortalidadSem) }}</td>
+          <td class="mortalidad-semana" 
+              [class]="'mortalidad-' + validarMortalidad(ind.mortalidadSem, ind.semana).tipo">
+            {{ formatPercentage(ind.mortalidadSem) }}
+            <span class="alert-icon" 
+                  [title]="validarMortalidad(ind.mortalidadSem, ind.semana).mensaje"
+                  *ngIf="!validarMortalidad(ind.mortalidadSem, ind.semana).esValido">
+              ⚠️
+            </span>
+          </td>
           <td>{{ formatPercentage(ind.seleccionSem) }}</td>
           <td>{{ formatPercentage(ind.mortalidadMasSeleccion) }}</td>
           <td>{{ formatNumber(ind.eficiencia, 2) }}</td>

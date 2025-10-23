@@ -181,6 +181,9 @@ builder.Services.AddScoped<IInventarioAvesService, InventarioAvesService>();
 builder.Services.AddScoped<IMovimientoAvesService, MovimientoAvesService>();
 builder.Services.AddScoped<IHistorialInventarioService, HistorialInventarioService>();
 
+// Guía Genética Service
+builder.Services.AddScoped<IGuiaGeneticaService, GuiaGeneticaService>();
+
 // Proveedores
 builder.Services.AddScoped<IAlimentoNutricionProvider, EfAlimentoNutricionProvider>();
 builder.Services.AddScoped<IGramajeProvider, NullGramajeProvider>();

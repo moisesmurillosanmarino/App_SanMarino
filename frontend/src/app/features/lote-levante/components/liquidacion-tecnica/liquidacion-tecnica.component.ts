@@ -15,6 +15,8 @@ import {
   LiquidacionComparacionService, 
   LiquidacionTecnicaComparacionDto 
 } from '../../services/liquidacion-comparacion.service';
+import { GuiaGeneticaService } from '../../../../services/guia-genetica.service';
+import { LoteDto } from '../../../lote/services/lote.service';
 
 @Component({
   selector: 'app-liquidacion-tecnica',
@@ -34,12 +36,23 @@ export class LiquidacionTecnicaComponent implements OnInit, OnChanges {
   liquidacionCompleta = signal<LiquidacionTecnicaCompletaDto | null>(null);
   comparacion = signal<LiquidacionTecnicaComparacionDto | null>(null);
   error = signal<string | null>(null);
+  
+  // Datos completos del lote
+  datosLote = signal<LoteDto | null>(null);
 
   // Formulario para filtros
   form: FormGroup;
 
   // Vista activa
   vistaActiva: 'resumen' | 'detalle' | 'graficos' = 'resumen';
+
+  // Propiedades para comparación con Guía Genética
+  pesoEsperadoGuia: number = 0;
+  consumoEsperadoGuia: number = 0;
+  mortalidadEsperadaGuia: number = 0;
+  conversionEsperadaGuia: number = 0;
+  porcentajeCumplimientoGeneral: number = 0;
+  parametrosOptimos: number = 0;
 
   // Configuraciones de gráficos
   public barChartOptions: ChartConfiguration['options'] = {
@@ -126,7 +139,8 @@ export class LiquidacionTecnicaComponent implements OnInit, OnChanges {
   constructor(
     private fb: FormBuilder,
     private liquidacionService: LiquidacionTecnicaService,
-    private comparacionService: LiquidacionComparacionService
+    private comparacionService: LiquidacionComparacionService,
+    private guiaGeneticaService: GuiaGeneticaService
   ) {
     this.form = this.fb.group({
       fechaHasta: [new Date()],
@@ -141,12 +155,39 @@ export class LiquidacionTecnicaComponent implements OnInit, OnChanges {
         this.cargarLiquidacion();
       }
     });
+    
+    // Cargar datos del lote si ya tenemos el ID
+    if (this.loteId) {
+      this.cargarDatosLote();
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['loteId'] && this.loteId) {
+      this.cargarDatosLote();
       this.cargarLiquidacion();
     }
+  }
+
+  /**
+   * Cargar datos completos del lote
+   */
+  cargarDatosLote(): void {
+    if (!this.loteId) return;
+    
+    console.log('=== DEBUG: cargarDatosLote() ===');
+    console.log('LoteId:', this.loteId);
+    
+    this.liquidacionService.obtenerDatosCompletosLote(this.loteId).subscribe({
+      next: (lote: LoteDto) => {
+        console.log('✅ Datos del lote cargados:', lote);
+        this.datosLote.set(lote);
+      },
+      error: (error: any) => {
+        console.error('❌ Error cargando datos del lote:', error);
+        this.error.set('Error al cargar los datos del lote');
+      }
+    });
   }
 
   /**
@@ -202,25 +243,6 @@ export class LiquidacionTecnicaComponent implements OnInit, OnChanges {
     });
   }
 
-  /**
-   * Cargar datos de comparación con guía genética
-   */
-  private cargarComparacion(): void {
-    if (!this.loteId) return;
-
-    const fechaHasta = this.form.value.fechaHasta || new Date();
-    const loteIdNumber = parseInt(this.loteId);
-
-    this.comparacionService.getComparacionBasica(loteIdNumber, fechaHasta).subscribe({
-      next: (data: LiquidacionTecnicaComparacionDto) => {
-        this.comparacion.set(data);
-      },
-      error: (error: any) => {
-        console.warn('No se pudo cargar la comparación con guía genética:', error);
-        this.comparacion.set(null);
-      }
-    });
-  }
 
   /**
    * Cambiar vista activa
@@ -366,22 +388,6 @@ export class LiquidacionTecnicaComponent implements OnInit, OnChanges {
     return 'estado-critico';
   }
 
-  /**
-   * Obtener texto del estado
-   */
-  getEstadoTexto(diferencia: number | null | undefined, tipo: string, cumple?: boolean): string {
-    if (cumple !== undefined) {
-      return cumple ? 'Cumple' : 'No cumple';
-    }
-    
-    if (diferencia === null || diferencia === undefined) return 'Sin datos';
-    
-    const umbral = tipo === 'porcentaje' ? 2 : 5;
-    
-    if (Math.abs(diferencia) <= umbral) return 'Normal';
-    if (Math.abs(diferencia) <= umbral * 2) return 'Alerta';
-    return 'Crítico';
-  }
 
   /**
    * Obtener información de la guía genética
@@ -675,5 +681,266 @@ export class LiquidacionTecnicaComponent implements OnInit, OnChanges {
         }
       }
     };
+  }
+
+  // Métodos para comparación con Guía Genética
+  cargarComparacion(): void {
+    const liquidacionData = this.liquidacion();
+    
+    console.log('=== DEBUG: cargarComparacion() ===');
+    console.log('LiquidacionData:', liquidacionData);
+    console.log('Raza:', liquidacionData?.raza);
+    console.log('Año Tabla Genética:', liquidacionData?.anoTablaGenetica);
+    console.log('Fecha Encaset:', liquidacionData?.fechaEncaset);
+    
+    if (!liquidacionData || !liquidacionData.raza || !liquidacionData.anoTablaGenetica) {
+      console.warn('No se puede cargar comparación: faltan datos de raza o año tabla genética');
+      console.warn('Raza disponible:', liquidacionData?.raza);
+      console.warn('Año disponible:', liquidacionData?.anoTablaGenetica);
+      return;
+    }
+
+    // Calcular edad en semanas
+    const edadSemanas = this.calcularEdadSemanas(liquidacionData.fechaEncaset || new Date());
+    console.log('Edad en semanas calculada:', edadSemanas);
+    
+    // Cargar datos de la guía genética
+    this.guiaGeneticaService.obtenerGuiaGenetica(
+      liquidacionData.raza,
+      liquidacionData.anoTablaGenetica,
+      edadSemanas
+    ).subscribe({
+      next: (guiaData) => {
+        if (guiaData?.datos) {
+          this.pesoEsperadoGuia = (guiaData.datos.pesoHembras + guiaData.datos.pesoMachos) / 2;
+          this.consumoEsperadoGuia = (guiaData.datos.consumoHembras + guiaData.datos.consumoMachos) / 2;
+          this.mortalidadEsperadaGuia = (guiaData.datos.mortalidadHembras + guiaData.datos.mortalidadMachos) / 2;
+          this.conversionEsperadaGuia = this.calcularConversionEsperada();
+          
+          // Calcular cumplimiento general
+          this.calcularCumplimientoGeneral();
+        }
+      },
+      error: (error) => {
+        console.error('Error cargando datos de guía genética:', error);
+        // Usar valores por defecto
+        this.pesoEsperadoGuia = 2500;
+        this.consumoEsperadoGuia = 180;
+        this.mortalidadEsperadaGuia = 4.0;
+        this.conversionEsperadaGuia = 1.8;
+        this.calcularCumplimientoGeneral();
+      }
+    });
+  }
+
+  // Métodos de cálculo para usar en el template
+  calcularPesoPromedio(): number {
+    const liquidacionData = this.liquidacion();
+    if (!liquidacionData) return 0;
+    
+    const pesoHembras = liquidacionData.pesoSemana25RealHembras || 0;
+    const pesoMachos = liquidacionData.pesoSemana25RealMachos || 0;
+    
+    if (pesoHembras > 0 && pesoMachos > 0) {
+      return (pesoHembras + pesoMachos) / 2;
+    } else if (pesoHembras > 0) {
+      return pesoHembras;
+    } else if (pesoMachos > 0) {
+      return pesoMachos;
+    }
+    
+    return 0;
+  }
+
+  calcularMortalidadPromedio(): number {
+    const liquidacionData = this.liquidacion();
+    if (!liquidacionData) return 0;
+    
+    return (liquidacionData.porcentajeMortalidadHembras + liquidacionData.porcentajeMortalidadMachos) / 2;
+  }
+
+  calcularConversionAlimenticia(): number {
+    const liquidacionData = this.liquidacion();
+    if (!liquidacionData) return 0;
+    
+    const pesoPromedio = this.calcularPesoPromedio();
+    const consumoTotal = liquidacionData.consumoAlimentoRealGramos;
+    
+    if (pesoPromedio > 0 && consumoTotal > 0) {
+      return consumoTotal / pesoPromedio;
+    }
+    
+    return 0;
+  }
+
+  calcularEdadSemanas(fechaEncaset: string | Date): number {
+    const fechaInicio = new Date(fechaEncaset);
+    const fechaActual = new Date();
+    const diferenciaDias = Math.floor((fechaActual.getTime() - fechaInicio.getTime()) / (1000 * 60 * 60 * 24));
+    return Math.floor(diferenciaDias / 7);
+  }
+
+  calcularConversionEsperada(): number {
+    // Conversión esperada basada en peso y consumo
+    if (this.pesoEsperadoGuia > 0 && this.consumoEsperadoGuia > 0) {
+      return this.consumoEsperadoGuia / this.pesoEsperadoGuia;
+    }
+    return 1.8; // Valor por defecto
+  }
+
+  calcularCumplimientoGeneral(): void {
+    const liquidacionData = this.liquidacion();
+    if (!liquidacionData) return;
+
+    let cumplimientos: number[] = [];
+    this.parametrosOptimos = 0;
+
+    // Peso promedio
+    const pesoReal = this.calcularPesoPromedio();
+    const diferenciaPeso = Math.abs(this.pesoEsperadoGuia - pesoReal);
+    const porcentajePeso = this.pesoEsperadoGuia > 0 ? (diferenciaPeso / this.pesoEsperadoGuia) * 100 : 100;
+    const cumplimientoPeso = Math.max(0, 100 - porcentajePeso);
+    cumplimientos.push(cumplimientoPeso);
+    if (porcentajePeso <= 5) this.parametrosOptimos++;
+
+    // Consumo
+    const diferenciaConsumo = Math.abs(this.consumoEsperadoGuia - liquidacionData.consumoAlimentoRealGramos);
+    const porcentajeConsumo = this.consumoEsperadoGuia > 0 ? (diferenciaConsumo / this.consumoEsperadoGuia) * 100 : 100;
+    const cumplimientoConsumo = Math.max(0, 100 - porcentajeConsumo);
+    cumplimientos.push(cumplimientoConsumo);
+    if (porcentajeConsumo <= 10) this.parametrosOptimos++;
+
+    // Mortalidad
+    const mortalidadReal = this.calcularMortalidadPromedio();
+    const diferenciaMortalidad = Math.abs(this.mortalidadEsperadaGuia - mortalidadReal);
+    const porcentajeMortalidad = this.mortalidadEsperadaGuia > 0 ? (diferenciaMortalidad / this.mortalidadEsperadaGuia) * 100 : 100;
+    const cumplimientoMortalidad = Math.max(0, 100 - porcentajeMortalidad);
+    cumplimientos.push(cumplimientoMortalidad);
+    if (porcentajeMortalidad <= 20) this.parametrosOptimos++;
+
+    // Conversión alimenticia
+    const conversionReal = this.calcularConversionAlimenticia();
+    const diferenciaConversion = Math.abs(this.conversionEsperadaGuia - conversionReal);
+    const porcentajeConversion = this.conversionEsperadaGuia > 0 ? (diferenciaConversion / this.conversionEsperadaGuia) * 100 : 100;
+    const cumplimientoConversion = Math.max(0, 100 - porcentajeConversion);
+    cumplimientos.push(cumplimientoConversion);
+    if (porcentajeConversion <= 10) this.parametrosOptimos++;
+
+    // Promedio general
+    this.porcentajeCumplimientoGeneral = cumplimientos.reduce((sum, val) => sum + val, 0) / cumplimientos.length;
+  }
+
+  // Métodos para clases CSS
+  getDiferenciaClass(diferencia: number): string {
+    const absDiferencia = Math.abs(diferencia);
+    if (absDiferencia <= 5) return 'diferencia-optima';
+    if (absDiferencia <= 15) return 'diferencia-aceptable';
+    return 'diferencia-problema';
+  }
+
+  getEstadoClass(tipo: string, esperado: number, real: number): string {
+    const diferencia = Math.abs(esperado - real);
+    const porcentaje = esperado > 0 ? (diferencia / esperado) * 100 : 100;
+    
+    switch (tipo) {
+      case 'peso':
+        return porcentaje <= 5 ? 'estado-optimo' : porcentaje <= 10 ? 'estado-aceptable' : 'estado-problema';
+      case 'consumo':
+        return porcentaje <= 10 ? 'estado-optimo' : porcentaje <= 20 ? 'estado-aceptable' : 'estado-problema';
+      case 'mortalidad':
+        return porcentaje <= 20 ? 'estado-optimo' : porcentaje <= 40 ? 'estado-aceptable' : 'estado-problema';
+      case 'conversion':
+        return porcentaje <= 10 ? 'estado-optimo' : porcentaje <= 20 ? 'estado-aceptable' : 'estado-problema';
+      default:
+        return 'estado-aceptable';
+    }
+  }
+
+  getEstadoTexto(tipo: string, esperado: number, real: number): string {
+    const diferencia = Math.abs(esperado - real);
+    const porcentaje = esperado > 0 ? (diferencia / esperado) * 100 : 100;
+    
+    switch (tipo) {
+      case 'peso':
+        if (porcentaje <= 5) return 'Óptimo';
+        if (porcentaje <= 10) return 'Aceptable';
+        return real < esperado ? 'Bajo' : 'Alto';
+      case 'consumo':
+        if (porcentaje <= 10) return 'Óptimo';
+        if (porcentaje <= 20) return 'Aceptable';
+        return real < esperado ? 'Bajo' : 'Alto';
+      case 'mortalidad':
+        if (porcentaje <= 20) return 'Normal';
+        if (porcentaje <= 40) return 'Aceptable';
+        return real < esperado ? 'Baja' : 'Alta';
+      case 'conversion':
+        if (porcentaje <= 10) return 'Óptima';
+        if (porcentaje <= 20) return 'Aceptable';
+        return real < esperado ? 'Baja' : 'Alta';
+      default:
+        return 'Aceptable';
+    }
+  }
+
+  getCumplimientoClass(): string {
+    if (this.porcentajeCumplimientoGeneral >= 90) return 'cumplimiento-excelente';
+    if (this.porcentajeCumplimientoGeneral >= 75) return 'cumplimiento-bueno';
+    if (this.porcentajeCumplimientoGeneral >= 60) return 'cumplimiento-aceptable';
+    return 'cumplimiento-problema';
+  }
+
+  calcularEdadDias(fechaEncaset: string | Date | undefined): number {
+    if (!fechaEncaset) return 0;
+    const fechaInicio = new Date(fechaEncaset);
+    const fechaActual = new Date();
+    return Math.floor((fechaActual.getTime() - fechaInicio.getTime()) / (1000 * 60 * 60 * 24));
+  }
+
+  // Métodos auxiliares para obtener datos del lote
+  obtenerNombreLote(): string {
+    const lote = this.datosLote();
+    return lote?.loteNombre || this.loteNombre || '—';
+  }
+
+  obtenerRaza(): string {
+    const lote = this.datosLote();
+    return lote?.raza || '—';
+  }
+
+  obtenerAnoTablaGenetica(): string {
+    const lote = this.datosLote();
+    return lote?.anoTablaGenetica?.toString() || '—';
+  }
+
+  obtenerGranja(): string {
+    const lote = this.datosLote();
+    return lote?.farm?.name || '—';
+  }
+
+  obtenerNucleo(): string {
+    const lote = this.datosLote();
+    return lote?.nucleo?.nucleoNombre || '—';
+  }
+
+  obtenerGalpon(): string {
+    const lote = this.datosLote();
+    return lote?.galpon?.galponNombre || '—';
+  }
+
+  obtenerFechaEncaset(): string {
+    const lote = this.datosLote();
+    if (!lote?.fechaEncaset) return '—';
+    return this.formatDate(lote.fechaEncaset);
+  }
+
+  obtenerEdadActual(): number {
+    const lote = this.datosLote();
+    if (!lote?.fechaEncaset) return 0;
+    return this.calcularEdadDias(lote.fechaEncaset);
+  }
+
+  obtenerTotalAvesIniciales(): number {
+    const lote = this.datosLote();
+    return (lote?.hembrasL || 0) + (lote?.machosL || 0);
   }
 }

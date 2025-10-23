@@ -31,6 +31,7 @@ public sealed record LoteDetailDto(
     double?   PesoMixto,
     int?      AvesEncasetadas,
     int?      EdadInicial,
+    string?   LoteErp,  // ← NUEVO: Código ERP del lote
     // Auditoría
     int       CompanyId,
     int       CreatedByUserId,

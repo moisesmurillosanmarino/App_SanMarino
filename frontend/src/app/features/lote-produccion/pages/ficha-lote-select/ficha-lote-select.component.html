@@ -14,10 +14,8 @@
           <th>📦 Aves encasetadas</th>
           <th>🐔 Hembras L</th>
           <th>🐓 Machos L</th>
-          <th>🐥 Mixtas</th>
           <th>⚖️ Peso H (g)</th>
           <th>⚖️ Peso M (g)</th>
-          <th>⚖️ Peso mixto (g)</th>
           <th>🐣 Raza</th>
           <th>🧬 Línea genética</th>
           <th>📆 Año guía</th>
@@ -38,10 +36,8 @@
           <td>{{ (L.avesEncasetadas ?? 0) | number:'1.0-0' }}</td>
           <td>{{ (L.hembrasL ?? 0) | number:'1.0-0' }}</td>
           <td>{{ (L.machosL  ?? 0) | number:'1.0-0' }}</td>
-          <td>{{ (L.mixtas    ?? 0) | number:'1.0-0' }}</td>
           <td>{{ L.pesoInicialH ?? '—' }}</td>
           <td>{{ L.pesoInicialM ?? '—' }}</td>
-          <td>{{ L.pesoMixto    ?? '—' }}</td>
           <td>{{ L.raza || '—' }}</td>
           <td>
             <ng-container *ngIf="L.linea || L.tipoLinea; else noLinea">

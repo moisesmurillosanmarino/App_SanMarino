@@ -48,8 +48,6 @@ export interface LoteDto {
   lineaGeneticaId?: number | null;
   tecnico?: string;
 
-  mixtas?: number | null;
-  pesoMixto?: number | null;
   avesEncasetadas?: number | null;
 
   loteErp?: string;

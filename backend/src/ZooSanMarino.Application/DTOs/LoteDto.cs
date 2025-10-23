@@ -29,6 +29,7 @@ public record LoteDto(
     double?   PesoMixto,
     int?      AvesEncasetadas,
     int?      EdadInicial,
+    string?   LoteErp,  // ← NUEVO: Código ERP del lote
 
     string?   Tecnico
 );

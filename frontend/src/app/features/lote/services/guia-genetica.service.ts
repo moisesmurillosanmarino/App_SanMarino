@@ -1,9 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { catchError, map, tap } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
-import { MockGuiaGeneticaService } from './mock-guia-genetica.service';
 
 // ==================== INTERFACES ====================
 
@@ -102,12 +101,11 @@ export interface LineaGeneticaOption {
   providedIn: 'root'
 })
 export class GuiaGeneticaService {
-  private baseUrl = `${environment.apiUrl}/ProduccionAvicolaRaw`;
-  private useMock = true; // Cambiar a false cuando la API esté disponible
+  private baseUrl = `${environment.apiUrl}/guia-genetica`;
+  private useMock = false; // Cambiar a false cuando la API esté disponible
 
   constructor(
-    private http: HttpClient,
-    private mockService: MockGuiaGeneticaService
+    private http: HttpClient
   ) {}
 
   // =====================================================
@@ -118,46 +116,34 @@ export class GuiaGeneticaService {
    * Obtener todas las razas disponibles
    */
   getRazasDisponibles(): Observable<string[]> {
-    if (this.useMock) {
-      return this.mockService.getRazasDisponibles();
-    }
+    console.log('=== GuiaGeneticaService.getRazasDisponibles() ===');
+    console.log('URL:', `${this.baseUrl}/razas`);
     
-    return this.http.get<ProduccionAvicolaRawDto[]>(this.baseUrl).pipe(
-      map(data => {
-        const razas = new Set<string>();
-        data.forEach(item => {
-          if (item.raza && item.raza.trim()) {
-            razas.add(item.raza.trim());
-          }
-        });
-        return Array.from(razas).sort();
+    return this.http.get<string[]>(`${this.baseUrl}/razas`).pipe(
+      tap(razas => {
+        console.log('✅ Razas recibidas del backend:', razas);
       }),
-      catchError(this.handleError)
+      catchError(error => {
+        console.error('❌ Error obteniendo razas:', error);
+        return this.handleError(error);
+      })
     );
   }
 
   /**
    * Obtener años disponibles para una raza específica
    */
-  getAniosPorRaza(raza: string): Observable<string[]> {
-    const request: ProduccionAvicolaRawSearchRequest = {
-      raza: raza,
-      page: 1,
-      pageSize: 1000,
-      sortBy: 'anioGuia',
-      sortDesc: true
-    };
+  getAniosPorRaza(raza: string): Observable<number[]> {
+    return this.http.get<number[]>(`${this.baseUrl}/anos?raza=${encodeURIComponent(raza)}`).pipe(
+      catchError(this.handleError)
+    );
+  }
 
-    return this.search(request).pipe(
-      map(result => {
-        const anios = new Set<string>();
-        result.items.forEach(item => {
-          if (item.anioGuia && item.anioGuia.trim()) {
-            anios.add(item.anioGuia.trim());
-          }
-        });
-        return Array.from(anios).sort((a, b) => b.localeCompare(a)); // Más reciente primero
-      }),
+  /**
+   * Obtener información completa de una raza (incluyendo años disponibles)
+   */
+  obtenerInformacionRaza(raza: string): Observable<{esValida: boolean, anosDisponibles: number[]}> {
+    return this.http.get<{esValida: boolean, anosDisponibles: number[]}>(`${this.baseUrl}/info-raza?raza=${encodeURIComponent(raza)}`).pipe(
       catchError(this.handleError)
     );
   }
@@ -166,10 +152,6 @@ export class GuiaGeneticaService {
    * Obtener líneas genéticas disponibles para una raza
    */
   getLineasGeneticasPorRaza(raza: string): Observable<LineaGeneticaOption[]> {
-    if (this.useMock) {
-      return this.mockService.getLineasGeneticasPorRaza(raza);
-    }
-    
     const request: ProduccionAvicolaRawSearchRequest = {
       raza: raza,
       page: 1,

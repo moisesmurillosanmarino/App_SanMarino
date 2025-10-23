@@ -8,6 +8,11 @@
         <fa-icon [icon]="faPlus" aria-hidden="true"></fa-icon>
         <span>Nuevo Lote</span>
       </button>
+      
+      <!-- Botón de prueba temporal -->
+      <button (click)="testFarmService()" class="btn-secondary ml-2" style="background-color: #f59e0b; color: white;">
+        🔧 Test Farm Service
+      </button>
     </div>
 
     <!-- Filtros en cascada + búsqueda + orden -->
@@ -143,12 +148,13 @@
               <th scope="col">Granja</th>
               <th scope="col">Núcleo</th>
               <th scope="col">Fase</th>
-              <th scope="col">Edad (sem)</th>
+              <th scope="col">Edad (Dias)</th>
               <th scope="col">Vivas H</th>
               <th scope="col">Vivas M</th>
               <th scope="col">Vivas total</th>
               <th scope="col">Total aves</th>
               <th scope="col">Fecha encaset</th>
+              <th scope="col">Fecha de registro</th>
               <th scope="col" class="text-center">Acciones</th>
             </tr>
           </thead>
@@ -168,6 +174,7 @@
 
               <td>{{ formatNumber((l.hembrasL || 0) + (l.machosL || 0)) }}</td>
               <td>{{ l.fechaEncaset ? (l.fechaEncaset | date:'dd/MM/yyyy') : '—' }}</td>
+              <td>{{ l.createdAt ? (l.createdAt | date:'dd/MM/yyyy') : '—' }}</td>
               <td class="text-center">
                 <div class="inline-flex items-center gap-2">
                   <button (click)="openDetail(l)" class="icon-btn" title="Ver detalle">
@@ -279,27 +286,34 @@
               </small>
             </div>
 
-            <!-- Línea genética -->
+            <!-- Año Tabla Genética -->
             <div>
-              <label class="ux-label">🐣 Línea genética <span class="req">*</span></label>
-              <select formControlName="lineaGeneticaId" class="ux-input"
-                      [class.is-invalid]="form.get('lineaGeneticaId')?.invalid && form.get('lineaGeneticaId')?.touched"
-                      [disabled]="!selectedRaza || lineasGeneticas.length === 0">
+              <label class="ux-label">📅 Año Tabla Genética <span class="req">*</span></label>
+              <select formControlName="anoTablaGenetica" class="ux-input"
+                      [class.is-invalid]="form.get('anoTablaGenetica')?.invalid && form.get('anoTablaGenetica')?.touched"
+                      [disabled]="!selectedRaza || loadingAnos">
                 <option value="" disabled selected>
-                  {{ !selectedRaza ? 'Primero seleccione una raza' : 
-                     lineasGeneticas.length === 0 ? 'Cargando líneas genéticas...' : 
-                     'Seleccione línea genética…' }}
+                  {{ loadingAnos ? 'Cargando años...' : 
+                     !selectedRaza ? 'Primero seleccione una raza' : 
+                     'Seleccione un año...' }}
                 </option>
-                <option *ngFor="let linea of lineasGeneticas" [value]="linea.id">
-                  {{ linea.descripcion }}
-                </option>
+                <option *ngFor="let ano of anosDisponibles" [value]="ano">{{ ano }}</option>
               </select>
-              <small class="text-danger" *ngIf="form.get('lineaGeneticaId')?.invalid && form.get('lineaGeneticaId')?.touched">
-                La línea genética es requerida
-              </small>
-              <small class="text-muted" *ngIf="selectedRaza && lineasGeneticas.length === 0">
-                No se encontraron líneas genéticas para la raza {{ selectedRaza }}
-              </small>
+              <div *ngIf="form.get('anoTablaGenetica')?.invalid && form.get('anoTablaGenetica')?.touched" class="ux-error">
+                Año de tabla genética es requerido
+              </div>
+              <div *ngIf="loadingAnos" class="ux-hint">
+                <span class="loading-spinner">⏳</span> Cargando años disponibles...
+              </div>
+              <div *ngIf="!selectedRaza" class="ux-hint">
+                Seleccione primero una raza para ver los años disponibles
+              </div>
+              <div *ngIf="selectedRaza && !loadingAnos && !razaValida" class="ux-error">
+                No se encontraron años disponibles para la raza "{{ selectedRaza }}"
+              </div>
+              <div *ngIf="selectedRaza && !loadingAnos && razaValida && anosDisponibles.length === 0" class="ux-warning">
+                La raza "{{ selectedRaza }}" no tiene años de tabla genética disponibles
+              </div>
             </div>
 
             <!-- ======= AVES: enteros con separador ======= -->
@@ -407,13 +421,12 @@
             <div><strong class="text-warm-gray-800">📊 Fase:</strong> {{ calcularFase(selectedLote.fechaEncaset) }}</div>
             <div><strong class="text-warm-gray-800">⏳ Edad:</strong> {{ calcularEdadDias(selectedLote.fechaEncaset) }} días</div>
             <div><strong class="text-warm-gray-800">📄 Lote ERP:</strong> {{ selectedLote.loteErp || '—' }}</div>
-            <div><strong class="text-warm-gray-800">🧬 Línea genética:</strong> {{ getLineaGeneticaDescripcion(selectedLote.lineaGeneticaId) || '—' }}</div>
+            <div><strong class="text-warm-gray-800">🧬 Raza:</strong> {{ selectedLote.raza || '—' }}</div>
+            <div><strong class="text-warm-gray-800">📅 Año Tabla Genética:</strong> {{ selectedLote.anoTablaGenetica || '—' }}</div>
             <div><strong class="text-warm-gray-800">🐔 Hembras L:</strong> {{ formatNumber(selectedLote.hembrasL || 0) }}</div>
             <div><strong class="text-warm-gray-800">🐓 Machos L:</strong> {{ formatNumber(selectedLote.machosL || 0) }}</div>
-            <div><strong class="text-warm-gray-800">🐥 Mixtas:</strong> {{ formatNumber(selectedLote.mixtas || 0) }}</div>
             <div><strong class="text-warm-gray-800">📈 Peso inicial H (g):</strong> {{ formatNumber(selectedLote.pesoInicialH || 0) }}</div>
             <div><strong class="text-warm-gray-800">📈 Peso inicial M (g):</strong> {{ formatNumber(selectedLote.pesoInicialM || 0) }}</div>
-            <div><strong class="text-warm-gray-800">📈 Peso mixto (g):</strong> {{ formatNumber(selectedLote.pesoMixto || 0) }}</div>
             <div><strong class="text-warm-gray-800">🐣 Aves encasetadas:</strong> {{ formatNumber(selectedLote.avesEncasetadas || 0) }}</div>
             <div><strong class="text-warm-gray-800">📦 Total aves:</strong> {{ formatNumber((selectedLote.hembrasL || 0) + (selectedLote.machosL || 0)) }}</div>
           </div>
@@ -465,10 +478,8 @@
                     <th>Incubadora</th>
                     <th>Machos</th>
                     <th>Hembras</th>
-                    <th>Mixtas</th>
                     <th>Peso M (g)</th>
                     <th>Peso H (g)</th>
-                    <th>Peso Mixto (g)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -477,13 +488,11 @@
                     <td>{{ r.reproductoraId }}</td>
                     <td>{{ formatNumber(r.m || 0) }}</td>
                     <td>{{ formatNumber(r.h || 0) }}</td>
-                    <td>{{ formatNumber(r.mixtas || 0) }}</td>
                     <td>{{ formatNumber(r.pesoInicialM || 0) }}</td>
                     <td>{{ formatNumber(r.pesoInicialH || 0) }}</td>
-                    <td>{{ formatNumber(r.pesoMixto || 0) }}</td>
                   </tr>
                   <tr *ngIf="!lotesReproductora.length">
-                    <td colspan="8" class="empty-state">Sin lotes reproductora asignados.</td>
+                    <td colspan="6" class="empty-state">Sin lotes reproductora asignados.</td>
                   </tr>
                 </tbody>
               </table>
